@@ -1,0 +1,460 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANNEL
+// ─────────────────────────────────────────────────────────────────────────────
+model Channel {
+  id                   String   @id @default(cuid())
+  name                 String
+  niche                String
+  universe             String   // A | B | C
+  targetAudience       String
+  primaryPlatform      String
+  secondaryPlatform    String?
+  language             String   @default("English")
+  postingFrequency     String
+  contentPillars       String[]
+  visualStyle          String
+  voiceStyle           String
+  monetizationPriority Int      @default(1)
+  status               String   @default("Testing")
+  formatStrategy       String?
+  repurposingRules     String?
+  defaultModelPref     String   @default("kling-heavy")
+  maxBudgetPerVideo    Float    @default(10)
+  maxBudgetPerWeek     Float    @default(50)
+  subscriberCount      Int      @default(0)
+  watchHoursTotal      Float    @default(0)
+  shortsViewsTotal     Int      @default(0)
+  uploadCadence        String   @default("on-track")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  ideas      Idea[]
+  scripts    Script[]
+  series     Series[]
+  styleBible StyleBible?
+  videos     Video[]
+  analytics  ChannelAnalytics[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IDEA
+// ─────────────────────────────────────────────────────────────────────────────
+model Idea {
+  id                    String   @id @default(cuid())
+  channelId             String
+  title                 String
+  description           String
+  type                  String   // topic | series | hook | trend | evergreen
+  format                String
+  channelFitScore       Float    @default(0)
+  noveltyScore          Float    @default(0)
+  repeatabilityScore    Float    @default(0)
+  productionDifficulty  Float    @default(0)
+  estimatedCost         Float    @default(0)
+  monetizationScore     Float    @default(0)
+  overallScore          Float    @default(0)
+  status                String   @default("Draft")
+  tags                  String[]
+  notes                 String?
+  sourceUrl             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  channel Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  scripts Script[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCRIPT
+// ─────────────────────────────────────────────────────────────────────────────
+model Script {
+  id                 String   @id @default(cuid())
+  channelId          String
+  ideaId             String?
+  title              String
+  hook               String
+  fullScript         String   @db.Text
+  narrationDraft     String?  @db.Text
+  formatVariant      String
+  musicMood          String
+  thumbnailConcepts  Json
+  titleOptions       String[]
+  subtitleText       String?  @db.Text
+  description        String?  @db.Text
+  caption            String?
+  status             String   @default("Draft")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  channel        Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  idea           Idea?    @relation(fields: [ideaId], references: [id], onDelete: SetNull)
+  sceneBreakdown Scene[]
+  videos         Video[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCENE
+// ─────────────────────────────────────────────────────────────────────────────
+model Scene {
+  id               String   @id @default(cuid())
+  scriptId         String
+  sequenceNumber   Int
+  description      String
+  duration         Int      // seconds
+  modelAssigned    String   // kling-3.0 | veo-3.1
+  routingReason    String
+  cameraDirection  String
+  visualGuidance   String
+  prompt           String?  @db.Text
+  characterIds     String[]
+  status           String   @default("Pending")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  script         Script          @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  generatedClips GeneratedClip[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHARACTER
+// ─────────────────────────────────────────────────────────────────────────────
+model Character {
+  id                  String   @id @default(cuid())
+  name                String
+  speciesOrType       String
+  personality         String
+  visualReferences    String[]
+  approvedImages      String[]
+  approvedExpressions String[]
+  clothingRules       String
+  colorPalette        String[]
+  worldRole           String
+  voiceId             String?
+  restrictedChanges   String[]
+  samplePoses         String[]
+  preferredModel      String
+  universeId          String
+  seriesIds           String[]
+  channelId           String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  voice            VoiceAsset?       @relation(fields: [voiceId], references: [id], onDelete: SetNull)
+  approvedPrompts  CharacterPrompt[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHARACTER PROMPT
+// ─────────────────────────────────────────────────────────────────────────────
+model CharacterPrompt {
+  id          String   @id @default(cuid())
+  characterId String
+  promptText  String   @db.Text
+  version     Int      @default(1)
+  targetModel String
+  status      String   @default("active")
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROMPT REGISTRY
+// ─────────────────────────────────────────────────────────────────────────────
+model Prompt {
+  id            String    @id @default(cuid())
+  promptText    String    @db.Text
+  version       Int       @default(1)
+  targetModel   String
+  category      String    // scene | character | thumbnail | style | background
+  channelId     String?
+  characterId   String?
+  sceneType     String?
+  lastUsedDate  DateTime?
+  successRating String?   // Great | Acceptable | Failed
+  isLocked      Boolean   @default(false)
+  notes         String?
+  tags          String[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLE BIBLE
+// ─────────────────────────────────────────────────────────────────────────────
+model StyleBible {
+  id                    String   @id @default(cuid())
+  channelId             String   @unique
+  visualIdentity        String?  @db.Text
+  lightingPreferences   String
+  cameraFeel            String
+  subtitleStyle         String
+  musicDirection        String
+  narrationTone         String
+  worldRules            String?  @db.Text
+  visualConstraints     String
+  compositionStyles     String[]
+  thumbnailRules        Json?
+  preferredModelPerType Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VIDEO
+// ─────────────────────────────────────────────────────────────────────────────
+model Video {
+  id                String    @id @default(cuid())
+  channelId         String
+  scriptId          String?
+  title             String
+  status            String    @default("Pending")
+  platform          String[]
+  formatVariant     String
+  thumbnailUrls     String[]
+  selectedThumbnail String?
+  finalVideoUrl     String?
+  totalCost         Float     @default(0)
+  klingCost         Float     @default(0)
+  veoCost           Float     @default(0)
+  qualityScore      Float?
+  qualityDetails    Json?
+  publishedAt       DateTime?
+  youtubeVideoId    String?
+  instagramPostId   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  channel        Channel          @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  script         Script?          @relation(fields: [scriptId], references: [id], onDelete: SetNull)
+  generatedClips GeneratedClip[]
+  analytics      VideoAnalytics?
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GENERATED CLIP
+// ─────────────────────────────────────────────────────────────────────────────
+model GeneratedClip {
+  id         String   @id @default(cuid())
+  sceneId    String
+  videoId    String?
+  clipUrl    String
+  model      String
+  prompt     String   @db.Text
+  duration   Float
+  cost       Float    @default(0)
+  isApproved Boolean  @default(false)
+  isVariant  Boolean  @default(false)
+  variantOf  String?
+  status     String   @default("Generated")
+  createdAt  DateTime @default(now())
+
+  scene Scene  @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  video Video? @relation(fields: [videoId], references: [id], onDelete: SetNull)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SERIES
+// ─────────────────────────────────────────────────────────────────────────────
+model Series {
+  id             String   @id @default(cuid())
+  channelId      String
+  name           String
+  description    String
+  characterIds   String[]
+  status         String   @default("Active")
+  continuityLog  String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  channel  Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  episodes Episode[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EPISODE
+// ─────────────────────────────────────────────────────────────────────────────
+model Episode {
+  id            String   @id @default(cuid())
+  seriesId      String
+  episodeNumber Int
+  title         String
+  status        String   @default("Planned")
+  characterArcs Json?
+  summary       String
+  videoId       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VOICE ASSET
+// ─────────────────────────────────────────────────────────────────────────────
+model VoiceAsset {
+  id                 String   @id @default(cuid())
+  name               String
+  channelId          String
+  characterId        String?
+  elevenlabsVoiceId  String
+  referenceAudios    String[]
+  tonePresets        String[]
+  language           String   @default("English")
+  isMultilingual     Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  characters Character[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ASSET
+// ─────────────────────────────────────────────────────────────────────────────
+model Asset {
+  id           String   @id @default(cuid())
+  name         String
+  type         String   // character-ref | voice | script | scene-prompt | world-preset | thumbnail | raw-clip | approved-clip | final-video | rejected-clip | music
+  channelId    String?
+  characterId  String?
+  videoId      String?
+  url          String
+  cloudinaryId String?
+  model        String?
+  status       String   @default("active")
+  metadata     Json?
+  tags         String[]
+  createdAt    DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CULTURAL EVENT
+// ─────────────────────────────────────────────────────────────────────────────
+model CulturalEvent {
+  id          String   @id @default(cuid())
+  name        String
+  date        DateTime
+  type        String   // festival | mythology-event | devotional
+  universes   String[]
+  channels    String[]
+  description String
+  createdAt   DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VIDEO ANALYTICS
+// ─────────────────────────────────────────────────────────────────────────────
+model VideoAnalytics {
+  id               String    @id @default(cuid())
+  videoId          String    @unique
+  channelId        String
+  views            Int       @default(0)
+  watchTimeHours   Float     @default(0)
+  retentionNotes   String?
+  classification   String?   // Winner | Loser | Inconclusive
+  repeatRecommend  String?   // Yes | No | Test variant
+  hookType         String?
+  formatUsed       String?
+  characterUsed    String?
+  voiceUsed        String?
+  styleUsed        String?
+  musicMood        String?
+  klingPercent     Float     @default(0)
+  veoPercent       Float     @default(0)
+  publishDate      DateTime?
+  recordedAt       DateTime  @default(now())
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANNEL ANALYTICS
+// ─────────────────────────────────────────────────────────────────────────────
+model ChannelAnalytics {
+  id                  String   @id @default(cuid())
+  channelId           String
+  subscriberCount     Int      @default(0)
+  watchHoursTotal     Float    @default(0)
+  shortsViewsTotal    Int      @default(0)
+  videosPublished     Int      @default(0)
+  costPerVideo        Float    @default(0)
+  costPerView         Float    @default(0)
+  costPerSubscriber   Float    @default(0)
+  costPerWatchHour    Float    @default(0)
+  weeklySpend         Float    @default(0)
+  recordedAt          DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FORMAT PLAYBOOK
+// ─────────────────────────────────────────────────────────────────────────────
+model FormatPlaybook {
+  id                   String   @id @default(cuid())
+  channelId            String
+  name                 String
+  hookStructure        String
+  sceneCount           Int
+  pacing               String
+  thumbnailStyle       String
+  voiceTone            String
+  musicMood            String
+  modelRoutingPattern  Json
+  sourceVideoId        String?
+  isLocked             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GENERATION JOB
+// ─────────────────────────────────────────────────────────────────────────────
+model GenerationJob {
+  id          String   @id @default(cuid())
+  type        String   // video-scene | voice | music | thumbnail
+  status      String   @default("pending")
+  model       String?
+  prompt      String?  @db.Text
+  inputData   Json
+  outputData  Json?
+  cost        Float?
+  retryCount  Int      @default(0)
+  maxRetries  Int      @default(3)
+  error       String?
+  videoId     String?
+  sceneId     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPETITOR REFERENCE
+// ─────────────────────────────────────────────────────────────────────────────
+model CompetitorReference {
+  id             String   @id @default(cuid())
+  channelId      String
+  url            String
+  platform       String
+  formatType     String
+  hookStructure  String
+  whatWorked     String
+  tags           String[]
+  notes          String?
+  createdAt      DateTime @default(now())
+}
