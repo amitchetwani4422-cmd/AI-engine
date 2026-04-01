@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
     try {
       const params = selectedChannel !== "all" ? `?channelId=${selectedChannel}` : "";
       const d = await fetch(`/api/analytics${params}`).then((r) => r.json());
-      setData(d);
+      if (d && !d.error) setData(d);
     } finally { setLoading(false); }
   }
 

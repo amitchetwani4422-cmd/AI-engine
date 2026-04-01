@@ -68,7 +68,7 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     fetch(`/api/scripts/${id}`)
       .then((r) => r.json())
-      .then(setScript)
+      .then((d) => { if (d && !d.error) setScript(d); })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -78,7 +78,7 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
       const res = await fetch(`/api/scripts/${id}/approve`, { method: "POST" });
       if (res.ok) {
         const updated = await fetch(`/api/scripts/${id}`).then((r) => r.json());
-        setScript(updated);
+        if (updated && !updated.error) setScript(updated);
       }
     } finally {
       setApproving(false);

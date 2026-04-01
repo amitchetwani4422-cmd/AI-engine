@@ -45,7 +45,7 @@ export default function PlannerPage() {
     try {
       const params = selectedChannel !== "all" ? `?channelId=${selectedChannel}` : "";
       const data = await fetch(`/api/planner${params}`).then((r) => r.json());
-      setPlannerData(data);
+      if (data && !data.error) setPlannerData(data);
     } finally {
       setLoading(false);
     }

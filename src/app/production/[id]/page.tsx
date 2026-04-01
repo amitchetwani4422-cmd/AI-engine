@@ -84,7 +84,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     try {
       const res = await fetch(`/api/production/${id}`);
       const data = await res.json();
-      setVideo(data);
+      if (data && !data.error) setVideo(data);
     } finally {
       setLoading(false);
     }

@@ -65,7 +65,7 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     fetch(`/api/characters/${id}`)
       .then((r) => r.json())
-      .then((data) => setCharacter(data))
+      .then((data) => { if (data && !data.error) setCharacter(data); })
       .finally(() => setLoading(false));
   }, [id]);
 
