@@ -15,6 +15,9 @@ import {
   Search, Lightbulb, Plus, Loader2, Wand2, CheckCircle,
   XCircle, Star, TrendingUp, Calendar, ExternalLink
 } from "lucide-react";
+import { ModelSelector } from "@/components/ui/model-selector";
+import type { AIModel } from "@/lib/ai-provider";
+import { DEFAULT_IDEA_MODEL } from "@/lib/ai-provider";
 
 interface Channel { id: string; name: string; niche: string; }
 interface Idea {
@@ -40,6 +43,7 @@ export default function ResearchPage() {
   const [selectedChannel, setSelectedChannel] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [aiModel, setAiModel] = useState<AIModel>(DEFAULT_IDEA_MODEL);
   const [showAddRef, setShowAddRef] = useState(false);
   const [refForm, setRefForm] = useState({ url: "", platform: "youtube", formatType: "", hookStructure: "", whatWorked: "", tags: "", notes: "", channelId: "" });
 
@@ -74,7 +78,7 @@ export default function ResearchPage() {
       const res = await fetch("/api/ideas/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channelId: selectedChannel, count: 5, type: "mixed" }),
+        body: JSON.stringify({ channelId: selectedChannel, count: 5, type: "mixed", aiModel }),
       });
       if (res.ok) await fetchIdeas();
     } finally { setGenerating(false); }
@@ -86,7 +90,11 @@ export default function ResearchPage() {
   }
 
   async function scoreIdea(id: string) {
-    await fetch(`/api/ideas/${id}/score`, { method: "POST" });
+    await fetch(`/api/ideas/${id}/score`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ aiModel }),
+    });
     await fetchIdeas();
   }
 
@@ -108,10 +116,13 @@ export default function ResearchPage() {
         title="Research & Opportunities"
         description="Generate, score, and manage content ideas"
         actions={
-          <Button onClick={generateIdeas} disabled={generating || selectedChannel === "all"}>
-            {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-            Generate Ideas
-          </Button>
+          <div className="flex items-center gap-3">
+            <ModelSelector value={aiModel} onChange={setAiModel} />
+            <Button onClick={generateIdeas} disabled={generating || selectedChannel === "all"}>
+              {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+              Generate Ideas
+            </Button>
+          </div>
         }
       />
       <div className="flex-1 overflow-auto p-6">

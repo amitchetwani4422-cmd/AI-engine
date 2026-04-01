@@ -1,9 +1,8 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from "@anthropic-ai/sdk";
-import prisma from '@/lib/prisma';
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+import { prisma } from '@/lib/prisma';
+import { generateWithModel, DEFAULT_IDEA_MODEL } from "@/lib/ai-provider";
+import type { AIModel } from "@/lib/ai-provider";
 
 export async function POST(
   request: NextRequest,
@@ -11,6 +10,8 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const model = (body.aiModel ?? DEFAULT_IDEA_MODEL) as AIModel;
 
     const idea = await prisma.idea.findUnique({
       where: { id },
@@ -50,14 +51,7 @@ Return JSON with this exact structure:
 
 Status must be one of: Approved, Rejected, Draft`;
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
-
-    const rawContent = message.content[0].type === 'text' ? message.content[0].text : '';
+    const rawContent = await generateWithModel(model, systemPrompt, userPrompt, 1024);
 
     let scores: {
       channelFitScore: number;

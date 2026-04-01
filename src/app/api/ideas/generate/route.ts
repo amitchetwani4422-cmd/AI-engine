@@ -2,14 +2,14 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+import { generateWithModel, DEFAULT_IDEA_MODEL } from "@/lib/ai-provider";
+import type { AIModel } from "@/lib/ai-provider";
 
 const schema = z.object({
   channelId: z.string().min(1),
   count: z.number().int().min(1).max(20).default(5),
   type: z.string().optional(),
+  aiModel: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 400 });
     }
-    const { channelId, count, type } = parsed.data;
+    const { channelId, count, type, aiModel } = parsed.data;
+    const model = (aiModel ?? DEFAULT_IDEA_MODEL) as AIModel;
 
     const channel = await prisma.channel.findUnique({
       where: { id: channelId },
@@ -32,7 +33,10 @@ export async function POST(request: NextRequest) {
     }
 
     const recentTitles = channel.ideas.map((i) => i.title).join("\n- ");
-    const prompt = `Generate ${count} unique video content ideas for this YouTube/Instagram channel.
+
+    const systemPrompt = `You are an expert content strategist specializing in AI-generated video content for YouTube and Instagram. Always respond with valid JSON only, no markdown.`;
+
+    const userPrompt = `Generate ${count} unique video content ideas for this channel.
 
 Channel: ${channel.name}
 Niche: ${channel.niche}
@@ -44,7 +48,7 @@ Content Pillars: ${channel.contentPillars.join(", ")}
 ${type ? `Focus Type: ${type}` : ""}
 Avoid duplicating: ${recentTitles || "none yet"}
 
-Return ONLY a JSON array (no markdown) like:
+Return ONLY a JSON array like:
 [
   {
     "title": "Compelling video title",
@@ -62,18 +66,13 @@ Return ONLY a JSON array (no markdown) like:
   }
 ]`;
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const rawContent = await generateWithModel(model, systemPrompt, userPrompt, 4096);
 
-    const rawContent = message.content[0].type === "text" ? message.content[0].text : "[]";
     let ideas: Array<Record<string, unknown>>;
     try {
       const jsonStr = rawContent.trim().replace(/^```json\n?|\n?```$/g, "");
-      const parsed = JSON.parse(jsonStr);
-      ideas = Array.isArray(parsed) ? parsed : parsed.ideas ?? [];
+      const parsedJson = JSON.parse(jsonStr);
+      ideas = Array.isArray(parsedJson) ? parsedJson : parsedJson.ideas ?? [];
     } catch {
       return NextResponse.json({ error: "Failed to parse AI response", raw: rawContent }, { status: 500 });
     }

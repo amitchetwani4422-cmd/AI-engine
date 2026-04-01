@@ -1,15 +1,15 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import Anthropic from "@anthropic-ai/sdk";
 import prisma from '@/lib/prisma';
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+import { generateWithModel, DEFAULT_SCRIPT_MODEL } from "@/lib/ai-provider";
+import type { AIModel } from "@/lib/ai-provider";
 
 const GenerateScriptSchema = z.object({
   ideaId: z.string().min(1),
   channelId: z.string().min(1),
   formatVariant: z.string().optional(),
+  aiModel: z.string().optional(),
 });
 
 interface SceneData {
@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ideaId, channelId, formatVariant } = parsed.data;
+    const { ideaId, channelId, formatVariant, aiModel } = parsed.data;
+    const model = (aiModel ?? DEFAULT_SCRIPT_MODEL) as AIModel;
 
     const [idea, channel] = await Promise.all([
       prisma.idea.findUnique({ where: { id: ideaId } }),
@@ -111,14 +112,7 @@ Model routing rules:
 
 Ensure scenes cover approximately 60 seconds total duration.`;
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 8192,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
-
-    const rawContent = message.content[0].type === 'text' ? message.content[0].text : '';
+    const rawContent = await generateWithModel(model, systemPrompt, userPrompt, 8192);
 
     let scriptData: {
       hook: string;
