@@ -151,7 +151,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title={video.title}
-        subtitle={video.channel?.name ?? ""}
+        description={video.channel?.name ?? ""}
         actions={
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => router.push("/production")}>

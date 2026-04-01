@@ -62,7 +62,7 @@ export default function VoicePage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Voice & Audio"
-        subtitle="Character voices, narration, and music management"
+        description="Character voices, narration, and music management"
         actions={<Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> Add Voice</Button>}
       />
       <div className="flex-1 overflow-auto p-6">

@@ -70,7 +70,7 @@ export default function CulturalCalendarPage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Cultural Calendar"
-        subtitle="Festival and mythology event schedule"
+        description="Festival and mythology event schedule"
         actions={<Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> Add Event</Button>}
       />
       <div className="flex-1 overflow-auto p-6">

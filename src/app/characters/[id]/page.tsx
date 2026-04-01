@@ -117,7 +117,7 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title={character.name}
-        subtitle={`${character.speciesOrType} · Universe ${character.universeId ?? "—"}`}
+        description={`${character.speciesOrType} · Universe ${character.universeId ?? "—"}`}
         actions={
           <Button variant="ghost" onClick={() => router.push("/characters")}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Back

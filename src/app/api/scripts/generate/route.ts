@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import Anthropic from "@anthropic-ai/sdk";
 import prisma from '@/lib/prisma';
-import anthropic from '@/lib/anthropic';
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 const GenerateScriptSchema = z.object({
   ideaId: z.string().min(1),
@@ -10,14 +12,14 @@ const GenerateScriptSchema = z.object({
 });
 
 interface SceneData {
-  sceneNumber: number;
+  sequenceNumber: number;
   description: string;
-  narration: string;
-  visualPrompt: string;
-  modelRouting: string;
-  durationSeconds: number;
-  characterId?: string | null;
-  transitionType?: string | null;
+  duration: number;
+  modelAssigned: string;
+  routingReason: string;
+  cameraDirection: string;
+  visualGuidance: string;
+  prompt?: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -38,10 +40,7 @@ export async function POST(request: NextRequest) {
       prisma.idea.findUnique({ where: { id: ideaId } }),
       prisma.channel.findUnique({
         where: { id: channelId },
-        include: {
-          styleBible: true,
-          characters: { take: 5 },
-        },
+        include: { styleBible: true },
       }),
     ]);
 
@@ -53,15 +52,13 @@ export async function POST(request: NextRequest) {
     }
 
     const styleGuide = channel.styleBible
-      ? `Visual Style: ${(channel.styleBible as Record<string, unknown>).visualStyle ?? 'Cinematic'}
-Tone: ${(channel.styleBible as Record<string, unknown>).tone ?? 'Engaging'}
-Color Palette: ${(channel.styleBible as Record<string, unknown>).colorPalette ?? 'Vibrant'}`
-      : 'Style: Cinematic, engaging, platform-optimized';
-
-    const charactersInfo =
-      channel.characters.length > 0
-        ? channel.characters.map((c) => `- ${c.name}: ${c.description ?? ''}`).join('\n')
-        : 'No recurring characters defined';
+      ? `Visual Style: ${channel.visualStyle}
+Lighting: ${channel.styleBible.lightingPreferences}
+Camera Feel: ${channel.styleBible.cameraFeel}
+Music Direction: ${channel.styleBible.musicDirection}
+Narration Tone: ${channel.styleBible.narrationTone}`
+      : `Visual Style: ${channel.visualStyle}
+Voice Style: ${channel.voiceStyle}`;
 
     const systemPrompt = `You are a professional video scriptwriter and creative director for AI-generated content.
 Create detailed, production-ready scripts with precise scene-by-scene breakdowns optimized for AI video generation.
@@ -76,16 +73,11 @@ Language: ${channel.language}
 Format Variant: ${formatVariant ?? 'Standard'}
 
 Idea Title: ${idea.title}
-Idea Description: ${idea.description ?? 'Not provided'}
-Hook: ${idea.hook ?? 'Create a compelling hook'}
-Target Emotion: ${idea.targetEmotion ?? 'Engagement'}
-Estimated Duration: ${idea.estimatedDuration ?? 60} seconds
+Idea Description: ${idea.description}
+Tags: ${idea.tags.join(', ')}
 
 Style Guide:
 ${styleGuide}
-
-Characters Available:
-${charactersInfo}
 
 Generate a complete JSON response with this exact structure:
 {
@@ -100,34 +92,32 @@ Generate a complete JSON response with this exact structure:
   "musicMood": "Upbeat electronic / Emotional orchestral / etc.",
   "scenes": [
     {
-      "sceneNumber": 1,
+      "sequenceNumber": 1,
       "description": "What happens in this scene",
-      "narration": "Exact words spoken during this scene",
-      "visualPrompt": "Detailed AI image/video generation prompt for this scene",
-      "modelRouting": "kling|veo|runway|stable-diffusion",
-      "durationSeconds": 5,
-      "transitionType": "cut|fade|dissolve"
+      "duration": 5,
+      "modelAssigned": "kling-3.0",
+      "routingReason": "Action scene with movement requires Kling",
+      "cameraDirection": "Wide establishing shot, slow pan right",
+      "visualGuidance": "Detailed visual description for this scene",
+      "prompt": "Detailed AI video generation prompt for this scene"
     }
   ]
 }
 
 Model routing rules:
-- Use "kling" for character-driven scenes, action, movement
-- Use "veo" for landscapes, environments, atmospheric scenes
-- Use "runway" for stylized/artistic scenes
-- Use "stable-diffusion" for still image backgrounds
+- Use "kling-3.0" for character-driven scenes, action, movement, creatures (80% of scenes)
+- Use "veo-3.1" for lip-sync, narration, devotional close-ups (20% of scenes)
 
-Ensure scenes cover the full estimated duration of ${idea.estimatedDuration ?? 60} seconds total.`;
+Ensure scenes cover approximately 60 seconds total duration.`;
 
-    const message = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
       max_tokens: 8192,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     });
 
-    const rawContent =
-      message.content[0].type === 'text' ? message.content[0].text : '';
+    const rawContent = message.content[0].type === 'text' ? message.content[0].text : '';
 
     let scriptData: {
       hook: string;
@@ -155,7 +145,8 @@ Ensure scenes cover the full estimated duration of ${idea.estimatedDuration ?? 6
         data: {
           ideaId,
           channelId,
-          formatVariant: formatVariant ?? null,
+          title: idea.title,
+          formatVariant: formatVariant ?? 'Standard',
           hook: scriptData.hook,
           fullScript: scriptData.fullScript,
           narrationDraft: scriptData.narrationDraft,
@@ -170,14 +161,15 @@ Ensure scenes cover the full estimated duration of ${idea.estimatedDuration ?? 6
         await tx.scene.createMany({
           data: scriptData.scenes.map((scene) => ({
             scriptId: newScript.id,
-            sceneNumber: scene.sceneNumber,
+            sequenceNumber: scene.sequenceNumber,
             description: scene.description,
-            narration: scene.narration,
-            visualPrompt: scene.visualPrompt,
-            modelRouting: scene.modelRouting,
-            durationSeconds: scene.durationSeconds,
-            transitionType: scene.transitionType ?? null,
-            characterId: scene.characterId ?? null,
+            duration: scene.duration,
+            modelAssigned: scene.modelAssigned,
+            routingReason: scene.routingReason,
+            cameraDirection: scene.cameraDirection,
+            visualGuidance: scene.visualGuidance,
+            prompt: scene.prompt ?? null,
+            characterIds: [],
           })),
         });
       }
@@ -194,7 +186,7 @@ Ensure scenes cover the full estimated duration of ${idea.estimatedDuration ?? 6
     const fullScript = await prisma.script.findUnique({
       where: { id: script.id },
       include: {
-        scenes: { orderBy: { sceneNumber: 'asc' } },
+        sceneBreakdown: { orderBy: { sequenceNumber: 'asc' } },
         idea: { select: { id: true, title: true } },
         channel: { select: { id: true, name: true } },
       },

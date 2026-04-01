@@ -89,7 +89,7 @@ export default function PromptsPage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Prompt Registry"
-        subtitle="Versioned, model-specific generation prompts"
+        description="Versioned, model-specific generation prompts"
         actions={<Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> New Prompt</Button>}
       />
       <div className="flex-1 overflow-auto p-6">

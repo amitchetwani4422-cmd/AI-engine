@@ -131,7 +131,7 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title={script.title}
-        subtitle={`${script.channel?.name ?? ""} · ${script.formatVariant}`}
+        description={`${script.channel?.name ?? ""} · ${script.formatVariant}`}
         actions={
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => router.push("/scripts")}>

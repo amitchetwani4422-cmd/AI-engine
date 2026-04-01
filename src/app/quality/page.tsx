@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +27,7 @@ const DIMENSIONS = [
 
 type Scores = Record<string, number>;
 
-export default function QualityPage() {
+function QualityPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedVideoId = searchParams.get("videoId");
@@ -82,7 +82,7 @@ export default function QualityPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <Header title="Quality Scorecard" subtitle="Review videos before approval" />
+      <Header title="Quality Scorecard" description="Review videos before approval" />
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center h-40"><Loader2 className="h-6 w-6 animate-spin text-zinc-500" /></div>
@@ -198,5 +198,13 @@ export default function QualityPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function QualityPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="text-zinc-500">Loading...</div></div>}>
+      <QualityPageInner />
+    </Suspense>
   );
 }

@@ -111,7 +111,7 @@ export default function CharactersPage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Character Studio"
-        subtitle="Manage recurring characters across all channels"
+        description="Manage recurring characters across all channels"
         actions={
           <Button onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Character

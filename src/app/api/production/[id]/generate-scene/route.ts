@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import fal from '@/lib/fal';
+import { generateVideoScene } from '@/lib/fal';
+import type { VideoModel } from '@/lib/fal';
 
 const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
 });
-
-// Cost per second estimates (in USD)
-const KLING_COST_PER_SECOND = 0.04;
-const VEO_COST_PER_SECOND = 0.06;
 
 export async function POST(
   request: NextRequest,
@@ -31,13 +28,7 @@ export async function POST(
 
     const [video, scene] = await Promise.all([
       prisma.video.findUnique({ where: { id: videoId } }),
-      prisma.scene.findUnique({
-        where: { id: sceneId },
-        include: {
-          character: true,
-          script: { select: { channelId: true } },
-        },
-      }),
+      prisma.scene.findUnique({ where: { id: sceneId } }),
     ]);
 
     if (!video) {
@@ -47,146 +38,101 @@ export async function POST(
       return NextResponse.json({ error: 'Scene not found' }, { status: 404 });
     }
 
-    // Find or create generation job
-    let job = await prisma.generationJob.findFirst({
-      where: { videoId, sceneId },
-    });
+    const model = (scene.modelAssigned ?? 'kling-3.0') as VideoModel;
+    const durationSeconds = scene.duration ?? 5;
+    const prompt = scene.prompt ?? scene.visualGuidance;
 
-    if (!job) {
-      job = await prisma.generationJob.create({
-        data: {
-          videoId,
-          sceneId,
-          model: scene.modelRouting ?? 'kling',
-          status: 'Pending',
-          attempts: 0,
-        },
-      });
-    }
-
-    // Update job to InProgress
-    await prisma.generationJob.update({
-      where: { id: job.id },
+    // Create generation job
+    const job = await prisma.generationJob.create({
       data: {
-        status: 'InProgress',
-        startedAt: new Date(),
-        attempts: { increment: 1 },
+        type: 'video-scene',
+        videoId,
+        sceneId,
+        model,
+        status: 'pending',
+        inputData: { prompt, duration: durationSeconds, model },
+        retryCount: 0,
       },
     });
 
-    const model = scene.modelRouting?.toLowerCase() ?? 'kling';
-    const durationSeconds = scene.durationSeconds ?? 5;
+    // Update scene status
+    await prisma.scene.update({
+      where: { id: sceneId },
+      data: { status: 'Generating' },
+    });
 
-    let generatedUrl: string;
-    let falModel: string;
-
-    // Route to appropriate FAL model
-    switch (model) {
-      case 'kling':
-        falModel = 'fal-ai/kling-video/v1.6/standard/text-to-video';
-        break;
-      case 'veo':
-        falModel = 'fal-ai/veo2';
-        break;
-      case 'runway':
-        falModel = 'fal-ai/runway-gen3/turbo/text-to-video';
-        break;
-      case 'stable-diffusion':
-        falModel = 'fal-ai/stable-diffusion-v3-medium';
-        break;
-      default:
-        falModel = 'fal-ai/kling-video/v1.6/standard/text-to-video';
-    }
-
+    let result;
     try {
-      const falResult = await fal.subscribe(falModel, {
-        input: {
-          prompt: scene.visualPrompt,
-          duration: Math.min(durationSeconds, 10),
-          aspect_ratio: '16:9',
-          ...(scene.character?.visualDescription && {
-            negative_prompt: `blurry, low quality, distorted`,
-          }),
-        },
-      }) as { video?: { url?: string }; images?: Array<{ url?: string }>; url?: string };
-
-      // Extract URL from FAL response
-      if (falResult.video?.url) {
-        generatedUrl = falResult.video.url;
-      } else if (falResult.images?.[0]?.url) {
-        generatedUrl = falResult.images[0].url;
-      } else if (falResult.url) {
-        generatedUrl = falResult.url as string;
-      } else {
-        throw new Error('No URL in FAL response');
-      }
+      result = await generateVideoScene({
+        model,
+        prompt,
+        duration: durationSeconds,
+        aspectRatio: '16:9',
+      });
     } catch (falError) {
-      // Update job to failed
       await prisma.generationJob.update({
         where: { id: job.id },
         data: {
-          status: 'Failed',
-          completedAt: new Date(),
-          errorMessage:
-            falError instanceof Error ? falError.message : 'FAL generation failed',
+          status: 'failed',
+          error: falError instanceof Error ? falError.message : 'FAL generation failed',
+          outputData: { error: String(falError) },
         },
       });
-
+      await prisma.scene.update({
+        where: { id: sceneId },
+        data: { status: 'Failed' },
+      });
       return NextResponse.json(
         {
           error: 'Scene generation failed',
-          details: falError instanceof Error ? falError.message : 'Unknown FAL error',
+          details: falError instanceof Error ? falError.message : 'Unknown error',
         },
         { status: 500 }
       );
     }
 
-    // Calculate cost
-    const sceneCost =
-      model === 'veo'
-        ? VEO_COST_PER_SECOND * durationSeconds
-        : KLING_COST_PER_SECOND * durationSeconds;
-
     // Create generated clip
     const clip = await prisma.generatedClip.create({
       data: {
-        videoId,
         sceneId,
-        jobId: job.id,
-        url: generatedUrl,
-        model: falModel,
-        durationSeconds,
-        cost: sceneCost,
+        videoId,
+        clipUrl: result.videoUrl,
+        model,
+        prompt,
+        duration: durationSeconds,
+        cost: result.cost,
         status: 'Generated',
       },
     });
 
-    // Update job status to Completed
+    // Update job to completed
     await prisma.generationJob.update({
       where: { id: job.id },
       data: {
-        status: 'Completed',
-        completedAt: new Date(),
-        clipId: clip.id,
+        status: 'completed',
+        cost: result.cost,
+        outputData: { clipId: clip.id, videoUrl: result.videoUrl, requestId: result.requestId },
       },
     });
 
+    // Update scene status
+    await prisma.scene.update({
+      where: { id: sceneId },
+      data: { status: 'Generated' },
+    });
+
     // Update video cost tracking
+    const costIncrement = result.cost;
     const costUpdate =
-      model === 'veo'
-        ? { veoCost: { increment: sceneCost } }
-        : { klingCost: { increment: sceneCost } };
+      model === 'veo-3.1'
+        ? { veoCost: { increment: costIncrement }, totalCost: { increment: costIncrement } }
+        : { klingCost: { increment: costIncrement }, totalCost: { increment: costIncrement } };
 
-    await prisma.video.update({
-      where: { id: videoId },
-      data: costUpdate,
-    });
+    await prisma.video.update({ where: { id: videoId }, data: costUpdate });
 
-    // Check if all scenes are completed; update video status if so
-    const allJobs = await prisma.generationJob.findMany({
-      where: { videoId },
-    });
-    const allCompleted = allJobs.every((j) => j.status === 'Completed');
+    // Check if all scene jobs for this video are completed
+    const allJobs = await prisma.generationJob.findMany({ where: { videoId } });
+    const allCompleted = allJobs.every((j) => j.status === 'completed');
     if (allCompleted) {
       await prisma.video.update({
         where: { id: videoId },

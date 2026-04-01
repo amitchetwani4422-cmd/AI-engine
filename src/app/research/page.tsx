@@ -106,7 +106,7 @@ export default function ResearchPage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Research & Opportunities"
-        subtitle="Generate, score, and manage content ideas"
+        description="Generate, score, and manage content ideas"
         actions={
           <Button onClick={generateIdeas} disabled={generating || selectedChannel === "all"}>
             {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}

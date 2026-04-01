@@ -76,7 +76,7 @@ export default function StyleBiblePage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Style Bible"
-        subtitle="Channel identity and visual continuity"
+        description="Channel identity and visual continuity"
         actions={
           editing ? (
             <div className="flex gap-2">

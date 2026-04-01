@@ -66,7 +66,7 @@ export default function CompetitorsPage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Competitor References"
-        subtitle="Inspiration library — for learning, not copying"
+        description="Inspiration library — for learning, not copying"
         actions={<Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> Add Reference</Button>}
       />
       <div className="flex-1 overflow-auto p-6">

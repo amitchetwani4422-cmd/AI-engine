@@ -71,7 +71,7 @@ export default function AssetsPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <Header title="Asset Library" subtitle="All outputs and reusable assets" />
+      <Header title="Asset Library" description="All outputs and reusable assets" />
       <div className="flex-1 overflow-auto p-6">
         <div className="flex gap-3 mb-5 flex-wrap">
           <div className="relative flex-1 max-w-xs">

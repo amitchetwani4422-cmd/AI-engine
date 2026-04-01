@@ -58,7 +58,7 @@ export default function PublishingPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <Header title="Publishing" subtitle="Review, approve, and track video uploads" />
+      <Header title="Publishing" description="Review, approve, and track video uploads" />
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center h-40"><Loader2 className="h-6 w-6 animate-spin text-zinc-500" /></div>

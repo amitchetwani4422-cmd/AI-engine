@@ -57,7 +57,7 @@ export default function PlannerPage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Content Planner"
-        subtitle="Decide what to make next"
+        description="Decide what to make next"
         actions={
           <Button variant="outline" onClick={fetchPlan} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}

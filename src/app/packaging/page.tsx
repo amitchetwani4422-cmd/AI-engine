@@ -65,7 +65,7 @@ export default function PackagingPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <Header title="Packaging" subtitle="Prepare content for publishing" />
+      <Header title="Packaging" description="Prepare content for publishing" />
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center h-40"><Loader2 className="h-6 w-6 animate-spin text-zinc-500" /></div>

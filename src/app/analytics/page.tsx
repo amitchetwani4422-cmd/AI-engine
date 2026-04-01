@@ -50,7 +50,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <Header title="Analytics & Growth" subtitle="Performance tracking and monetization progress" />
+      <Header title="Analytics & Growth" description="Performance tracking and monetization progress" />
       <div className="flex-1 overflow-auto p-6">
         <div className="mb-5">
           <Select value={selectedChannel} onValueChange={setSelectedChannel}>

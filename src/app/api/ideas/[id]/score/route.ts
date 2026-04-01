@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import Anthropic from "@anthropic-ai/sdk";
 import prisma from '@/lib/prisma';
-import anthropic from '@/lib/anthropic';
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 export async function POST(
   request: NextRequest,
@@ -11,63 +13,61 @@ export async function POST(
 
     const idea = await prisma.idea.findUnique({
       where: { id },
-      include: {
-        channel: true,
-      },
+      include: { channel: true },
     });
 
     if (!idea) {
       return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
     }
 
-    const systemPrompt = `You are an expert content analyst who scores video ideas for virality and production quality.
+    const systemPrompt = `You are an expert content analyst who scores video ideas for AI content channels.
 Score ideas objectively based on platform performance data and content strategy principles.
-Always respond with valid JSON only.`;
+Always respond with valid JSON only, no markdown, no commentary.`;
 
-    const userPrompt = `Score this video idea on a scale of 1-10 for each dimension:
+    const userPrompt = `Score this video idea on a scale of 0-10 for each dimension:
 
 Idea Title: ${idea.title}
-Description: ${idea.description ?? 'Not provided'}
-Type: ${idea.type ?? 'Not specified'}
-Hook: ${idea.hook ?? 'Not provided'}
-Target Emotion: ${idea.targetEmotion ?? 'Not specified'}
+Description: ${idea.description}
+Type: ${idea.type}
+Format: ${idea.format}
 Platform: ${idea.channel.primaryPlatform}
 Niche: ${idea.channel.niche}
 Target Audience: ${idea.channel.targetAudience}
 
 Return JSON with this exact structure:
 {
-  "viralityScore": 8,
-  "productionComplexityScore": 5,
-  "audienceAlignmentScore": 9,
-  "uniquenessScore": 7,
-  "trendRelevanceScore": 6,
-  "overallScore": 7.5,
-  "reasoning": "Brief explanation of scores",
-  "improvementSuggestions": ["Suggestion 1", "Suggestion 2"],
-  "recommendApproval": true
-}`;
+  "channelFitScore": 8.5,
+  "noveltyScore": 7.0,
+  "repeatabilityScore": 6.5,
+  "productionDifficulty": 4.0,
+  "estimatedCost": 5.0,
+  "monetizationScore": 7.5,
+  "overallScore": 7.3,
+  "reasoning": "Brief explanation of the scores",
+  "status": "Approved"
+}
 
-    const message = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
+Status must be one of: Approved, Rejected, Draft`;
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     });
 
-    const rawContent =
-      message.content[0].type === 'text' ? message.content[0].text : '';
+    const rawContent = message.content[0].type === 'text' ? message.content[0].text : '';
 
     let scores: {
-      viralityScore: number;
-      productionComplexityScore: number;
-      audienceAlignmentScore: number;
-      uniquenessScore: number;
-      trendRelevanceScore: number;
+      channelFitScore: number;
+      noveltyScore: number;
+      repeatabilityScore: number;
+      productionDifficulty: number;
+      estimatedCost: number;
+      monetizationScore: number;
       overallScore: number;
       reasoning: string;
-      improvementSuggestions: string[];
-      recommendApproval: boolean;
+      status: string;
     };
 
     try {
@@ -80,58 +80,24 @@ Return JSON with this exact structure:
       );
     }
 
-    // Upsert the score record
-    const ideaScore = await prisma.ideaScore.upsert({
-      where: { ideaId: id },
-      update: {
-        viralityScore: scores.viralityScore,
-        productionComplexityScore: scores.productionComplexityScore,
-        audienceAlignmentScore: scores.audienceAlignmentScore,
-        uniquenessScore: scores.uniquenessScore,
-        trendRelevanceScore: scores.trendRelevanceScore,
-        overallScore: scores.overallScore,
-        reasoning: scores.reasoning,
-        improvementSuggestions: scores.improvementSuggestions,
-        recommendApproval: scores.recommendApproval,
-        scoredAt: new Date(),
-      },
-      create: {
-        ideaId: id,
-        viralityScore: scores.viralityScore,
-        productionComplexityScore: scores.productionComplexityScore,
-        audienceAlignmentScore: scores.audienceAlignmentScore,
-        uniquenessScore: scores.uniquenessScore,
-        trendRelevanceScore: scores.trendRelevanceScore,
-        overallScore: scores.overallScore,
-        reasoning: scores.reasoning,
-        improvementSuggestions: scores.improvementSuggestions,
-        recommendApproval: scores.recommendApproval,
-        scoredAt: new Date(),
-      },
-    });
-
-    // Update idea status if score is high enough
-    if (scores.recommendApproval && scores.overallScore >= 7) {
-      await prisma.idea.update({
-        where: { id },
-        data: { status: 'Scored' },
-      });
-    }
-
-    const updatedIdea = await prisma.idea.findUnique({
+    const updatedIdea = await prisma.idea.update({
       where: { id },
-      include: {
-        scores: true,
-        channel: { select: { id: true, name: true } },
+      data: {
+        channelFitScore: scores.channelFitScore,
+        noveltyScore: scores.noveltyScore,
+        repeatabilityScore: scores.repeatabilityScore,
+        productionDifficulty: scores.productionDifficulty,
+        estimatedCost: scores.estimatedCost,
+        monetizationScore: scores.monetizationScore,
+        overallScore: scores.overallScore,
+        notes: scores.reasoning,
+        status: ['Approved', 'Rejected', 'Draft'].includes(scores.status) ? scores.status : 'Draft',
       },
     });
 
     return NextResponse.json(updatedIdea);
   } catch (error) {
     console.error('POST /api/ideas/[id]/score error:', error);
-    return NextResponse.json(
-      { error: 'Failed to score idea' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to score idea' }, { status: 500 });
   }
 }

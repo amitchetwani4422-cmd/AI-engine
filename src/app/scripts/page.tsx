@@ -69,7 +69,7 @@ export default function ScriptsPage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Scripts"
-        subtitle="Script and Creative Pack Generator"
+        description="Script and Creative Pack Generator"
         actions={
           <div className="flex gap-2">
             <Button variant="outline" asChild>

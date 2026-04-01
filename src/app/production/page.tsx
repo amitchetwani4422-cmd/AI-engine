@@ -87,7 +87,7 @@ export default function ProductionPage() {
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Video Production"
-        subtitle="Orchestrate scene generation, assembly, and quality review"
+        description="Orchestrate scene generation, assembly, and quality review"
       />
       <div className="flex-1 overflow-auto p-6">
         {/* Pipeline status tabs */}
