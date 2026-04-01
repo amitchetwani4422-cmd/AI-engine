@@ -1,10 +1,6 @@
 export const dynamic = "force-dynamic";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-
-// One-time seed endpoint. Protected by SEED_SECRET env var.
-// Call: POST /api/seed   with header  x-seed-secret: <your SEED_SECRET>
-// After seeding, set SEED_SECRET to something random so it can't be re-triggered.
 
 const CHANNELS = [
   {
@@ -157,24 +153,17 @@ const CHANNELS = [
   },
 ];
 
-export async function POST(request: NextRequest) {
-  const secret = request.headers.get("x-seed-secret");
-  const expectedSecret = process.env.SEED_SECRET;
-
-  if (!expectedSecret || secret !== expectedSecret) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function POST() {
   const results: string[] = [];
 
   for (const channel of CHANNELS) {
     const existing = await prisma.channel.findFirst({ where: { name: channel.name } });
     if (existing) {
-      results.push(`skip: ${channel.name} already exists`);
+      results.push(`skip: ${channel.name}`);
       continue;
     }
     await prisma.channel.create({ data: channel });
-    results.push(`created: ${channel.name} (Universe ${channel.universe})`);
+    results.push(`created: ${channel.name}`);
   }
 
   return NextResponse.json({ ok: true, results });
