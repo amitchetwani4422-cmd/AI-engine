@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
             analytics: {
               select: {
                 views: true,
-                watchTimeSeconds: true,
+                watchTimeHours: true,
                 classification: true,
               },
             },
