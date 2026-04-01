@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useChannel } from "@/lib/channel-context";
 import {
   Brain,
   Home,
@@ -27,6 +28,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Menu,
   X,
 } from "lucide-react";
@@ -53,10 +55,18 @@ const navItems = [
   { label: "Playbooks", icon: BookOpen, href: "/playbooks" },
 ];
 
+const universeColor: Record<string, string> = {
+  A: "bg-orange-500/20 text-orange-400",
+  B: "bg-blue-500/20 text-blue-400",
+  C: "bg-green-500/20 text-green-400",
+};
+
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [channelMenuOpen, setChannelMenuOpen] = useState(false);
+  const { channels, activeChannel, setActiveChannelId, loading: channelsLoading } = useChannel();
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -104,6 +114,57 @@ export function Sidebar() {
           )}
         </button>
       </div>
+
+      {/* Channel Selector */}
+      {!collapsed && (
+        <div className="relative px-3 py-2 border-b border-zinc-800">
+          <button
+            onClick={() => setChannelMenuOpen((o) => !o)}
+            className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-zinc-800 transition-colors text-left"
+            disabled={channelsLoading || channels.length === 0}
+          >
+            <Tv className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              {channelsLoading ? (
+                <span className="text-zinc-600 text-xs">Loading channels...</span>
+              ) : activeChannel ? (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="truncate text-zinc-200 text-xs font-medium">{activeChannel.name}</span>
+                  <span className={cn("text-[10px] px-1 py-0.5 rounded shrink-0", universeColor[activeChannel.universe] ?? "bg-zinc-800 text-zinc-400")}>
+                    U{activeChannel.universe}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-zinc-500 text-xs">No channels</span>
+              )}
+            </div>
+            {channels.length > 0 && <ChevronDown className={cn("h-3 w-3 text-zinc-500 shrink-0 transition-transform", channelMenuOpen && "rotate-180")} />}
+          </button>
+
+          {channelMenuOpen && channels.length > 0 && (
+            <div className="absolute left-3 right-3 top-full mt-1 z-50 rounded-md bg-zinc-900 border border-zinc-700 shadow-xl overflow-hidden">
+              {channels.map((ch) => (
+                <button
+                  key={ch.id}
+                  onClick={() => {
+                    setActiveChannelId(ch.id);
+                    setChannelMenuOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-zinc-800 transition-colors",
+                    ch.id === activeChannel?.id && "bg-blue-600/10 text-blue-400"
+                  )}
+                >
+                  <span className={cn("text-[10px] px-1 py-0.5 rounded shrink-0 font-medium", universeColor[ch.universe] ?? "bg-zinc-800 text-zinc-400")}>
+                    U{ch.universe}
+                  </span>
+                  <span className="truncate">{ch.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
