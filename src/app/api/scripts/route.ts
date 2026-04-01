@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       include: {
         idea: { select: { id: true, title: true, type: true } },
         channel: { select: { id: true, name: true } },
-        _count: { select: { scenes: true } },
+        _count: { select: { sceneBreakdown: true } },
       },
     });
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       include: {
         idea: { select: { id: true, title: true } },
         channel: { select: { id: true, name: true } },
-        scenes: true,
+        sceneBreakdown: true,
       },
     });
 

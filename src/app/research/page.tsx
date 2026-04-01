@@ -13,8 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import {
   Search, Lightbulb, Plus, Loader2, Wand2, CheckCircle,
-  XCircle, Star, TrendingUp, Calendar, ExternalLink
+  Star, TrendingUp, Calendar, ExternalLink, FileText
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { ModelSelector } from "@/components/ui/model-selector";
 import type { AIModel } from "@/lib/ai-provider";
 import { DEFAULT_IDEA_MODEL } from "@/lib/ai-provider";
@@ -36,6 +37,7 @@ const scoreColor = (score: number) =>
   score >= 4 ? "text-green-400" : score >= 3 ? "text-yellow-400" : score >= 2 ? "text-orange-400" : "text-red-400";
 
 export default function ResearchPage() {
+  const router = useRouter();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [refs, setRefs] = useState<CompetitorRef[]>([]);
@@ -45,6 +47,7 @@ export default function ResearchPage() {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateSuccess, setGenerateSuccess] = useState(false);
+  const [generatingScriptFor, setGeneratingScriptFor] = useState<string | null>(null);
   const [aiModel, setAiModel] = useState<AIModel>(DEFAULT_IDEA_MODEL);
   const [showAddRef, setShowAddRef] = useState(false);
   const [refForm, setRefForm] = useState({ url: "", platform: "youtube", formatType: "", hookStructure: "", whatWorked: "", tags: "", notes: "", channelId: "" });
@@ -106,6 +109,28 @@ export default function ResearchPage() {
       setGenerateError("Network error — please try again.");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function generateScript(idea: Idea) {
+    setGeneratingScriptFor(idea.id);
+    setGenerateError(null);
+    try {
+      const res = await fetch("/api/scripts/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ideaId: idea.id, channelId: idea.channelId, aiModel }),
+      });
+      const data = await res.json();
+      if (res.ok && data.id) {
+        router.push(`/scripts/${data.id}`);
+      } else {
+        setGenerateError(data?.error ?? "Failed to generate script");
+      }
+    } catch {
+      setGenerateError("Network error generating script.");
+    } finally {
+      setGeneratingScriptFor(null);
     }
   }
 
@@ -238,6 +263,19 @@ export default function ResearchPage() {
                               {idea.status === "Draft" && (
                                 <Button size="sm" variant="outline" onClick={() => approveIdea(idea.id)}>
                                   <CheckCircle className="h-3 w-3 mr-1" /> Approve
+                                </Button>
+                              )}
+                              {idea.status === "Approved" && (
+                                <Button
+                                  size="sm"
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  onClick={() => generateScript(idea)}
+                                  disabled={generatingScriptFor === idea.id}
+                                >
+                                  {generatingScriptFor === idea.id
+                                    ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                    : <FileText className="h-3 w-3 mr-1" />}
+                                  Generate Script
                                 </Button>
                               )}
                             </div>
