@@ -52,17 +52,14 @@ export async function GET(request: NextRequest) {
         (v) => v.status === 'Published'
       );
       const totalViews = publishedVideos.reduce((sum, v) => {
-        return (
-          sum +
-          v.analytics.reduce((aSum, a) => aSum + (a.views ?? 0), 0)
-        );
+        return sum + (v.analytics?.views ?? 0);
       }, 0);
       const totalCost = channel.videos.reduce(
         (sum, v) => sum + (v.klingCost ?? 0) + (v.veoCost ?? 0),
         0
       );
-      const winnerCount = publishedVideos.filter((v) =>
-        v.analytics.some((a) => a.classification === 'Winner')
+      const winnerCount = publishedVideos.filter(
+        (v) => v.analytics?.classification === 'Winner'
       ).length;
 
       return {
