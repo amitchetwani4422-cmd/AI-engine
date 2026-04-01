@@ -60,6 +60,7 @@ export default function ChannelsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     niche: "",
@@ -91,6 +92,13 @@ export default function ChannelsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    setCreateError(null);
+
+    if (!form.universe) {
+      setCreateError("Please select a Universe.");
+      return;
+    }
+
     setCreating(true);
     try {
       const res = await fetch("/api/channels", {
@@ -103,8 +111,12 @@ export default function ChannelsPage() {
             : undefined,
         }),
       });
+
+      const data = await res.json();
+
       if (res.ok) {
         setDialogOpen(false);
+        setCreateError(null);
         setForm({
           name: "",
           niche: "",
@@ -116,9 +128,11 @@ export default function ChannelsPage() {
           maxBudgetPerWeek: "",
         });
         fetchChannels();
+      } else {
+        setCreateError(data?.error || `Error ${res.status}: failed to create channel`);
       }
-    } catch {
-      //
+    } catch (err) {
+      setCreateError("Network error — please try again.");
     } finally {
       setCreating(false);
     }
@@ -261,7 +275,7 @@ export default function ChannelsPage() {
       )}
 
       {/* Create Channel Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setCreateError(null); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Create New Channel</DialogTitle>
@@ -375,6 +389,11 @@ export default function ChannelsPage() {
                 />
               </div>
             </div>
+            {createError && (
+              <p className="text-sm text-red-400 bg-red-950/40 border border-red-900/50 rounded-md px-3 py-2">
+                {createError}
+              </p>
+            )}
             <DialogFooter>
               <Button
                 type="button"
