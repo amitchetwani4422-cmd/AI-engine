@@ -43,50 +43,24 @@ export async function GET(
     // Check output drop (pause candidate)
     const recentAvgViews =
       recentVideos.length > 0
-        ? recentVideos.reduce(
-            (sum, v) =>
-              sum + v.analytics.reduce((a, an) => a + (an.views ?? 0), 0),
-            0
-          ) / recentVideos.length
+        ? recentVideos.reduce((sum, v) => sum + (v.analytics?.views ?? 0), 0) / recentVideos.length
         : 0;
     const olderAvgViews =
       olderVideos.length > 0
-        ? olderVideos.reduce(
-            (sum, v) =>
-              sum + v.analytics.reduce((a, an) => a + (an.views ?? 0), 0),
-            0
-          ) / olderVideos.length
+        ? olderVideos.reduce((sum, v) => sum + (v.analytics?.views ?? 0), 0) / olderVideos.length
         : 0;
     const outputDropped =
       olderAvgViews > 0 && recentAvgViews < olderAvgViews * 0.5;
 
     // Check winner formats
-    const winnerVideos = publishedVideos.filter((v) =>
-      v.analytics.some((a) => a.classification === 'Winner')
-    );
-    const loserVideos = publishedVideos.filter((v) =>
-      v.analytics.some((a) => a.classification === 'Loser')
-    );
-    const inconclusiveVideos = publishedVideos.filter((v) =>
-      v.analytics.some((a) => a.classification === 'Inconclusive')
-    );
+    const winnerVideos = publishedVideos.filter((v) => v.analytics?.classification === 'Winner');
+    const loserVideos = publishedVideos.filter((v) => v.analytics?.classification === 'Loser');
+    const inconclusiveVideos = publishedVideos.filter((v) => v.analytics?.classification === 'Inconclusive');
     const hasWinnerFormats = winnerVideos.length > 0;
 
     // Monetization progress (approximate thresholds for YouTube)
-    const totalViews = publishedVideos.reduce(
-      (sum, v) =>
-        sum + v.analytics.reduce((a, an) => a + (an.views ?? 0), 0),
-      0
-    );
-    const totalWatchHours = publishedVideos.reduce(
-      (sum, v) =>
-        sum +
-        v.analytics.reduce(
-          (a, an) => a + (an.watchTimeSeconds ?? 0) / 3600,
-          0
-        ),
-      0
-    );
+    const totalViews = publishedVideos.reduce((sum, v) => sum + (v.analytics?.views ?? 0), 0);
+    const totalWatchHours = publishedVideos.reduce((sum, v) => sum + (v.analytics?.watchTimeHours ?? 0), 0);
     const monetizationProgress = {
       subscribersNeeded: 1000,
       watchHoursNeeded: 4000,

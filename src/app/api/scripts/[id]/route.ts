@@ -15,7 +15,7 @@ const UpdateScriptSchema = z.object({
 });
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -24,27 +24,18 @@ export async function GET(
     const script = await prisma.script.findUnique({
       where: { id },
       include: {
-        scenes: { orderBy: { sceneNumber: 'asc' } },
-        idea: {
-          include: {
-            scores: true,
-          },
-        },
+        sceneBreakdown: { orderBy: { sequenceNumber: 'asc' } },
+        idea: { select: { id: true, title: true } },
         channel: true,
       },
     });
 
-    if (!script) {
-      return NextResponse.json({ error: 'Script not found' }, { status: 404 });
-    }
-
+    if (!script) return NextResponse.json({ error: 'Script not found' }, { status: 404 });
     return NextResponse.json(script);
   } catch (error) {
-    console.error('GET /api/scripts/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch script' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('GET /api/scripts/[id] error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -58,22 +49,17 @@ export async function PATCH(
     const parsed = UpdateScriptSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
     }
 
     const existing = await prisma.script.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json({ error: 'Script not found' }, { status: 404 });
-    }
+    if (!existing) return NextResponse.json({ error: 'Script not found' }, { status: 404 });
 
     const script = await prisma.script.update({
       where: { id },
       data: parsed.data,
       include: {
-        scenes: { orderBy: { sceneNumber: 'asc' } },
+        sceneBreakdown: { orderBy: { sequenceNumber: 'asc' } },
         idea: { select: { id: true, title: true } },
         channel: { select: { id: true, name: true } },
       },
@@ -81,34 +67,25 @@ export async function PATCH(
 
     return NextResponse.json(script);
   } catch (error) {
-    console.error('PATCH /api/scripts/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update script' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('PATCH /api/scripts/[id] error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-
     const existing = await prisma.script.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json({ error: 'Script not found' }, { status: 404 });
-    }
-
+    if (!existing) return NextResponse.json({ error: 'Script not found' }, { status: 404 });
     await prisma.script.delete({ where: { id } });
-
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('DELETE /api/scripts/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete script' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('DELETE /api/scripts/[id] error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

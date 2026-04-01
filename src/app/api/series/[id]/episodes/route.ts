@@ -38,19 +38,10 @@ export async function GET(
             analytics: {
               select: {
                 views: true,
-                watchTimeSeconds: true,
+                watchTimeHours: true,
                 classification: true,
-                revenue: true,
               },
             },
-          },
-        },
-        idea: {
-          select: {
-            id: true,
-            title: true,
-            type: true,
-            status: true,
           },
         },
       },
@@ -100,18 +91,14 @@ export async function POST(
     const episode = await prisma.episode.create({
       data: {
         seriesId: id,
-        ideaId: parsed.data.ideaId ?? null,
         videoId: parsed.data.videoId ?? null,
         episodeNumber,
-        title: parsed.data.title ?? null,
-        notes: parsed.data.notes ?? null,
+        title: parsed.data.title ?? `Episode ${episodeNumber}`,
+        summary: parsed.data.notes ?? '',
       },
       include: {
         video: {
           select: { id: true, title: true, status: true },
-        },
-        idea: {
-          select: { id: true, title: true },
         },
       },
     });

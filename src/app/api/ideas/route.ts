@@ -8,11 +8,10 @@ const CreateIdeaSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   type: z.string().optional(),
+  format: z.string().optional(),
   status: z.string().optional().default('Draft'),
-  hook: z.string().optional(),
-  targetEmotion: z.string().optional(),
-  estimatedDuration: z.number().optional(),
   tags: z.array(z.string()).optional(),
+  notes: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -24,7 +23,6 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     const where: Record<string, unknown> = {};
-
     if (channelId) where.channelId = channelId;
     if (status) where.status = status;
     if (type) where.type = type;
@@ -39,20 +37,15 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        channel: {
-          select: { id: true, name: true, primaryPlatform: true },
-        },
-        scores: true,
+        channel: { select: { id: true, name: true, primaryPlatform: true } },
       },
     });
 
     return NextResponse.json(ideas);
   } catch (error) {
-    console.error('GET /api/ideas error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch ideas' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('GET /api/ideas error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -62,45 +55,32 @@ export async function POST(request: NextRequest) {
     const parsed = CreateIdeaSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const channel = await prisma.channel.findUnique({
-      where: { id: parsed.data.channelId },
-    });
-    if (!channel) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
-    }
+    const channel = await prisma.channel.findUnique({ where: { id: parsed.data.channelId } });
+    if (!channel) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
 
     const idea = await prisma.idea.create({
       data: {
         channelId: parsed.data.channelId,
         title: parsed.data.title,
-        description: parsed.data.description ?? null,
-        type: parsed.data.type ?? null,
-        status: parsed.data.status,
-        hook: parsed.data.hook ?? null,
-        targetEmotion: parsed.data.targetEmotion ?? null,
-        estimatedDuration: parsed.data.estimatedDuration ?? null,
+        description: parsed.data.description ?? '',
+        type: parsed.data.type ?? 'topic',
+        format: parsed.data.format ?? 'long-form',
+        status: parsed.data.status ?? 'Draft',
         tags: parsed.data.tags ?? [],
-        source: 'Manual',
+        notes: parsed.data.notes ?? null,
       },
       include: {
-        channel: {
-          select: { id: true, name: true },
-        },
+        channel: { select: { id: true, name: true } },
       },
     });
 
     return NextResponse.json(idea, { status: 201 });
   } catch (error) {
-    console.error('POST /api/ideas error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create idea' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('POST /api/ideas error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

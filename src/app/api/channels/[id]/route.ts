@@ -6,20 +6,23 @@ import prisma from '@/lib/prisma';
 const UpdateChannelSchema = z.object({
   name: z.string().min(1).optional(),
   niche: z.string().optional(),
-  universe: z.string().nullable().optional(),
+  universe: z.string().optional(),
   targetAudience: z.string().optional(),
   primaryPlatform: z.string().optional(),
   language: z.string().optional(),
-  postingFrequency: z.string().nullable().optional(),
+  postingFrequency: z.string().optional(),
   contentPillars: z.array(z.string()).optional(),
+  visualStyle: z.string().optional(),
+  voiceStyle: z.string().optional(),
   formatStrategy: z.string().nullable().optional(),
-  defaultModelPref: z.string().nullable().optional(),
-  maxBudgetPerVideo: z.number().nullable().optional(),
-  maxBudgetPerWeek: z.number().nullable().optional(),
+  defaultModelPref: z.string().optional(),
+  maxBudgetPerVideo: z.number().optional(),
+  maxBudgetPerWeek: z.number().optional(),
+  status: z.string().optional(),
 });
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -30,11 +33,7 @@ export async function GET(
       include: {
         styleBible: true,
         _count: {
-          select: {
-            videos: true,
-            ideas: true,
-            characters: true,
-          },
+          select: { videos: true, ideas: true },
         },
         videos: {
           take: 10,
@@ -50,9 +49,8 @@ export async function GET(
             analytics: {
               select: {
                 views: true,
-                watchTimeSeconds: true,
+                watchTimeHours: true,
                 classification: true,
-                revenue: true,
               },
             },
           },
@@ -64,17 +62,12 @@ export async function GET(
       },
     });
 
-    if (!channel) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
-    }
-
+    if (!channel) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
     return NextResponse.json(channel);
   } catch (error) {
-    console.error('GET /api/channels/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch channel' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('GET /api/channels/[id] error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -88,52 +81,34 @@ export async function PATCH(
     const parsed = UpdateChannelSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
     }
 
     const existing = await prisma.channel.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
-    }
+    if (!existing) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
 
-    const channel = await prisma.channel.update({
-      where: { id },
-      data: parsed.data,
-    });
-
+    const channel = await prisma.channel.update({ where: { id }, data: parsed.data });
     return NextResponse.json(channel);
   } catch (error) {
-    console.error('PATCH /api/channels/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update channel' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('PATCH /api/channels/[id] error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-
     const existing = await prisma.channel.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
-    }
-
+    if (!existing) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
     await prisma.channel.delete({ where: { id } });
-
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('DELETE /api/channels/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete channel' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('DELETE /api/channels/[id] error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
