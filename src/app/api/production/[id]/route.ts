@@ -10,7 +10,7 @@ const UpdateVideoSchema = z.object({
 });
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -21,24 +21,12 @@ export async function GET(
       include: {
         script: {
           include: {
-            scenes: { orderBy: { sceneNumber: 'asc' } },
-            idea: { select: { id: true, title: true, hook: true } },
+            sceneBreakdown: { orderBy: { sequenceNumber: 'asc' } },
+            idea: { select: { id: true, title: true } },
           },
         },
         channel: { select: { id: true, name: true, primaryPlatform: true } },
-        generationJobs: {
-          include: {
-            scene: true,
-            clips: {
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-            },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-        clips: {
-          orderBy: { createdAt: 'desc' },
-        },
+        generatedClips: { orderBy: { createdAt: 'asc' } },
         analytics: true,
       },
     });
@@ -47,34 +35,21 @@ export async function GET(
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
-    const totalJobs = video.generationJobs.length;
-    const completedJobs = video.generationJobs.filter(
-      (j) => j.status === 'Completed'
-    ).length;
-    const failedJobs = video.generationJobs.filter(
-      (j) => j.status === 'Failed'
-    ).length;
-    const pendingJobs = video.generationJobs.filter(
-      (j) => j.status === 'Pending'
-    ).length;
+    const totalScenes = video.script?.sceneBreakdown.length ?? 0;
+    const generatedScenes = new Set(video.generatedClips.map((c) => c.sceneId)).size;
 
     return NextResponse.json({
       ...video,
       productionProgress: {
-        totalScenes: totalJobs,
-        completedScenes: completedJobs,
-        failedScenes: failedJobs,
-        pendingScenes: pendingJobs,
-        percentComplete:
-          totalJobs > 0 ? Math.round((completedJobs / totalJobs) * 100) : 0,
+        totalScenes,
+        generatedScenes,
+        percentComplete: totalScenes > 0 ? Math.round((generatedScenes / totalScenes) * 100) : 0,
       },
     });
   } catch (error) {
-    console.error('GET /api/production/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch video production status' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('GET /api/production/[id] error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -95,27 +70,20 @@ export async function PATCH(
     }
 
     const existing = await prisma.video.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json({ error: 'Video not found' }, { status: 404 });
-    }
+    if (!existing) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
 
     const video = await prisma.video.update({
       where: { id },
       data: parsed.data,
       include: {
         channel: { select: { id: true, name: true } },
-        generationJobs: {
-          select: { id: true, status: true, sceneId: true },
-        },
       },
     });
 
     return NextResponse.json(video);
   } catch (error) {
-    console.error('PATCH /api/production/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update video' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('PATCH /api/production/[id] error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

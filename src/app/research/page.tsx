@@ -43,6 +43,8 @@ export default function ResearchPage() {
   const [selectedChannel, setSelectedChannel] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateSuccess, setGenerateSuccess] = useState(false);
   const [aiModel, setAiModel] = useState<AIModel>(DEFAULT_IDEA_MODEL);
   const [showAddRef, setShowAddRef] = useState(false);
   const [refForm, setRefForm] = useState({ url: "", platform: "youtube", formatType: "", hookStructure: "", whatWorked: "", tags: "", notes: "", channelId: "" });
@@ -72,16 +74,39 @@ export default function ResearchPage() {
   }
 
   async function generateIdeas() {
-    if (selectedChannel === "all") { alert("Please select a specific channel to generate ideas."); return; }
+    if (selectedChannel === "all") {
+      setGenerateError("Please select a specific channel first.");
+      return;
+    }
     setGenerating(true);
+    setGenerateError(null);
+    setGenerateSuccess(false);
     try {
       const res = await fetch("/api/ideas/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channelId: selectedChannel, count: 5, type: "mixed", aiModel }),
       });
-      if (res.ok) await fetchIdeas();
-    } finally { setGenerating(false); }
+      const data = await res.json();
+      if (res.ok) {
+        setGenerateSuccess(true);
+        await fetchIdeas();
+        setTimeout(() => setGenerateSuccess(false), 3000);
+      } else {
+        const msg = data?.error ?? `Error ${res.status}`;
+        setGenerateError(
+          msg.includes("OPENAI_API_KEY") || msg.includes("API key")
+            ? "OpenAI API key not configured in Vercel. Add OPENAI_API_KEY to environment variables."
+            : msg.includes("ANTHROPIC") || msg.includes("anthropic")
+            ? "Anthropic API key not configured. Add ANTHROPIC_API_KEY to environment variables."
+            : msg
+        );
+      }
+    } catch {
+      setGenerateError("Network error — please try again.");
+    } finally {
+      setGenerating(false);
+    }
   }
 
   async function approveIdea(id: string) {
@@ -125,6 +150,16 @@ export default function ResearchPage() {
           </div>
         }
       />
+      {generateError && (
+        <div className="mx-6 mt-2 px-4 py-2.5 rounded-md bg-red-950/50 border border-red-900/50 text-sm text-red-400">
+          {generateError}
+        </div>
+      )}
+      {generateSuccess && (
+        <div className="mx-6 mt-2 px-4 py-2.5 rounded-md bg-green-950/50 border border-green-900/50 text-sm text-green-400">
+          Ideas generated successfully!
+        </div>
+      )}
       <div className="flex-1 overflow-auto p-6">
         <div className="flex gap-6">
           <div className="flex-1 min-w-0">

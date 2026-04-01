@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 
 interface Channel {
   id: string;
@@ -16,6 +16,7 @@ interface ChannelContextValue {
   activeChannel: Channel | null;
   setActiveChannelId: (id: string) => void;
   loading: boolean;
+  reload: () => void;
 }
 
 const ChannelContext = createContext<ChannelContextValue>({
@@ -24,58 +25,68 @@ const ChannelContext = createContext<ChannelContextValue>({
   activeChannel: null,
   setActiveChannelId: () => {},
   loading: true,
+  reload: () => {},
 });
 
 const STORAGE_KEY = "ace_active_channel_id";
+
+async function fetchChannels(): Promise<Channel[]> {
+  const r = await fetch("/api/channels");
+  const data = await r.json();
+  return Array.isArray(data) ? data : [];
+}
 
 export function ChannelProvider({ children }: { children: React.ReactNode }) {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [activeChannelId, setActiveChannelIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Prevent concurrent seed calls
+  const seeding = useRef(false);
 
-  const loadChannels = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const r = await fetch("/api/channels");
-      const data = await r.json();
-      if (Array.isArray(data) && data.length > 0) {
+      const data = await fetchChannels();
+
+      if (data.length > 0) {
         setChannels(data);
-        const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-        const valid = stored && (data as Channel[]).find((c) => c.id === stored);
+        const stored = localStorage.getItem(STORAGE_KEY);
+        const valid = stored && data.find((c) => c.id === stored);
         setActiveChannelIdState(valid ? stored! : data[0].id);
         return;
       }
-      // DB is empty — auto-seed the 5 default channels then reload
-      if (Array.isArray(data) && data.length === 0) {
-        await fetch("/api/seed", { method: "POST" });
-        const r2 = await fetch("/api/channels");
-        const data2 = await r2.json();
-        if (Array.isArray(data2) && data2.length > 0) {
-          setChannels(data2);
-          setActiveChannelIdState(data2[0].id);
+
+      // DB is empty and no seed in flight — seed once
+      if (!seeding.current) {
+        seeding.current = true;
+        try {
+          await fetch("/api/seed", { method: "POST" });
+          const seeded = await fetchChannels();
+          if (seeded.length > 0) {
+            setChannels(seeded);
+            setActiveChannelIdState(seeded[0].id);
+          }
+        } finally {
+          seeding.current = false;
         }
       }
     } catch {
-      // silently ignore — UI shows "No channels"
+      // DB unavailable — show empty state
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadChannels();
-  }, [loadChannels]);
+  useEffect(() => { load(); }, [load]);
 
   const setActiveChannelId = useCallback((id: string) => {
     setActiveChannelIdState(id);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, id);
-    }
+    localStorage.setItem(STORAGE_KEY, id);
   }, []);
 
   const activeChannel = channels.find((c) => c.id === activeChannelId) ?? null;
 
   return (
-    <ChannelContext.Provider value={{ channels, activeChannelId, activeChannel, setActiveChannelId, loading }}>
+    <ChannelContext.Provider value={{ channels, activeChannelId, activeChannel, setActiveChannelId, loading, reload: load }}>
       {children}
     </ChannelContext.Provider>
   );

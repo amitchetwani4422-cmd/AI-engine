@@ -27,31 +27,19 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             formatVariant: true,
-            _count: { select: { scenes: true } },
+            _count: { select: { sceneBreakdown: true } },
           },
         },
         channel: { select: { id: true, name: true } },
-        generationJobs: {
-          select: {
-            id: true,
-            status: true,
-            sceneId: true,
-            model: true,
-          },
-        },
-        _count: {
-          select: { generationJobs: true, clips: true },
-        },
+        generatedClips: { select: { id: true, status: true } },
+        _count: { select: { generatedClips: true } },
       },
     });
 
     return NextResponse.json(videos);
   } catch (error) {
     console.error('GET /api/production error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch production videos' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch production videos' }, { status: 500 });
   }
 }
 
@@ -73,19 +61,15 @@ export async function POST(request: NextRequest) {
       prisma.script.findUnique({
         where: { id: scriptId },
         include: {
-          scenes: { orderBy: { sceneNumber: 'asc' } },
+          sceneBreakdown: { orderBy: { sequenceNumber: 'asc' } },
           idea: { select: { id: true, title: true } },
         },
       }),
       prisma.channel.findUnique({ where: { id: channelId } }),
     ]);
 
-    if (!script) {
-      return NextResponse.json({ error: 'Script not found' }, { status: 404 });
-    }
-    if (!channel) {
-      return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
-    }
+    if (!script) return NextResponse.json({ error: 'Script not found' }, { status: 404 });
+    if (!channel) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
 
     if (script.status !== 'Approved') {
       return NextResponse.json(
@@ -107,22 +91,12 @@ export async function POST(request: NextRequest) {
           channelId,
           title: videoTitle,
           status: 'InProduction',
+          platform: [channel.primaryPlatform],
+          formatVariant: script.formatVariant,
           klingCost: 0,
           veoCost: 0,
         },
       });
-
-      if (script.scenes.length > 0) {
-        await tx.generationJob.createMany({
-          data: script.scenes.map((scene) => ({
-            videoId: newVideo.id,
-            sceneId: scene.id,
-            model: scene.modelRouting ?? 'kling',
-            status: 'Pending',
-            attempts: 0,
-          })),
-        });
-      }
 
       return newVideo;
     });
@@ -132,25 +106,18 @@ export async function POST(request: NextRequest) {
       include: {
         script: {
           include: {
-            scenes: { orderBy: { sceneNumber: 'asc' } },
+            sceneBreakdown: { orderBy: { sequenceNumber: 'asc' } },
           },
         },
         channel: { select: { id: true, name: true } },
-        generationJobs: {
-          include: {
-            scene: true,
-          },
-          orderBy: { createdAt: 'asc' },
-        },
+        generatedClips: { orderBy: { createdAt: 'asc' } },
       },
     });
 
     return NextResponse.json(fullVideo, { status: 201 });
   } catch (error) {
-    console.error('POST /api/production error:', error);
-    return NextResponse.json(
-      { error: 'Failed to start production' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('POST /api/production error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
