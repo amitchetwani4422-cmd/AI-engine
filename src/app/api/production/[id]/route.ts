@@ -21,7 +21,10 @@ export async function GET(
       include: {
         script: {
           include: {
-            sceneBreakdown: { orderBy: { sequenceNumber: 'asc' } },
+            sceneBreakdown: {
+          orderBy: { sequenceNumber: 'asc' },
+          include: { generatedClips: { orderBy: { createdAt: 'asc' } } },
+        },
             idea: { select: { id: true, title: true } },
           },
         },
