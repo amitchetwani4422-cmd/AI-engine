@@ -75,6 +75,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [loading, setLoading] = useState(true);
   const [generatingScene, setGeneratingScene] = useState<string | null>(null);
   const [movingToQC, setMovingToQC] = useState(false);
+  const [assembling, setAssembling] = useState(false);
+  const [assembleError, setAssembleError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchVideo();
@@ -103,6 +105,23 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       }
     } finally {
       setGeneratingScene(null);
+    }
+  }
+
+  async function assembleVideo() {
+    setAssembling(true);
+    setAssembleError(null);
+    try {
+      const res = await fetch(`/api/production/${id}/assemble`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        await fetchVideo();
+        router.push(`/quality?videoId=${id}`);
+      } else {
+        setAssembleError(data.details ?? data.error ?? "Assembly failed");
+      }
+    } finally {
+      setAssembling(false);
     }
   }
 
@@ -142,8 +161,9 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   }
 
   const scenes = video.script?.sceneBreakdown ?? [];
-  const approvedScenes = scenes.filter((s) => s.status === "Approved" || s.generatedClips.some((c) => c.isApproved));
-  const progress = scenes.length > 0 ? (approvedScenes.length / scenes.length) * 100 : 0;
+  const generatedScenes = scenes.filter((s) => s.generatedClips.length > 0);
+  const progress = scenes.length > 0 ? (generatedScenes.length / scenes.length) * 100 : 0;
+  const allScenesGenerated = scenes.length > 0 && generatedScenes.length >= scenes.length;
   const klingScenes = scenes.filter((s) => s.modelAssigned === "kling-3.0");
   const veoScenes = scenes.filter((s) => s.modelAssigned === "veo-3.1");
 
@@ -153,20 +173,44 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         title={video.title}
         description={video.channel?.name ?? ""}
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <Button variant="ghost" onClick={() => router.push("/production")}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Back
             </Button>
-            {progress >= 100 && video.status !== "QualityCheck" && (
-              <Button onClick={moveToQualityCheck} disabled={movingToQC}>
-                {movingToQC ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                Send to Quality Check
+            {allScenesGenerated && !video.finalVideoUrl && video.status !== "Assembling" && (
+              <Button onClick={assembleVideo} disabled={assembling} className="bg-blue-600 hover:bg-blue-700">
+                {assembling
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Assembling (~2 min)...</>
+                  : <><Zap className="h-4 w-4 mr-2" /> Assemble Final Video</>}
+              </Button>
+            )}
+            {video.status === "Assembling" && (
+              <div className="flex items-center gap-2 text-yellow-400 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" /> Assembling with FFmpeg...
+              </div>
+            )}
+            {video.finalVideoUrl && (
+              <Button variant="outline" asChild>
+                <a href={video.finalVideoUrl} target="_blank" rel="noopener noreferrer">
+                  <Play className="h-4 w-4 mr-2" /> Watch Final Video
+                </a>
               </Button>
             )}
           </div>
         }
       />
       <div className="flex-1 overflow-auto p-6">
+        {assembleError && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            Assembly failed: {assembleError}
+          </div>
+        )}
+        {video.finalVideoUrl && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />
+            Final video assembled and ready. <a href={video.finalVideoUrl} target="_blank" rel="noopener noreferrer" className="underline">Watch it here</a>
+          </div>
+        )}
         {/* Stats Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <Card className="bg-zinc-900 border-zinc-800">
@@ -178,7 +222,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-3 text-center">
               <p className="text-xs text-zinc-500 mb-1">Progress</p>
-              <p className="text-sm font-medium text-zinc-200">{approvedScenes.length}/{scenes.length} scenes</p>
+              <p className="text-sm font-medium text-zinc-200">{generatedScenes.length}/{scenes.length} scenes</p>
             </CardContent>
           </Card>
           <Card className="bg-zinc-900 border-zinc-800">
