@@ -21,7 +21,12 @@ import {
   Image as ImageIcon,
   Code,
   User,
+  Wand2,
+  Sparkles,
 } from "lucide-react";
+import { ModelSelector } from "@/components/ui/model-selector";
+import type { AIModel } from "@/lib/ai-provider";
+import { DEFAULT_SCRIPT_MODEL } from "@/lib/ai-provider";
 
 interface CharacterPrompt {
   id: string;
@@ -61,6 +66,10 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   const [addingPrompt, setAddingPrompt] = useState(false);
   const [newPrompt, setNewPrompt] = useState({ promptText: "", targetModel: "kling-3.0", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [aiModel, setAiModel] = useState<AIModel>(DEFAULT_SCRIPT_MODEL);
+  const [generateMsg, setGenerateMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/characters/${id}`)
@@ -94,6 +103,42 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
     }
   }
 
+  async function generateCharacter() {
+    setGenerating(true);
+    setGenerateMsg(null);
+    try {
+      const res = await fetch(`/api/characters/${id}/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aiModel }),
+      });
+      const data = await res.json();
+      if (data.character) {
+        setCharacter(data.character);
+        setGenerateMsg(data.generatedImageUrl ? "Character bible + reference image generated!" : "Character bible generated (image generation failed — check FAL_API_KEY)");
+      }
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function generateImage() {
+    setGeneratingImage(true);
+    try {
+      const res = await fetch(`/api/characters/${id}/generate-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addToApproved: true }),
+      });
+      const data = await res.json();
+      if (data.imageUrl && character) {
+        setCharacter({ ...character, approvedImages: [...character.approvedImages, data.imageUrl] });
+      }
+    } finally {
+      setGeneratingImage(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -119,12 +164,27 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
         title={character.name}
         description={`${character.speciesOrType} · Universe ${character.universeId ?? "—"}`}
         actions={
-          <Button variant="ghost" onClick={() => router.push("/characters")}>
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back
-          </Button>
+          <div className="flex items-center gap-3">
+            <ModelSelector value={aiModel} onChange={setAiModel} />
+            <Button onClick={generateCharacter} disabled={generating}>
+              {generating
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <Wand2 className="h-4 w-4 mr-2" />}
+              Generate with AI
+            </Button>
+            <Button variant="ghost" onClick={() => router.push("/characters")}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back
+            </Button>
+          </div>
         }
       />
       <div className="flex-1 overflow-auto p-6">
+        {generateMsg && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm flex items-center gap-2">
+            <Sparkles className="h-4 w-4 flex-shrink-0" />
+            {generateMsg}
+          </div>
+        )}
         <Tabs defaultValue="profile" className="space-y-4">
           <TabsList className="bg-zinc-900 border border-zinc-800">
             <TabsTrigger value="profile">Profile</TabsTrigger>
@@ -222,7 +282,15 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
             </div>
 
             <Card className="bg-zinc-900 border-zinc-800">
-              <CardHeader><CardTitle className="text-sm">Approved Images</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm">Approved Images</CardTitle>
+                <Button size="sm" variant="outline" onClick={generateImage} disabled={generatingImage}>
+                  {generatingImage
+                    ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                    : <Sparkles className="h-3 w-3 mr-1.5" />}
+                  Generate with FLUX
+                </Button>
+              </CardHeader>
               <CardContent>
                 {character.approvedImages.length > 0 ? (
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
