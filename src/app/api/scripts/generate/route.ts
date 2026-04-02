@@ -189,10 +189,8 @@ Ensure scenes cover approximately 60 seconds total duration.`;
 
     return NextResponse.json(fullScript, { status: 201 });
   } catch (error) {
-    console.error('POST /api/scripts/generate error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate script' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('POST /api/scripts/generate error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

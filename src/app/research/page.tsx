@@ -125,7 +125,14 @@ export default function ResearchPage() {
       if (res.ok && data.id) {
         router.push(`/scripts/${data.id}`);
       } else {
-        setGenerateError(data?.error ?? "Failed to generate script");
+        const msg = data?.error ?? "Failed to generate script";
+        setGenerateError(
+          msg.includes("OPENAI_API_KEY") || msg.includes("API key") || msg.includes("api key")
+            ? "OpenAI API key not configured. Add OPENAI_API_KEY to Vercel environment variables."
+            : msg.includes("ANTHROPIC") || msg.includes("anthropic")
+            ? "Anthropic API key not configured. Add ANTHROPIC_API_KEY to Vercel environment variables."
+            : msg
+        );
       }
     } catch {
       setGenerateError("Network error generating script.");

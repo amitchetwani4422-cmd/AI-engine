@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 minutes — Vercel Pro / self-hosted
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { assembleVideo } from "@/lib/ffmpeg-assembler";
 
 export async function POST(

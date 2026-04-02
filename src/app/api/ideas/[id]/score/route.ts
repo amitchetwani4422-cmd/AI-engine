@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { generateWithModel, DEFAULT_IDEA_MODEL } from "@/lib/ai-provider";
 import type { AIModel } from "@/lib/ai-provider";
 
