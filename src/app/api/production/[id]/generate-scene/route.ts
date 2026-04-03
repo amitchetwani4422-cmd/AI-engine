@@ -1,17 +1,20 @@
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // 5 min — Kling takes 60-120s to generate
+// Webhook approach — submits to FAL queue and returns immediately (<5s)
+// No maxDuration needed; FAL calls our webhook when done.
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { fal } from '@fal-ai/client';
 import prisma from '@/lib/prisma';
-import { generateVideoScene } from '@/lib/fal';
 import type { VideoModel } from '@/lib/fal';
-import { v2 as cloudinary } from 'cloudinary';
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+fal.config({ credentials: process.env.FAL_KEY ?? process.env.FAL_API_KEY });
+
+const FAL_MODEL_IDS: Record<string, string> = {
+  'kling-3.0': 'fal-ai/kling-video/v1.6/pro/text-to-video',
+  'veo-3.1':   'fal-ai/veo2',
+};
+
+const QUALITY_SUFFIX = ', cinematic 1080p, ultra-detailed, sharp focus, professional color grading, no watermark, no artifacts';
 
 const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
@@ -31,18 +34,22 @@ export async function POST(
     const parsed = GenerateSceneSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
     }
 
     const { sceneId, stylePrefix, forceKling, feedback, promptOverride } = parsed.data;
 
-    // Check FAL_KEY early with clear error
     if (!process.env.FAL_KEY && !process.env.FAL_API_KEY) {
       return NextResponse.json(
         { error: 'FAL_KEY not configured. Add FAL_KEY to your Vercel environment variables.' },
+        { status: 500 }
+      );
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+      return NextResponse.json(
+        { error: 'NEXT_PUBLIC_APP_URL not set. Add it to Vercel environment variables (e.g. https://your-app.vercel.app).' },
         { status: 500 }
       );
     }
@@ -52,153 +59,65 @@ export async function POST(
       prisma.scene.findUnique({ where: { id: sceneId } }),
     ]);
 
-    if (!video) {
-      return NextResponse.json({ error: 'Video not found' }, { status: 404 });
-    }
-    if (!scene) {
-      return NextResponse.json({ error: 'Scene not found' }, { status: 404 });
-    }
+    if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+    if (!scene) return NextResponse.json({ error: 'Scene not found' }, { status: 404 });
 
-    // forceKling=true (Budget Mode) overrides any Veo assignments — Kling is ~6x cheaper
     const model: VideoModel = forceKling ? 'kling-3.0' : ((scene.modelAssigned ?? 'kling-3.0') as VideoModel);
     const durationSeconds = scene.duration ?? 5;
 
-    // Build the final prompt: override > feedback-modified > original
-    let prompt: string;
-    if (promptOverride && promptOverride.trim()) {
-      // User wrote their own prompt entirely
-      prompt = promptOverride.trim();
+    // Build prompt
+    let basePrompt: string;
+    if (promptOverride?.trim()) {
+      basePrompt = promptOverride.trim();
     } else {
-      const basePrompt = scene.prompt ?? scene.visualGuidance;
-      const feedbackSuffix = feedback?.trim()
-        ? ` [Feedback to incorporate: ${feedback.trim()}]`
-        : '';
-      const styled = stylePrefix ? `${stylePrefix} ${basePrompt}` : basePrompt;
-      prompt = styled + feedbackSuffix;
+      const raw = scene.prompt ?? scene.visualGuidance;
+      const feedbackSuffix = feedback?.trim() ? ` [Feedback: ${feedback.trim()}]` : '';
+      basePrompt = (stylePrefix ? `${stylePrefix} ${raw}` : raw) + feedbackSuffix;
     }
+    const prompt = basePrompt + QUALITY_SUFFIX;
 
-    // Delete any existing clips for this scene (regenerate case)
+    // Delete existing clips (regenerate case)
     await prisma.generatedClip.deleteMany({ where: { sceneId } });
 
-    // Create generation job
-    const job = await prisma.generationJob.create({
+    // Build FAL input
+    const klingDuration = durationSeconds >= 8 ? '10' : '5';
+    const input = model === 'kling-3.0'
+      ? {
+          prompt,
+          duration: klingDuration,
+          aspect_ratio: '16:9',
+          negative_prompt: 'watermark, logo, text overlay, blurry, low quality, compression artifacts, distorted faces',
+          cfg_scale: 0.5,
+        }
+      : { prompt, aspect_ratio: '16:9' };
+
+    // Submit to FAL queue — returns immediately with a request_id
+    const { request_id } = await fal.queue.submit(FAL_MODEL_IDS[model], {
+      input,
+      webhookUrl: `${appUrl}/api/webhooks/fal`,
+    });
+
+    // Save job with FAL request_id so webhook can look it up
+    await prisma.generationJob.create({
       data: {
         type: 'video-scene',
         videoId,
         sceneId,
         model,
         status: 'pending',
-        inputData: { prompt, duration: durationSeconds, model },
+        inputData: { prompt, duration: durationSeconds, model, falRequestId: request_id },
         retryCount: 0,
       },
     });
 
-    // Update scene status
-    await prisma.scene.update({
-      where: { id: sceneId },
-      data: { status: 'Generating' },
-    });
+    await prisma.scene.update({ where: { id: sceneId }, data: { status: 'Generating' } });
 
-    let result;
-    try {
-      result = await generateVideoScene({
-        model,
-        prompt,
-        duration: durationSeconds,
-        aspectRatio: '16:9',
-      });
-    } catch (falError) {
-      await prisma.generationJob.update({
-        where: { id: job.id },
-        data: {
-          status: 'failed',
-          error: falError instanceof Error ? falError.message : 'FAL generation failed',
-          outputData: { error: String(falError) },
-        },
-      });
-      await prisma.scene.update({
-        where: { id: sceneId },
-        data: { status: 'Failed' },
-      });
-      return NextResponse.json(
-        {
-          error: 'Scene generation failed',
-          details: falError instanceof Error ? falError.message : 'Unknown error',
-        },
-        { status: 500 }
-      );
-    }
+    // Return immediately — webhook will save the clip when FAL finishes
+    return NextResponse.json({ status: 'queued', requestId: request_id }, { status: 202 });
 
-    // Try Cloudinary upload for permanent CDN URL (non-blocking — FAL URL used as fallback)
-    let clipUrl = result.videoUrl;
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
-      try {
-        const upload = await cloudinary.uploader.upload(result.videoUrl, {
-          resource_type: 'video',
-          folder: 'ai-engine/clips',
-        });
-        clipUrl = upload.secure_url;
-      } catch {
-        console.warn('Cloudinary upload failed — using FAL URL');
-      }
-    }
-
-    // Create generated clip
-    const clip = await prisma.generatedClip.create({
-      data: {
-        sceneId,
-        videoId,
-        clipUrl,
-        model,
-        prompt,
-        duration: durationSeconds,
-        cost: result.cost,
-        isApproved: true,
-        status: 'Generated',
-      },
-    });
-
-    // Update job to completed
-    await prisma.generationJob.update({
-      where: { id: job.id },
-      data: {
-        status: 'completed',
-        cost: result.cost,
-        outputData: { clipId: clip.id, videoUrl: result.videoUrl, requestId: result.requestId },
-      },
-    });
-
-    // Update scene status
-    await prisma.scene.update({
-      where: { id: sceneId },
-      data: { status: 'Generated' },
-    });
-
-    // Update video cost tracking
-    const costIncrement = result.cost;
-    const costUpdate =
-      model === 'veo-3.1'
-        ? { veoCost: { increment: costIncrement }, totalCost: { increment: costIncrement } }
-        : { klingCost: { increment: costIncrement }, totalCost: { increment: costIncrement } };
-
-    await prisma.video.update({ where: { id: videoId }, data: costUpdate });
-
-    // Check if all scene jobs for this video are completed
-    const allJobs = await prisma.generationJob.findMany({ where: { videoId } });
-    const allCompleted = allJobs.every((j) => j.status === 'completed');
-    if (allCompleted) {
-      await prisma.video.update({
-        where: { id: videoId },
-        data: { status: 'QualityCheck' },
-      });
-    }
-
-    return NextResponse.json(clip, { status: 201 });
   } catch (error) {
-    console.error('POST /api/production/[id]/generate-scene error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate scene' },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('POST generate-scene error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

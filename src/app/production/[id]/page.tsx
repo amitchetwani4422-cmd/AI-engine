@@ -112,6 +112,23 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
+  // Poll for a scene's clip to appear (webhook async flow)
+  const pollForClip = useCallback(async (sceneId: string): Promise<boolean> => {
+    for (let i = 0; i < 60; i++) { // up to 5 minutes (60 × 5s)
+      await new Promise((r) => setTimeout(r, 5000));
+      const res = await fetch(`/api/production/${id}`);
+      const data = await res.json();
+      const scene = data?.script?.sceneBreakdown?.find((s: { id: string }) => s.id === sceneId);
+      if (scene?.generatedClips?.length > 0) {
+        setVideo(data);
+        return true;
+      }
+      // Check if scene failed
+      if (scene?.status === "Failed") return false;
+    }
+    return false;
+  }, [id]);
+
   const runScene = useCallback(async (sceneId: string, feedback?: string, promptOverride?: string) => {
     if (generatingRef.current) return;
     generatingRef.current = true;
@@ -132,16 +149,23 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         }),
       });
       const data = await res.json();
-      if (res.ok) {
-        await fetchVideo();
+      if (res.ok || res.status === 202) {
+        // Queued — poll until webhook delivers the clip
+        const success = await pollForClip(sceneId);
+        if (!success) {
+          setSceneError("Scene generation timed out or failed. Check FAL dashboard.");
+          setQueue([]);
+          setQueueRunning(false);
+        }
       } else {
         const msg = data?.details ?? data?.error ?? `Error ${res.status}`;
         setSceneError(
-          msg.includes("FAL") || msg.includes("credentials") || msg.includes("401") || msg.includes("Unauthorized")
-            ? "FAL.AI not configured. Add FAL_KEY to Vercel environment variables to generate video scenes."
+          msg.includes("NEXT_PUBLIC_APP_URL")
+            ? "Add NEXT_PUBLIC_APP_URL=https://your-app.vercel.app to Vercel environment variables."
+            : msg.includes("FAL") || msg.includes("credentials") || msg.includes("401")
+            ? "FAL.AI not configured. Add FAL_KEY to Vercel environment variables."
             : msg
         );
-        // On error, clear the rest of the queue
         setQueue([]);
         setQueueRunning(false);
       }
@@ -153,7 +177,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       generatingRef.current = false;
       setGeneratingScene(null);
     }
-  }, [id, videoStyle, budgetMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, videoStyle, budgetMode, pollForClip]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Queue processor — runs next scene automatically when one finishes
   useEffect(() => {
