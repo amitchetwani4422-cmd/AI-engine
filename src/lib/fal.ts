@@ -23,7 +23,7 @@ const FAL_MODEL_IDS = {
   "veo-3.1": "fal-ai/veo2",
 } as const;
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 2000;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,21 +86,21 @@ export async function generateVideoScene(
   let input: Record<string, unknown>;
 
   if (model === "kling-3.0") {
+    // Kling only accepts duration as string "5" or "10"
+    const klingDuration = duration >= 8 ? "10" : "5";
     input = {
       prompt,
-      duration: Math.min(Math.max(duration, 5), 10), // Kling supports 5-10s clips
+      duration: klingDuration,
       aspect_ratio: aspectRatio,
       ...(negativePrompt && { negative_prompt: negativePrompt }),
       ...(referenceImage && { image_url: referenceImage }),
     };
   } else {
-    // veo-3.1
+    // veo-3.1 (fal-ai/veo2) — no duration param, just prompt + aspect_ratio
     input = {
       prompt,
-      duration_seconds: Math.min(Math.max(duration, 5), 8), // Veo supports 5-8s clips
       aspect_ratio: aspectRatio,
       ...(negativePrompt && { negative_prompt: negativePrompt }),
-      ...(referenceImage && { image_url: referenceImage }),
     };
   }
 
@@ -113,13 +113,17 @@ export async function generateVideoScene(
       },
     });
 
-    // Extract video URL from the result
+    // Extract video URL — Kling returns { video: { url } }, Veo2 returns { video_url } or { video: { url } }
     const output = result.data as {
       video?: { url: string };
       video_url?: string;
+      videos?: Array<{ url: string }>;
     };
 
-    const videoUrl = output?.video?.url ?? output?.video_url;
+    const videoUrl =
+      output?.video?.url ??
+      output?.video_url ??
+      output?.videos?.[0]?.url;
 
     if (!videoUrl) {
       throw new Error("No video URL returned from FAL.AI");
