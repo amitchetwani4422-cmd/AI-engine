@@ -87,6 +87,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [generatingScene, setGeneratingScene] = useState<string | null>(null);
   const [sceneError, setSceneError] = useState<string | null>(null);
   const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("mythology-fantasy");
+  const [budgetMode, setBudgetMode] = useState(true); // force all scenes to kling
   const [movingToQC, setMovingToQC] = useState(false);
   const [assembling, setAssembling] = useState(false);
   const [assembleError, setAssembleError] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       const res = await fetch(`/api/production/${id}/generate-scene`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sceneId, stylePrefix }),
+        body: JSON.stringify({ sceneId, stylePrefix, forceKling: budgetMode }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -305,9 +306,26 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           </CardContent>
         </Card>
 
-        {/* Video Style Selector */}
+        {/* Video Style + Budget Selector */}
         <Card className="bg-zinc-900 border-zinc-800 mb-6">
           <CardContent className="p-4">
+            {/* Budget Mode Toggle */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-zinc-800">
+              <div>
+                <p className="text-sm font-medium text-zinc-200">Budget Mode</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Forces all scenes to use <span className="text-blue-400">Kling 3.0</span> (~$0.25–0.50/scene).
+                  Disable only if you need Veo2 lip-sync (<span className="text-red-400">~$1.50/scene</span>).
+                </p>
+              </div>
+              <button
+                onClick={() => setBudgetMode(!budgetMode)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${budgetMode ? "bg-green-600" : "bg-zinc-600"}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${budgetMode ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
+            </div>
+
             <div className="flex items-start gap-4 flex-wrap">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-zinc-200 mb-1">Video Style</p>

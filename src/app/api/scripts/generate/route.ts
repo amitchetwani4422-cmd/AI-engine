@@ -107,8 +107,9 @@ Generate a complete JSON response with this exact structure:
 }
 
 Model routing rules:
-- Use "kling-3.0" for character-driven scenes, action, movement, creatures (80% of scenes)
-- Use "veo-3.1" for lip-sync, narration, devotional close-ups (20% of scenes)
+- Use "kling-3.0" for ALL scenes by default (action, characters, movement, narration, everything)
+- Only use "veo-3.1" for scenes that absolutely require lip-sync audio (rare, max 1 scene)
+- Default to "kling-3.0" when in doubt — it is cheaper and high quality
 
 Ensure scenes cover approximately 60 seconds total duration.`;
 
