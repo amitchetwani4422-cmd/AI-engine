@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, use } from "react";
+import React, { useEffect, useState, use, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,12 +88,15 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [sceneError, setSceneError] = useState<string | null>(null);
   const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("mythology-fantasy");
   const [budgetMode, setBudgetMode] = useState(true);
-  const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null); // sceneId
+  const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState<Record<string, string>>({});
   const [customPrompt, setCustomPrompt] = useState<Record<string, string>>({});
+  const [queue, setQueue] = useState<string[]>([]); // scene IDs waiting to generate
+  const [queueRunning, setQueueRunning] = useState(false);
   const [movingToQC, setMovingToQC] = useState(false);
   const [assembling, setAssembling] = useState(false);
   const [assembleError, setAssembleError] = useState<string | null>(null);
+  const generatingRef = useRef(false);
 
   useEffect(() => {
     fetchVideo();
@@ -109,7 +112,9 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
-  async function generateScene(sceneId: string, feedback?: string, promptOverride?: string) {
+  const runScene = useCallback(async (sceneId: string, feedback?: string, promptOverride?: string) => {
+    if (generatingRef.current) return;
+    generatingRef.current = true;
     setGeneratingScene(sceneId);
     setSceneError(null);
     setFeedbackOpen(null);
@@ -136,12 +141,48 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
             ? "FAL.AI not configured. Add FAL_KEY to Vercel environment variables to generate video scenes."
             : msg
         );
+        // On error, clear the rest of the queue
+        setQueue([]);
+        setQueueRunning(false);
       }
     } catch {
       setSceneError("Network error — please try again.");
+      setQueue([]);
+      setQueueRunning(false);
     } finally {
+      generatingRef.current = false;
       setGeneratingScene(null);
     }
+  }, [id, videoStyle, budgetMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Queue processor — runs next scene automatically when one finishes
+  useEffect(() => {
+    if (!queueRunning || generatingRef.current || queue.length === 0) return;
+    const [next, ...rest] = queue;
+    setQueue(rest);
+    runScene(next).then(() => {
+      if (rest.length === 0) setQueueRunning(false);
+    });
+  }, [queue, queueRunning, runScene]);
+
+  function generateScene(sceneId: string, feedback?: string, promptOverride?: string) {
+    runScene(sceneId, feedback, promptOverride);
+  }
+
+  function startQueue(sceneIds: string[]) {
+    if (sceneIds.length === 0) return;
+    setSceneError(null);
+    const [first, ...rest] = sceneIds;
+    setQueue(rest);
+    setQueueRunning(true);
+    runScene(first).then(() => {
+      if (rest.length === 0) setQueueRunning(false);
+    });
+  }
+
+  function cancelQueue() {
+    setQueue([]);
+    setQueueRunning(false);
   }
 
   async function assembleVideo() {
@@ -374,19 +415,50 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
 
         {/* Scenes */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-zinc-300">Scene Generation</h3>
-            {video.finalVideoUrl && (
-              <span className="text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded">
-                Video assembled — regenerate any scene then re-assemble to update
-              </span>
-            )}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h3 className="text-sm font-medium text-zinc-300">Scene Generation</h3>
+              {video.finalVideoUrl && (
+                <p className="text-xs text-yellow-400 mt-0.5">
+                  Video assembled — regenerate any scene then Re-assemble to update
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {queueRunning && (
+                <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>
+                    Generating scene {scenes.filter(s => s.generatedClips.length > 0).length + 1}/{scenes.length}
+                    {queue.length > 0 && ` · ${queue.length} queued`}
+                  </span>
+                  <button onClick={cancelQueue} className="ml-1 text-zinc-400 hover:text-zinc-200 underline">
+                    Cancel
+                  </button>
+                </div>
+              )}
+              {!queueRunning && scenes.some(s => s.generatedClips.length === 0) && (
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => {
+                    const pending = scenes.filter(s => s.generatedClips.length === 0).map(s => s.id);
+                    startQueue(pending);
+                  }}
+                  disabled={!!generatingScene}
+                >
+                  <Zap className="h-3 w-3 mr-1" />
+                  Generate All ({scenes.filter(s => s.generatedClips.length === 0).length} remaining)
+                </Button>
+              )}
+            </div>
           </div>
           {scenes.length === 0 && (
             <p className="text-sm text-zinc-500 italic">No scenes found. Ensure script has a scene breakdown.</p>
           )}
           {scenes.map((scene) => {
             const isGenerating = generatingScene === scene.id;
+            const isQueued = queue.includes(scene.id);
             const clip = scene.generatedClips[0] ?? null;
             const isFeedbackOpen = feedbackOpen === scene.id;
             return (
@@ -481,14 +553,19 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                           <Loader2 className="h-3 w-3 animate-spin" /> Generating clip (~30–60s)...
                         </div>
                       )}
+                      {isQueued && !isGenerating && (
+                        <div className="flex items-center gap-2 mt-2 text-xs text-blue-400">
+                          <Clock className="h-3 w-3" /> Queued — waiting for previous scene to finish
+                        </div>
+                      )}
                     </div>
                     <div className="flex-shrink-0">
-                      {!clip && !isGenerating && (
+                      {!clip && !isGenerating && !isQueued && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => generateScene(scene.id)}
-                          disabled={!!generatingScene}
+                          disabled={!!generatingScene || queueRunning}
                         >
                           <Zap className="h-3 w-3 mr-1" /> Generate
                         </Button>
