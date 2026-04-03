@@ -1,5 +1,13 @@
 import { fal } from "@fal-ai/client";
+import { v2 as cloudinary } from "cloudinary";
 import { CHANNELS_CONFIG } from "@/lib/utils";
+
+// Cloudinary config (same creds as ffmpeg-assembler)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ?? process.env.CLOUDINARY_URL?.match(/\/\/\w+:\w+@(\w+)/)?.[1],
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Client initialization
@@ -14,14 +22,18 @@ fal.config({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COST_PER_SECOND = {
-  "kling-3.0": 0.04,
+  "kling-3.0": 0.055,  // Kling v2.1 Master pricing
   "veo-3.1": 0.08,
 } as const;
 
+// Kling v2.1 Master: watermark-free, 1080p, significantly better coherence than v1.6
 const FAL_MODEL_IDS = {
-  "kling-3.0": "fal-ai/kling-video/v1.6/pro/text-to-video",
+  "kling-3.0": "fal-ai/kling-video/v2.1/master/text-to-video",
   "veo-3.1": "fal-ai/veo2",
 } as const;
+
+// Quality keywords automatically appended to every prompt
+const QUALITY_SUFFIX = ", cinematic 1080p, ultra-detailed, sharp focus, professional color grading, no watermark, no artifacts";
 
 const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 2000;
@@ -85,20 +97,23 @@ export async function generateVideoScene(
   // Build model-specific input payload
   let input: Record<string, unknown>;
 
+  // Append quality suffix to all prompts
+  const enhancedPrompt = prompt.endsWith(QUALITY_SUFFIX) ? prompt : prompt + QUALITY_SUFFIX;
+
   if (model === "kling-3.0") {
-    // Kling only accepts duration as string "5" or "10"
+    // Kling v2.1 Master: duration as string "5" or "10"
     const klingDuration = duration >= 8 ? "10" : "5";
     input = {
-      prompt,
+      prompt: enhancedPrompt,
       duration: klingDuration,
       aspect_ratio: aspectRatio,
-      ...(negativePrompt && { negative_prompt: negativePrompt }),
+      negative_prompt: negativePrompt ?? "watermark, logo, text overlay, blurry, low quality, compression artifacts, distorted faces",
       ...(referenceImage && { image_url: referenceImage }),
     };
   } else {
-    // veo-3.1 (fal-ai/veo2) — no duration param, just prompt + aspect_ratio
+    // veo-3.1 (fal-ai/veo2)
     input = {
-      prompt,
+      prompt: enhancedPrompt,
       aspect_ratio: aspectRatio,
       ...(negativePrompt && { negative_prompt: negativePrompt }),
     };
@@ -129,11 +144,26 @@ export async function generateVideoScene(
       throw new Error("No video URL returned from FAL.AI");
     }
 
+    // Upload to Cloudinary for permanent CDN URL + better streaming
+    let finalUrl = videoUrl;
+    try {
+      const upload = await cloudinary.uploader.upload(videoUrl, {
+        resource_type: "video",
+        folder: "ai-engine/clips",
+        quality: "auto:best",
+        transformation: [{ quality: "auto:best" }],
+      });
+      finalUrl = upload.secure_url;
+    } catch {
+      // Cloudinary upload failed — fall back to FAL URL
+      console.warn("Cloudinary upload failed, using FAL URL directly");
+    }
+
     const cost = estimateCost(model, duration);
 
     return {
       requestId: result.requestId,
-      videoUrl,
+      videoUrl: finalUrl,
       duration,
       cost,
       model,

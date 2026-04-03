@@ -496,6 +496,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                           <video
                             src={clip.clipUrl}
                             controls
+                            preload="none"
+                            playsInline
                             className="w-full max-w-md rounded-lg border border-zinc-700"
                             style={{ maxHeight: "200px" }}
                           />
