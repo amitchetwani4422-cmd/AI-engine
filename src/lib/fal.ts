@@ -21,16 +21,15 @@ fal.config({
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const COST_PER_SECOND = {
-  "kling-3.0": 0.055,  // Kling v2.1 Master pricing
-  "veo-3.1": 0.08,
-} as const;
+const COST_PER_SECOND: Record<string, number> = {
+  "kling-3.0": 0.056, // Kling v1.6 Pro — ~$0.28/5s, no watermark
+  "veo-3.1":   0.08,
+};
 
-// Kling v2.1 Master: watermark-free, 1080p, significantly better coherence than v1.6
-const FAL_MODEL_IDS = {
-  "kling-3.0": "fal-ai/kling-video/v2.1/master/text-to-video",
-  "veo-3.1": "fal-ai/veo2",
-} as const;
+const FAL_MODEL_IDS: Record<string, string> = {
+  "kling-3.0": "fal-ai/kling-video/v1.6/pro/text-to-video",
+  "veo-3.1":   "fal-ai/veo2",
+};
 
 // Quality keywords automatically appended to every prompt
 const QUALITY_SUFFIX = ", cinematic 1080p, ultra-detailed, sharp focus, professional color grading, no watermark, no artifacts";
@@ -101,7 +100,6 @@ export async function generateVideoScene(
   const enhancedPrompt = prompt.endsWith(QUALITY_SUFFIX) ? prompt : prompt + QUALITY_SUFFIX;
 
   if (model === "kling-3.0") {
-    // Kling v2.1 Master: duration as string "5" or "10"
     const klingDuration = duration >= 8 ? "10" : "5";
     input = {
       prompt: enhancedPrompt,
@@ -111,7 +109,7 @@ export async function generateVideoScene(
       ...(referenceImage && { image_url: referenceImage }),
     };
   } else {
-    // veo-3.1 (fal-ai/veo2)
+    // veo-3.1
     input = {
       prompt: enhancedPrompt,
       aspect_ratio: aspectRatio,
