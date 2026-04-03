@@ -20,6 +20,17 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
+const VIDEO_STYLES = [
+  { value: "cinematic-vfx", label: "🎬 Cinematic VFX", prefix: "Photorealistic cinematic, Hollywood VFX, 8K ultra-detailed, dramatic lighting," },
+  { value: "mythology-fantasy", label: "🔱 Mythology Fantasy", prefix: "Epic Indian mythology art style, divine celestial VFX, glowing auras, sacred geometry, ultra-detailed," },
+  { value: "animated-3d", label: "🎨 Animated 3D", prefix: "High-quality 3D animation, Pixar/DreamWorks style, vibrant colors, smooth motion," },
+  { value: "anime", label: "⚡ Anime / 2D", prefix: "Japanese anime style, 2D animation, expressive characters, dynamic action lines," },
+  { value: "documentary", label: "📷 Documentary Realism", prefix: "Realistic documentary style, natural lighting, handheld camera feel, authentic," },
+  { value: "none", label: "✏️ Use AI Prompt As-Is", prefix: "" },
+] as const;
+
+type VideoStyleValue = typeof VIDEO_STYLES[number]["value"];
+
 interface GeneratedClip {
   id: string;
   clipUrl: string;
@@ -75,6 +86,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [loading, setLoading] = useState(true);
   const [generatingScene, setGeneratingScene] = useState<string | null>(null);
   const [sceneError, setSceneError] = useState<string | null>(null);
+  const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("mythology-fantasy");
   const [movingToQC, setMovingToQC] = useState(false);
   const [assembling, setAssembling] = useState(false);
   const [assembleError, setAssembleError] = useState<string | null>(null);
@@ -97,10 +109,11 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     setGeneratingScene(sceneId);
     setSceneError(null);
     try {
+      const stylePrefix = VIDEO_STYLES.find((s) => s.value === videoStyle)?.prefix ?? "";
       const res = await fetch(`/api/production/${id}/generate-scene`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sceneId }),
+        body: JSON.stringify({ sceneId, stylePrefix }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -288,6 +301,43 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                   <p className="text-lg font-medium text-green-400">{formatCurrency(video.totalCost)}</p>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Video Style Selector */}
+        <Card className="bg-zinc-900 border-zinc-800 mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-4 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-zinc-200 mb-1">Video Style</p>
+                <p className="text-xs text-zinc-500 mb-3">
+                  Choose the visual style. This is prepended to every scene prompt sent to the AI video model.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {VIDEO_STYLES.map((s) => (
+                    <button
+                      key={s.value}
+                      onClick={() => setVideoStyle(s.value)}
+                      className={`px-3 py-2 rounded-lg text-xs text-left transition-all border ${
+                        videoStyle === s.value
+                          ? "bg-blue-600/20 border-blue-500/50 text-blue-300"
+                          : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {VIDEO_STYLES.find((s) => s.value === videoStyle)?.prefix && (
+                <div className="w-full sm:w-64 bg-zinc-800/50 rounded-lg p-3 border border-zinc-700">
+                  <p className="text-xs text-zinc-500 mb-1">Prompt prefix added:</p>
+                  <p className="text-xs text-zinc-400 italic leading-relaxed">
+                    "{VIDEO_STYLES.find((s) => s.value === videoStyle)?.prefix}"
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

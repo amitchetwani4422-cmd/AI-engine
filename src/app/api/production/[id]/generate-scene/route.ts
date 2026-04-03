@@ -7,6 +7,7 @@ import type { VideoModel } from '@/lib/fal';
 
 const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
+  stylePrefix: z.string().optional(),
 });
 
 export async function POST(
@@ -25,7 +26,7 @@ export async function POST(
       );
     }
 
-    const { sceneId } = parsed.data;
+    const { sceneId, stylePrefix } = parsed.data;
 
     // Check FAL_KEY early with clear error
     if (!process.env.FAL_KEY && !process.env.FAL_API_KEY) {
@@ -49,7 +50,8 @@ export async function POST(
 
     const model = (scene.modelAssigned ?? 'kling-3.0') as VideoModel;
     const durationSeconds = scene.duration ?? 5;
-    const prompt = scene.prompt ?? scene.visualGuidance;
+    const basePrompt = scene.prompt ?? scene.visualGuidance;
+    const prompt = stylePrefix ? `${stylePrefix} ${basePrompt}` : basePrompt;
 
     // Delete any existing clips for this scene (regenerate case)
     await prisma.generatedClip.deleteMany({ where: { sceneId } });
