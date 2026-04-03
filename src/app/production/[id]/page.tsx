@@ -299,7 +299,6 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
             <p className="text-sm text-zinc-500 italic">No scenes found. Ensure script has a scene breakdown.</p>
           )}
           {scenes.map((scene) => {
-            const approvedClip = scene.generatedClips.find((c) => c.isApproved);
             const isGenerating = generatingScene === scene.id;
             return (
               <Card key={scene.id} className="bg-zinc-900 border-zinc-800">
@@ -318,20 +317,15 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                       </div>
                       <p className="text-sm text-zinc-300 mb-2">{scene.description}</p>
 
-                      {approvedClip ? (
+                      {scene.generatedClips.length > 0 ? (
                         <div className="flex items-center gap-2 text-xs text-green-400">
                           <CheckCircle className="h-3 w-3" />
-                          <span>Clip generated · {formatCurrency(approvedClip.cost)}</span>
-                        </div>
-                      ) : scene.generatedClips.length > 0 ? (
-                        <div className="flex items-center gap-2 text-xs text-yellow-400">
-                          <Clock className="h-3 w-3" />
-                          <span>{scene.generatedClips.length} clip(s) — pending approval</span>
+                          <span>Clip ready · {formatCurrency(scene.generatedClips[0].cost)}</span>
                         </div>
                       ) : null}
                     </div>
                     <div className="flex-shrink-0">
-                      {!approvedClip && (
+                      {scene.generatedClips.length === 0 && (
                         <Button
                           size="sm"
                           variant="outline"

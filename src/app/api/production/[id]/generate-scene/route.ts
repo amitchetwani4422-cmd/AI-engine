@@ -110,6 +110,7 @@ export async function POST(
         prompt,
         duration: durationSeconds,
         cost: result.cost,
+        isApproved: true,
         status: 'Generated',
       },
     });
