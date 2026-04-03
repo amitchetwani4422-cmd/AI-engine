@@ -300,6 +300,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           )}
           {scenes.map((scene) => {
             const isGenerating = generatingScene === scene.id;
+            const clip = scene.generatedClips[0] ?? null;
             return (
               <Card key={scene.id} className="bg-zinc-900 border-zinc-800">
                 <CardContent className="p-4">
@@ -317,15 +318,32 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                       </div>
                       <p className="text-sm text-zinc-300 mb-2">{scene.description}</p>
 
-                      {scene.generatedClips.length > 0 ? (
-                        <div className="flex items-center gap-2 text-xs text-green-400">
-                          <CheckCircle className="h-3 w-3" />
-                          <span>Clip ready · {formatCurrency(scene.generatedClips[0].cost)}</span>
+                      {clip ? (
+                        <div className="space-y-2">
+                          {/* Inline video preview */}
+                          <video
+                            src={clip.clipUrl}
+                            controls
+                            className="w-full max-w-sm rounded-lg border border-zinc-700"
+                            style={{ maxHeight: "180px" }}
+                          />
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1 text-xs text-green-400">
+                              <CheckCircle className="h-3 w-3" /> Clip ready · {formatCurrency(clip.cost)}
+                            </span>
+                            <button
+                              onClick={() => generateScene(scene.id)}
+                              disabled={isGenerating || !!generatingScene}
+                              className="text-xs text-zinc-500 hover:text-zinc-300 underline disabled:opacity-40"
+                            >
+                              {isGenerating ? "Regenerating..." : "Regenerate"}
+                            </button>
+                          </div>
                         </div>
                       ) : null}
                     </div>
                     <div className="flex-shrink-0">
-                      {scene.generatedClips.length === 0 && (
+                      {!clip && (
                         <Button
                           size="sm"
                           variant="outline"

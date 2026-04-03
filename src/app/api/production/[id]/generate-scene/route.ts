@@ -51,6 +51,9 @@ export async function POST(
     const durationSeconds = scene.duration ?? 5;
     const prompt = scene.prompt ?? scene.visualGuidance;
 
+    // Delete any existing clips for this scene (regenerate case)
+    await prisma.generatedClip.deleteMany({ where: { sceneId } });
+
     // Create generation job
     const job = await prisma.generationJob.create({
       data: {
