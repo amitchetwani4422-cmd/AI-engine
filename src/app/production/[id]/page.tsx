@@ -87,7 +87,10 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [generatingScene, setGeneratingScene] = useState<string | null>(null);
   const [sceneError, setSceneError] = useState<string | null>(null);
   const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("mythology-fantasy");
-  const [budgetMode, setBudgetMode] = useState(true); // force all scenes to kling
+  const [budgetMode, setBudgetMode] = useState(true);
+  const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null); // sceneId
+  const [feedbackText, setFeedbackText] = useState<Record<string, string>>({});
+  const [customPrompt, setCustomPrompt] = useState<Record<string, string>>({});
   const [movingToQC, setMovingToQC] = useState(false);
   const [assembling, setAssembling] = useState(false);
   const [assembleError, setAssembleError] = useState<string | null>(null);
@@ -106,15 +109,22 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
-  async function generateScene(sceneId: string) {
+  async function generateScene(sceneId: string, feedback?: string, promptOverride?: string) {
     setGeneratingScene(sceneId);
     setSceneError(null);
+    setFeedbackOpen(null);
     try {
       const stylePrefix = VIDEO_STYLES.find((s) => s.value === videoStyle)?.prefix ?? "";
       const res = await fetch(`/api/production/${id}/generate-scene`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sceneId, stylePrefix, forceKling: budgetMode }),
+        body: JSON.stringify({
+          sceneId,
+          stylePrefix,
+          forceKling: budgetMode,
+          feedback: feedback || undefined,
+          promptOverride: promptOverride || undefined,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -203,11 +213,13 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
             <Button variant="ghost" onClick={() => router.push("/production")}>
               <ArrowLeft className="h-4 w-4 mr-2" /> Back
             </Button>
-            {allScenesGenerated && !video.finalVideoUrl && video.status !== "Assembling" && (
+            {allScenesGenerated && video.status !== "Assembling" && (
               <Button onClick={assembleVideo} disabled={assembling} className="bg-blue-600 hover:bg-blue-700">
                 {assembling
                   ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Assembling (~2 min)...</>
-                  : <><Zap className="h-4 w-4 mr-2" /> Assemble Final Video</>}
+                  : video.finalVideoUrl
+                    ? <><Zap className="h-4 w-4 mr-2" /> Re-assemble</>
+                    : <><Zap className="h-4 w-4 mr-2" /> Assemble Final Video</>}
               </Button>
             )}
             {video.status === "Assembling" && (
@@ -362,68 +374,123 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
 
         {/* Scenes */}
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-zinc-300">Scene Generation</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-zinc-300">Scene Generation</h3>
+            {video.finalVideoUrl && (
+              <span className="text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded">
+                Video assembled — regenerate any scene then re-assemble to update
+              </span>
+            )}
+          </div>
           {scenes.length === 0 && (
             <p className="text-sm text-zinc-500 italic">No scenes found. Ensure script has a scene breakdown.</p>
           )}
           {scenes.map((scene) => {
             const isGenerating = generatingScene === scene.id;
             const clip = scene.generatedClips[0] ?? null;
+            const isFeedbackOpen = feedbackOpen === scene.id;
             return (
-              <Card key={scene.id} className="bg-zinc-900 border-zinc-800">
+              <Card key={scene.id} className={`border ${clip ? "bg-zinc-900 border-zinc-700" : "bg-zinc-900 border-zinc-800"}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded bg-zinc-800 flex items-center justify-center text-xs font-mono text-zinc-400 flex-shrink-0">
-                      {scene.sequenceNumber}
+                    <div className={`w-7 h-7 rounded flex items-center justify-center text-xs font-mono flex-shrink-0 ${clip ? "bg-green-900/40 text-green-400" : "bg-zinc-800 text-zinc-400"}`}>
+                      {clip ? <CheckCircle className="h-3.5 w-3.5" /> : scene.sequenceNumber}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-xs font-medium text-zinc-400">Scene {scene.sequenceNumber}</span>
                         <Badge className={`text-xs ${modelStyle[scene.modelAssigned] ?? "bg-zinc-800 text-zinc-400"}`}>
-                          {scene.modelAssigned}
+                          {budgetMode ? "kling-3.0" : scene.modelAssigned}
                         </Badge>
                         <span className="text-xs text-zinc-500">{scene.duration}s</span>
-                        {sceneStatusIcon[scene.status as keyof typeof sceneStatusIcon] ?? null}
                       </div>
                       <p className="text-sm text-zinc-300 mb-2">{scene.description}</p>
 
-                      {clip ? (
-                        <div className="space-y-2">
-                          {/* Inline video preview */}
+                      {/* Current prompt (collapsible) */}
+                      {scene.prompt && (
+                        <details className="mb-2">
+                          <summary className="text-xs text-zinc-600 cursor-pointer hover:text-zinc-400 select-none">
+                            View AI prompt
+                          </summary>
+                          <p className="text-xs text-zinc-500 mt-1 font-mono leading-relaxed bg-zinc-800/40 rounded p-2">
+                            {scene.prompt}
+                          </p>
+                        </details>
+                      )}
+
+                      {/* Clip preview */}
+                      {clip && !isGenerating && (
+                        <div className="space-y-2 mt-2">
                           <video
                             src={clip.clipUrl}
                             controls
-                            className="w-full max-w-sm rounded-lg border border-zinc-700"
-                            style={{ maxHeight: "180px" }}
+                            className="w-full max-w-md rounded-lg border border-zinc-700"
+                            style={{ maxHeight: "200px" }}
                           />
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <span className="flex items-center gap-1 text-xs text-green-400">
                               <CheckCircle className="h-3 w-3" /> Clip ready · {formatCurrency(clip.cost)}
                             </span>
                             <button
-                              onClick={() => generateScene(scene.id)}
-                              disabled={isGenerating || !!generatingScene}
-                              className="text-xs text-zinc-500 hover:text-zinc-300 underline disabled:opacity-40"
+                              onClick={() => setFeedbackOpen(isFeedbackOpen ? null : scene.id)}
+                              className="text-xs text-zinc-400 hover:text-zinc-200 underline"
                             >
-                              {isGenerating ? "Regenerating..." : "Regenerate"}
+                              Not happy? Give feedback &amp; regenerate
                             </button>
                           </div>
                         </div>
-                      ) : null}
+                      )}
+
+                      {/* Feedback panel */}
+                      {isFeedbackOpen && (
+                        <div className="mt-3 space-y-2 bg-zinc-800/50 rounded-lg p-3 border border-zinc-700">
+                          <p className="text-xs font-medium text-zinc-300">What&apos;s wrong with this clip?</p>
+                          <textarea
+                            className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-xs text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-zinc-500"
+                            rows={2}
+                            placeholder="e.g. Too dark, characters look wrong, camera angle should be wider, add more fire effects..."
+                            value={feedbackText[scene.id] ?? ""}
+                            onChange={(e) => setFeedbackText((p) => ({ ...p, [scene.id]: e.target.value }))}
+                          />
+                          <p className="text-xs font-medium text-zinc-300 pt-1">Or write a custom prompt directly:</p>
+                          <textarea
+                            className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-xs text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-zinc-500"
+                            rows={2}
+                            placeholder="Leave blank to let the system adjust the original prompt based on your feedback above..."
+                            value={customPrompt[scene.id] ?? ""}
+                            onChange={(e) => setCustomPrompt((p) => ({ ...p, [scene.id]: e.target.value }))}
+                          />
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700"
+                              onClick={() => generateScene(scene.id, feedbackText[scene.id], customPrompt[scene.id])}
+                              disabled={isGenerating || !!generatingScene}
+                            >
+                              <Zap className="h-3 w-3 mr-1" /> Regenerate with Feedback
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setFeedbackOpen(null)}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {isGenerating && (
+                        <div className="flex items-center gap-2 mt-2 text-xs text-yellow-400">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Generating clip (~30–60s)...
+                        </div>
+                      )}
                     </div>
                     <div className="flex-shrink-0">
-                      {!clip && (
+                      {!clip && !isGenerating && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => generateScene(scene.id)}
-                          disabled={isGenerating || !!generatingScene}
+                          disabled={!!generatingScene}
                         >
-                          {isGenerating ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Zap className="h-3 w-3 mr-1" />
-                          )}
-                          {isGenerating ? "Generating..." : "Generate"}
+                          <Zap className="h-3 w-3 mr-1" /> Generate
                         </Button>
                       )}
                     </div>

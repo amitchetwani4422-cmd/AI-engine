@@ -9,6 +9,8 @@ const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
   stylePrefix: z.string().optional(),
   forceKling: z.boolean().optional(),
+  feedback: z.string().optional(),
+  promptOverride: z.string().optional(),
 });
 
 export async function POST(
@@ -27,7 +29,7 @@ export async function POST(
       );
     }
 
-    const { sceneId, stylePrefix, forceKling } = parsed.data;
+    const { sceneId, stylePrefix, forceKling, feedback, promptOverride } = parsed.data;
 
     // Check FAL_KEY early with clear error
     if (!process.env.FAL_KEY && !process.env.FAL_API_KEY) {
@@ -52,8 +54,20 @@ export async function POST(
     // forceKling=true (Budget Mode) overrides any Veo assignments — Kling is ~6x cheaper
     const model: VideoModel = forceKling ? 'kling-3.0' : ((scene.modelAssigned ?? 'kling-3.0') as VideoModel);
     const durationSeconds = scene.duration ?? 5;
-    const basePrompt = scene.prompt ?? scene.visualGuidance;
-    const prompt = stylePrefix ? `${stylePrefix} ${basePrompt}` : basePrompt;
+
+    // Build the final prompt: override > feedback-modified > original
+    let prompt: string;
+    if (promptOverride && promptOverride.trim()) {
+      // User wrote their own prompt entirely
+      prompt = promptOverride.trim();
+    } else {
+      const basePrompt = scene.prompt ?? scene.visualGuidance;
+      const feedbackSuffix = feedback?.trim()
+        ? ` [Feedback to incorporate: ${feedback.trim()}]`
+        : '';
+      const styled = stylePrefix ? `${stylePrefix} ${basePrompt}` : basePrompt;
+      prompt = styled + feedbackSuffix;
+    }
 
     // Delete any existing clips for this scene (regenerate case)
     await prisma.generatedClip.deleteMany({ where: { sceneId } });
