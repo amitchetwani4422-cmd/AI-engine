@@ -98,19 +98,37 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [assembleError, setAssembleError] = useState<string | null>(null);
   const generatingRef = useRef(false);
 
-  useEffect(() => {
-    fetchVideo();
-  }, [id]);
-
   async function fetchVideo() {
     try {
       const res = await fetch(`/api/production/${id}`);
       const data = await res.json();
-      if (data && !data.error) setVideo(data);
+      if (data && !data.error) { setVideo(data); return data; }
     } finally {
       setLoading(false);
     }
+    return null;
   }
+
+  // On load: auto-resume polling if page was refreshed during generation
+  useEffect(() => {
+    fetchVideo().then((data) => {
+      if (!data) return;
+      type SceneRow = { id: string; status: string; generatedClips: unknown[] };
+      const inProgress: SceneRow[] = (data.script?.sceneBreakdown ?? []).filter(
+        (s: SceneRow) => s.status === "Generating" && s.generatedClips.length === 0
+      );
+      if (inProgress.length === 0) return;
+      setGeneratingScene(inProgress[0].id);
+      Promise.all(
+        inProgress.map((s) =>
+          pollForClip(s.id).then((ok) => {
+            if (!ok) setSceneError("A scene timed out. Try regenerating it.");
+          })
+        )
+      ).finally(() => setGeneratingScene(null));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Poll for a scene's clip to appear (webhook async flow)
   const pollForClip = useCallback(async (sceneId: string): Promise<boolean> => {
