@@ -6,7 +6,7 @@ import { CHANNELS_CONFIG } from "@/lib/utils";
 // ─────────────────────────────────────────────────────────────────────────────
 
 fal.config({
-  credentials: process.env.FAL_API_KEY!,
+  credentials: process.env.FAL_KEY ?? process.env.FAL_API_KEY,
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

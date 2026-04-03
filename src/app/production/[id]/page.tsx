@@ -74,6 +74,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [video, setVideo] = useState<ProductionVideo | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingScene, setGeneratingScene] = useState<string | null>(null);
+  const [sceneError, setSceneError] = useState<string | null>(null);
   const [movingToQC, setMovingToQC] = useState(false);
   const [assembling, setAssembling] = useState(false);
   const [assembleError, setAssembleError] = useState<string | null>(null);
@@ -94,15 +95,26 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
 
   async function generateScene(sceneId: string) {
     setGeneratingScene(sceneId);
+    setSceneError(null);
     try {
       const res = await fetch(`/api/production/${id}/generate-scene`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sceneId }),
       });
+      const data = await res.json();
       if (res.ok) {
         await fetchVideo();
+      } else {
+        const msg = data?.details ?? data?.error ?? `Error ${res.status}`;
+        setSceneError(
+          msg.includes("FAL") || msg.includes("credentials") || msg.includes("401") || msg.includes("Unauthorized")
+            ? "FAL.AI not configured. Add FAL_KEY to Vercel environment variables to generate video scenes."
+            : msg
+        );
       }
+    } catch {
+      setSceneError("Network error — please try again.");
     } finally {
       setGeneratingScene(null);
     }
@@ -200,6 +212,12 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         }
       />
       <div className="flex-1 overflow-auto p-6">
+        {sceneError && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-start gap-2">
+            <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>{sceneError}</span>
+          </div>
+        )}
         {assembleError && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
             Assembly failed: {assembleError}

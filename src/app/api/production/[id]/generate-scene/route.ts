@@ -27,6 +27,14 @@ export async function POST(
 
     const { sceneId } = parsed.data;
 
+    // Check FAL_KEY early with clear error
+    if (!process.env.FAL_KEY && !process.env.FAL_API_KEY) {
+      return NextResponse.json(
+        { error: 'FAL_KEY not configured. Add FAL_KEY to your Vercel environment variables.' },
+        { status: 500 }
+      );
+    }
+
     const [video, scene] = await Promise.all([
       prisma.video.findUnique({ where: { id: videoId } }),
       prisma.scene.findUnique({ where: { id: sceneId } }),
