@@ -1,13 +1,5 @@
 import { fal } from "@fal-ai/client";
-import { v2 as cloudinary } from "cloudinary";
 import { CHANNELS_CONFIG } from "@/lib/utils";
-
-// Cloudinary config (same creds as ffmpeg-assembler)
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME ?? process.env.CLOUDINARY_URL?.match(/\/\/\w+:\w+@(\w+)/)?.[1],
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Client initialization
@@ -142,26 +134,11 @@ export async function generateVideoScene(
       throw new Error("No video URL returned from FAL.AI");
     }
 
-    // Upload to Cloudinary for permanent CDN URL + better streaming
-    let finalUrl = videoUrl;
-    try {
-      const upload = await cloudinary.uploader.upload(videoUrl, {
-        resource_type: "video",
-        folder: "ai-engine/clips",
-        quality: "auto:best",
-        transformation: [{ quality: "auto:best" }],
-      });
-      finalUrl = upload.secure_url;
-    } catch {
-      // Cloudinary upload failed — fall back to FAL URL
-      console.warn("Cloudinary upload failed, using FAL URL directly");
-    }
-
     const cost = estimateCost(model, duration);
 
     return {
       requestId: result.requestId,
-      videoUrl: finalUrl,
+      videoUrl,
       duration,
       cost,
       model,

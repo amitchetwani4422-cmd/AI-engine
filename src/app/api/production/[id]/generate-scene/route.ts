@@ -1,9 +1,17 @@
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 min — Kling takes 60-120s to generate
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { generateVideoScene } from '@/lib/fal';
 import type { VideoModel } from '@/lib/fal';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
@@ -121,12 +129,26 @@ export async function POST(
       );
     }
 
+    // Try Cloudinary upload for permanent CDN URL (non-blocking — FAL URL used as fallback)
+    let clipUrl = result.videoUrl;
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+      try {
+        const upload = await cloudinary.uploader.upload(result.videoUrl, {
+          resource_type: 'video',
+          folder: 'ai-engine/clips',
+        });
+        clipUrl = upload.secure_url;
+      } catch {
+        console.warn('Cloudinary upload failed — using FAL URL');
+      }
+    }
+
     // Create generated clip
     const clip = await prisma.generatedClip.create({
       data: {
         sceneId,
         videoId,
-        clipUrl: result.videoUrl,
+        clipUrl,
         model,
         prompt,
         duration: durationSeconds,
