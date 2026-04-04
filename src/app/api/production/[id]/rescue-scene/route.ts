@@ -80,6 +80,9 @@ export async function POST(
     const prompt = (inputData.prompt as string) ?? '';
     const cost = parseFloat(((COST_PER_SECOND[model] ?? 0.056) * durationSeconds).toFixed(4));
 
+    // Delete any existing clips for this scene before saving rescued one
+    await prisma.generatedClip.deleteMany({ where: { sceneId } });
+
     // Save the clip
     const clip = await prisma.generatedClip.create({
       data: {

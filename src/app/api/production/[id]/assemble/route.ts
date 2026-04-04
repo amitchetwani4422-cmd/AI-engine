@@ -30,7 +30,15 @@ export async function POST(
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
-    const clips = video.generatedClips;
+    // Deduplicate: one clip per scene (latest wins — handles regenerate/rescue cases)
+    const seenScenes = new Map<string, typeof video.generatedClips[0]>();
+    for (const clip of video.generatedClips) {
+      const existing = seenScenes.get(clip.sceneId);
+      if (!existing || clip.createdAt > existing.createdAt) {
+        seenScenes.set(clip.sceneId, clip);
+      }
+    }
+    const clips = Array.from(seenScenes.values());
 
     if (clips.length === 0) {
       return NextResponse.json(
@@ -45,7 +53,7 @@ export async function POST(
       data: { status: "Assembling" },
     });
 
-    // ── 3. Run FFmpeg assembly ────────────────────────────────────────────────
+    // ── 3. Assemble — sorted by scene sequenceNumber ──────────────────────────
     const clipInputs = clips.map((clip) => ({
       url: clip.clipUrl,
       sequenceNumber: clip.scene?.sequenceNumber ?? 0,
