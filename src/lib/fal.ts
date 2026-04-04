@@ -24,7 +24,7 @@ const FAL_MODEL_IDS: Record<string, string> = {
 };
 
 // Quality keywords automatically appended to every prompt
-const QUALITY_SUFFIX = ", cinematic 1080p, ultra-detailed, sharp focus, professional color grading, no watermark, no artifacts";
+const QUALITY_SUFFIX = ", cinematic 4K, ultra-detailed, razor-sharp focus, professional color grading, smooth motion, no watermark, no text overlays, no artifacts, no compression noise";
 
 const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 2000;
@@ -97,7 +97,7 @@ export async function generateVideoScene(
       prompt: enhancedPrompt,
       duration: klingDuration,
       aspect_ratio: aspectRatio,
-      negative_prompt: negativePrompt ?? "watermark, logo, text overlay, blurry, low quality, compression artifacts, distorted faces",
+      negative_prompt: negativePrompt ?? "watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, floating objects, camera shake, overexposed, washed out colors, ugly, worst quality, bad anatomy, mutation, duplicate subjects, stock footage look",
       ...(referenceImage && { image_url: referenceImage }),
     };
   } else {
