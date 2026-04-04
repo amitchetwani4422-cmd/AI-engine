@@ -7,9 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Star, CheckCircle, RefreshCw, AlertTriangle, XCircle } from "lucide-react";
+import { Loader2, Star, CheckCircle, RefreshCw, AlertTriangle, XCircle, Play } from "lucide-react";
 
-interface Video { id: string; title: string; channelId: string; channel?: { name: string }; status: string; }
+interface Video { id: string; title: string; channelId: string; channel?: { name: string }; status: string; finalVideoUrl?: string; }
 
 const DIMENSIONS = [
   { key: "visualQuality", label: "Visual Quality" },
@@ -114,6 +114,35 @@ function QualityPageInner() {
             {/* Scoring panel */}
             {selectedVideo && !result && (
               <div className="lg:col-span-2 space-y-4">
+                {/* Assembled video player */}
+                {selectedVideo.finalVideoUrl ? (
+                  <div className="rounded-xl overflow-hidden border border-zinc-700 bg-black">
+                    <video
+                      src={selectedVideo.finalVideoUrl}
+                      controls
+                      autoPlay={false}
+                      playsInline
+                      className="w-full max-h-72 object-contain"
+                    />
+                    <div className="px-3 py-2 flex items-center gap-2 bg-zinc-900 border-t border-zinc-800">
+                      <Play className="h-3 w-3 text-green-400" />
+                      <span className="text-xs text-green-400 font-medium">Assembled video ready — watch before scoring</span>
+                      <a
+                        href={selectedVideo.finalVideoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-auto text-xs text-zinc-500 hover:text-zinc-300 underline"
+                      >
+                        Open full screen
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-6 text-center">
+                    <p className="text-sm text-zinc-500">No assembled video yet — go back to Production and click <strong className="text-zinc-300">Assemble Final Video</strong></p>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium text-zinc-300">Scoring: {selectedVideo.title}</h3>
                   <div className={`flex items-center gap-2 ${outcome.color}`}>
