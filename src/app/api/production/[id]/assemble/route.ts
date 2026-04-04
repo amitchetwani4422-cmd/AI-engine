@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // 5 minutes — Vercel Pro / self-hosted
+export const maxDuration = 60; // Cloudinary does the work server-side — no FFmpeg timeout
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
