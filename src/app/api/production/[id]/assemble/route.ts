@@ -12,16 +12,25 @@ export async function POST(
   try {
     const { id: videoId } = await params;
 
-    // ── 1. Load video + approved clips ───────────────────────────────────────
+    // ── 1. Load video scenes + their clips ──────────────────────────────────
+    // Query through scenes (not video.generatedClips) so clips with null videoId
+    // (generated with older code versions) are still included.
     const video = await prisma.video.findUnique({
       where: { id: videoId },
       include: {
-        generatedClips: {
-          where: { status: "Generated" },
+        script: {
           include: {
-            scene: { select: { sequenceNumber: true, duration: true } },
+            sceneBreakdown: {
+              orderBy: { sequenceNumber: "asc" },
+              include: {
+                generatedClips: {
+                  where: { status: "Generated" },
+                  orderBy: { createdAt: "desc" }, // latest first
+                  take: 1, // one clip per scene — handles regenerate/rescue
+                },
+              },
+            },
           },
-          orderBy: { createdAt: "asc" },
         },
       },
     });
@@ -30,15 +39,15 @@ export async function POST(
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
-    // Deduplicate: one clip per scene (latest wins — handles regenerate/rescue cases)
-    const seenScenes = new Map<string, typeof video.generatedClips[0]>();
-    for (const clip of video.generatedClips) {
-      const existing = seenScenes.get(clip.sceneId);
-      if (!existing || clip.createdAt > existing.createdAt) {
-        seenScenes.set(clip.sceneId, clip);
-      }
-    }
-    const clips = Array.from(seenScenes.values());
+    // Build ordered clip list (one per scene, sequence order)
+    const scenes = video.script?.sceneBreakdown ?? [];
+    const clips = scenes
+      .filter((s) => s.generatedClips.length > 0)
+      .map((s) => ({
+        url: s.generatedClips[0].clipUrl,
+        sequenceNumber: s.sequenceNumber,
+        duration: s.duration,
+      }));
 
     if (clips.length === 0) {
       return NextResponse.json(
@@ -47,17 +56,22 @@ export async function POST(
       );
     }
 
+    if (clips.length < scenes.length) {
+      const missing = scenes.filter((s) => s.generatedClips.length === 0).map((s) => s.sequenceNumber);
+      console.warn(`[Assembly] ${missing.length} scene(s) not yet generated: ${missing.join(", ")} — assembling with available clips`);
+    }
+
     // ── 2. Mark video as assembling ──────────────────────────────────────────
     await prisma.video.update({
       where: { id: videoId },
       data: { status: "Assembling" },
     });
 
-    // ── 3. Assemble — sorted by scene sequenceNumber ──────────────────────────
+    // ── 3. Assemble ──────────────────────────────────────────────────────────
     const clipInputs = clips.map((clip) => ({
-      url: clip.clipUrl,
-      sequenceNumber: clip.scene?.sequenceNumber ?? 0,
-      duration: clip.scene?.duration ?? clip.duration,
+      url: clip.url,
+      sequenceNumber: clip.sequenceNumber,
+      duration: clip.duration,
     }));
 
     const result = await assembleVideo(videoId, clipInputs);
