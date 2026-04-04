@@ -99,6 +99,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [assembling, setAssembling] = useState(false);
   const [assembleError, setAssembleError] = useState<string | null>(null);
   const generatingRef = useRef(false);
+  const rescueTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   async function fetchVideo() {
     try {
@@ -110,6 +111,35 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     }
     return null;
   }
+
+  // Auto-rescue a stuck scene: check FAL status, recover clip if done, retry every 2 min if still processing
+  const scheduleAutoRescue = useCallback((sceneId: string) => {
+    if (rescueTimers.current[sceneId]) clearTimeout(rescueTimers.current[sceneId]);
+    rescueTimers.current[sceneId] = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/production/${id}/rescue-scene`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sceneId }),
+        });
+        const data = await res.json();
+        if (data.status === "rescued") {
+          const latest = await fetch(`/api/production/${id}`);
+          const latest_data = await latest.json();
+          if (latest_data && !latest_data.error) setVideo(latest_data);
+          setRescueMsg((p) => ({ ...p, [sceneId]: "" }));
+        } else if (data.status === "still_processing") {
+          setRescueMsg((p) => ({ ...p, [sceneId]: "⏳ FAL still generating — auto-checking in 2 min..." }));
+          scheduleAutoRescue(sceneId); // retry in 2 min
+        } else {
+          // failed or error — leave scene card showing the state
+          setRescueMsg((p) => ({ ...p, [sceneId]: data.error ?? "Could not recover — try Recover Clip button." }));
+        }
+      } catch {
+        scheduleAutoRescue(sceneId); // network blip — retry
+      }
+    }, 120_000); // 2 minutes
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // On load: auto-resume polling if page was refreshed during generation
   useEffect(() => {
@@ -123,12 +153,34 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       setGeneratingScene(inProgress[0].id);
       Promise.all(
         inProgress.map((s) =>
-          pollForClip(s.id).then((ok) => {
-            if (!ok) setSceneError(`scene:${s.id}`);
+          pollForClip(s.id).then(async (ok) => {
+            if (!ok) {
+              // Poll timed out — auto-rescue instead of showing error
+              try {
+                const res = await fetch(`/api/production/${id}/rescue-scene`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ sceneId: s.id }),
+                });
+                const rdata = await res.json();
+                if (rdata.status === "rescued") {
+                  const latest = await fetch(`/api/production/${id}`);
+                  const ldata = await latest.json();
+                  if (ldata && !ldata.error) setVideo(ldata);
+                } else if (rdata.status === "still_processing") {
+                  setRescueMsg((p) => ({ ...p, [s.id]: "⏳ FAL still generating — auto-checking in 2 min..." }));
+                  scheduleAutoRescue(s.id);
+                }
+              } catch { /* network error — scene card shows Recover button */ }
+            }
           })
         )
       ).finally(() => setGeneratingScene(null));
     });
+    return () => {
+      // Cleanup auto-rescue timers on unmount
+      Object.values(rescueTimers.current).forEach(clearTimeout);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -173,7 +225,32 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         // Queued — poll until webhook delivers the clip
         const success = await pollForClip(sceneId);
         if (!success) {
-          setSceneError(`scene:${sceneId}`);
+          // Poll timed out — don't show error yet. Auto-rescue first.
+          // FAL may have finished but webhook couldn't reach us (NEXT_PUBLIC_APP_URL issue).
+          try {
+            const rres = await fetch(`/api/production/${id}/rescue-scene`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sceneId }),
+            });
+            const rdata = await rres.json();
+            if (rdata.status === "rescued") {
+              // Clip recovered silently — no user action needed, queue continues
+              const latest = await fetch(`/api/production/${id}`);
+              const ldata = await latest.json();
+              if (ldata && !ldata.error) setVideo(ldata);
+              return; // don't clear queue — let it continue
+            } else if (rdata.status === "still_processing") {
+              setRescueMsg((p) => ({ ...p, [sceneId]: "⏳ FAL still generating — auto-checking in 2 min..." }));
+              scheduleAutoRescue(sceneId);
+            } else if (rdata.status === "failed") {
+              setRescueMsg((p) => ({ ...p, [sceneId]: "❌ FAL job failed — safe to regenerate (no double charge)." }));
+            } else {
+              setRescueMsg((p) => ({ ...p, [sceneId]: "Could not check status — use Recover Clip button." }));
+            }
+          } catch {
+            setRescueMsg((p) => ({ ...p, [sceneId]: "Network error checking FAL — use Recover Clip button." }));
+          }
           setQueue([]);
           setQueueRunning(false);
         }
@@ -197,7 +274,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       generatingRef.current = false;
       setGeneratingScene(null);
     }
-  }, [id, videoStyle, budgetMode, pollForClip]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, videoStyle, budgetMode, pollForClip, scheduleAutoRescue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Queue processor — runs next scene automatically when one finishes
   useEffect(() => {
@@ -350,7 +427,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         }
       />
       <div className="flex-1 overflow-auto p-6">
-        {sceneError && (
+        {sceneError && !sceneError.startsWith("scene:") && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-start gap-2">
             <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <span>{sceneError}</span>
