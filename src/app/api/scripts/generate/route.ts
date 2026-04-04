@@ -83,32 +83,62 @@ CHANNEL STYLE GUIDE (apply this to every scene prompt):
 ${styleGuide}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-HOW TO WRITE THE SCENE "prompt" FIELD
+STEP 1 — DEFINE THE WORLD SETTING FIRST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Before writing any scenes, define a "worldSetting" — a single paragraph (4-6 sentences) that describes the visual world this entire video takes place in. This ensures ALL scenes look like they belong to the same movie.
+
+worldSetting must cover:
+- TIME PERIOD & LOCATION TYPE: ancient Indian mythological realm / cosmic divine plane / Himalayan peak / celestial court etc.
+- ARCHITECTURAL STYLE: specific type of temples, pillars, carvings, materials (sandstone, black granite, white marble, etc.)
+- RECURRING BACKGROUND ELEMENTS: which elements appear in most scenes (sacred fire, lotuses, rivers, clouds, stars)
+- COLOR PALETTE: the 2-3 dominant colors that define the world (deep indigo + gold + orange / emerald + silver + white etc.)
+- ATMOSPHERE & LIGHTING QUALITY: what kind of light exists in this world (volumetric god rays, soft moonlight, eternal sunset, etc.)
+- SIGNATURE DETAIL: one unique visual signature that appears across scenes for continuity
+
+EXAMPLE worldSetting:
+"An ancient mythological realm existing between the mortal world and the heavens, set in a vast temple complex of black granite carved with intricate bas-relief carvings of celestial battles and divine beings. Sacred fire pits line stone-paved courtyards, lotus flowers float on still reflective pools, and columns of sandstone rise 50 feet tall draped in marigold garlands. The atmosphere is thick with golden divine mist and floating flower petals. The dominant color palette is deep indigo sky, warm amber stone, and radiant gold light. A persistent visual signature: volumetric shafts of golden light breaking through stone archways at 45 degrees, casting long dramatic shadows."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — BACKGROUND DEPTH RULE (every scene)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Every scene background must have 3 depth layers — this creates cinematic depth:
+
+FOREGROUND (closest to camera): atmospheric element — fire, mist, lotus petals, incense smoke, falling flowers, water ripples, candle flames
+MIDGROUND: where the character exists — ground surface, ritual items, surrounding environment
+BACKGROUND: architectural/natural environment — temple walls, mountain peaks, divine sky, cosmic space
+
+BACKGROUND BY SHOT TYPE:
+- Wide/establishing shots: Show all 3 layers fully. Background has maximum architectural/environmental detail.
+- Medium shots (waist-up): Foreground slightly blurred, background softly focused — show 2-3 background elements.
+- Close-up shots (face/hands): Foreground element visible at edge, background is a soft bokeh of the world's color palette — DON'T put busy detail behind a face.
+- Action shots: Dynamic background matching the motion — swirling elements, motion blur on bg while subject is sharp.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — HOW TO WRITE THE SCENE "prompt" FIELD
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Each scene's "prompt" is sent directly to Kling 1.6 Pro AI video model.
-It MUST follow this 4-part structure in 3-5 sentences:
+It MUST follow this 4-part structure in 3-5 sentences. ALL backgrounds must reference the worldSetting.
 
 PART 1 — SUBJECT & ACTION: Who/what is in frame, what they are doing.
   Include: character appearance, clothing details, colors, expression, specific gesture or motion.
   BAD: "A god appears with divine energy"
   GOOD: "Lord Vishnu stands with all four arms raised, holding a golden conch, chakra, lotus, and mace, his dark blue skin draped in golden silk dhoti and jeweled crown, eyes open with calm cosmic authority"
 
-PART 2 — ENVIRONMENT & SETTING: Where is this happening? Be architectural/atmospheric.
-  Include: location, time of day, background layers, specific elements (temples, mountains, fire, water).
+PART 2 — 3-LAYER ENVIRONMENT: Foreground atmospheric element + midground character space + background architecture. Must be consistent with worldSetting.
   BAD: "Epic background with temples"
-  GOOD: "Towering ancient stone temples with carved bas-relief rise behind him, sacred river Ganga reflects orange sunset, flower petals drift through the air, devotees bow in foreground"
+  GOOD: "Drifting marigold petals and incense smoke blur in the foreground; the character stands on sacred stone steps engraved with lotus motifs; behind them, the black granite temple towers rise against a deep indigo sky, shafts of golden light breaking through the archway at 45 degrees"
 
 PART 3 — CAMERA MOVEMENT: Exact shot type and movement arc.
   Include: starting position → movement → ending position.
   BAD: "Wide shot"
-  GOOD: "Camera begins at low ground angle looking up, slowly cranes upward and back to reveal the full divine figure against the vast temple sky"
+  GOOD: "Camera begins at low ground angle looking up through the foreground flame, slowly cranes upward and back to reveal the full divine figure against the temple spire and sky"
 
-PART 4 — LIGHTING & ATMOSPHERE: Specific light quality, color palette, volumetric effects.
+PART 4 — LIGHTING & ATMOSPHERE: Specific light quality, color palette, volumetric effects. Must match worldSetting palette.
   BAD: "Dramatic lighting"
-  GOOD: "Golden hour warm amber light from the right, volumetric god rays piercing through pillars, deep purple and orange sky gradient, sacred fire glow casting shadows on stone"
+  GOOD: "Warm amber torch light from below right, volumetric gold god rays from upper left piercing through stone archway, deep indigo and amber color palette, sacred fire glow reflecting off wet stone"
 
 EXAMPLE COMPLETE PROMPT (mythology scene):
-"Lord Shiva sits in cross-legged meditation on a flat rock atop Mount Kailash, ash-white skin with blue throat, crescent moon nestled in matted locks, third eye faintly glowing amber, draped in tiger skin with serpent coiled at wrist. Snow-capped Himalayan peaks extend endlessly under a pre-dawn indigo sky blazing with stars and the Milky Way galaxy; a small sacred fire burns in the foreground. The camera starts at ground level behind the flame and slowly cranes upward in a majestic arc, revealing the full divine silhouette against the cosmos. Deep blue and silver moonlight dominates, with soft warm fire glow creating contrast in the foreground; subtle aurora-like divine energy pulses around the figure."
+"Lord Shiva sits in cross-legged meditation on a flat rock, ash-white skin with sacred blue throat, crescent moon in matted locks, third eye faintly glowing amber, draped in tiger skin with serpent coiled at wrist, expression of absolute stillness. In the foreground, a sacred fire burns in a stone pit, its smoke drifting upward; Shiva sits in the midground on the rock plateau; behind him, the black granite temple walls of the divine complex rise against a pre-dawn indigo sky blazing with stars. The camera starts at ground level behind the sacred flame and slowly cranes upward in a majestic arc, the fire framing the lower portion as the full divine figure is revealed against the cosmos. Deep blue and silver moonlight dominates the scene, with warm amber fire glow creating contrast in the foreground; volumetric golden shafts break through the temple archway to the left, casting long diagonal shadows on stone."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RESPONSE FORMAT
@@ -117,6 +147,7 @@ RESPONSE FORMAT
   "hook": "Opening 3-second hook narration — must grab attention immediately",
   "fullScript": "Complete narration script with all scene dialogues/VO from start to finish",
   "narrationDraft": "Natural, conversational speaking version of the full narration",
+  "worldSetting": "4-6 sentence paragraph defining the visual world: time period, architecture style, recurring elements, color palette, atmosphere, signature detail — used for background consistency across ALL scenes",
   "titleOptions": ["Click-worthy title 1", "Click-worthy title 2", "Click-worthy title 3"],
   "thumbnailConcepts": [
     "Thumbnail 1: specific composition — foreground subject, background, text overlay color/position, emotional expression",
@@ -131,8 +162,8 @@ RESPONSE FORMAT
       "modelAssigned": "kling-3.0",
       "routingReason": "Brief reason for model choice",
       "cameraDirection": "Specific shot type + movement, e.g. 'Low-angle push-in from knee level rising to medium shot as subject stands'",
-      "visualGuidance": "Art direction: dominant colors, mood, key visual elements that define this scene's look",
-      "prompt": "FULL 3-5 SENTENCE KLING PROMPT following the 4-part structure above — subject+action, environment, camera movement, lighting+atmosphere"
+      "visualGuidance": "Art direction: dominant colors, mood, background depth layers (foreground/midground/background), key visual elements",
+      "prompt": "FULL 3-5 SENTENCE KLING PROMPT — Part1: subject+action, Part2: 3-layer environment referencing worldSetting, Part3: camera movement, Part4: lighting+atmosphere matching worldSetting palette"
     }
   ]
 }
@@ -146,7 +177,12 @@ DURATION:
 - 10 seconds: sweeping establishing shots, epic reveals, slow cinematic moments
 - Target 55–70 seconds total across all scenes (aim for 8–12 scenes)
 
-CRITICAL: Every single "prompt" field must follow the 4-part structure. No one-liners. No vague descriptions. Minimum 3 full sentences.`;
+CRITICAL RULES:
+1. Write worldSetting FIRST before any scenes — every scene background must be consistent with it
+2. Every "prompt" must have 3-layer background: foreground atmospheric element, midground character space, background architecture/nature
+3. Close-up shots: simple bokeh background in world's color palette — no busy details behind faces
+4. Wide shots: full 3-layer environment with maximum architectural detail
+5. Minimum 3 full sentences per prompt. No one-liners. No vague terms like "epic" or "dramatic" alone.`;
 
     const rawContent = await generateWithModel(model, systemPrompt, userPrompt, 8192);
 
@@ -154,6 +190,7 @@ CRITICAL: Every single "prompt" field must follow the 4-part structure. No one-l
       hook: string;
       fullScript: string;
       narrationDraft: string;
+      worldSetting?: string;
       titleOptions: string[];
       thumbnailConcepts: string[];
       musicMood: string;
@@ -181,6 +218,7 @@ CRITICAL: Every single "prompt" field must follow the 4-part structure. No one-l
           hook: scriptData.hook,
           fullScript: scriptData.fullScript,
           narrationDraft: scriptData.narrationDraft,
+          description: scriptData.worldSetting ?? null, // world setting for background consistency
           titleOptions: scriptData.titleOptions,
           thumbnailConcepts: scriptData.thumbnailConcepts,
           musicMood: scriptData.musicMood,

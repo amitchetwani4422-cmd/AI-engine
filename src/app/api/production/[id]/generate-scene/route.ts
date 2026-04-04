@@ -55,7 +55,10 @@ export async function POST(
     }
 
     const [video, scene] = await Promise.all([
-      prisma.video.findUnique({ where: { id: videoId } }),
+      prisma.video.findUnique({
+        where: { id: videoId },
+        include: { script: { select: { description: true } } }, // description = worldSetting
+      }),
       prisma.scene.findUnique({ where: { id: sceneId } }),
     ]);
 
@@ -64,6 +67,9 @@ export async function POST(
 
     const model: VideoModel = forceKling ? 'kling-3.0' : ((scene.modelAssigned ?? 'kling-3.0') as VideoModel);
     const durationSeconds = scene.duration ?? 5;
+
+    // World setting: shared background/environment description for visual consistency across all scenes
+    const worldSetting = video.script?.description?.trim() ?? '';
 
     // Build prompt — combine all scene data for the richest possible input
     let basePrompt: string;
@@ -80,11 +86,16 @@ export async function POST(
         ? `${corePrompt} Camera: ${camDir}.`
         : corePrompt;
 
+      // Inject world setting as background context so every scene stays visually consistent
+      // Only add if the scene doesn't already reference the world in detail
+      const worldContext = worldSetting && withCamera.length < 600
+        ? ` Background world context: ${worldSetting}`
+        : '';
+
       // Style prefix: weave it in naturally rather than prepending a tag dump
-      // e.g. "Epic Indian mythology art style, divine VFX, <scene prompt>"
       const withStyle = stylePrefix?.trim()
-        ? `${stylePrefix.replace(/,$/, '').trim()}, ${withCamera}`
-        : withCamera;
+        ? `${stylePrefix.replace(/,$/, '').trim()}, ${withCamera}${worldContext}`
+        : `${withCamera}${worldContext}`;
 
       // Feedback: rephrase as a natural instruction rather than a bracketed note
       const feedbackSuffix = feedback?.trim()
