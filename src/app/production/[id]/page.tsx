@@ -48,6 +48,9 @@ interface Scene {
   duration: number;
   modelAssigned: string;
   routingReason?: string;
+  cameraDirection?: string;
+  visualGuidance?: string;
+  prompt?: string;
   status: string;
   generatedClips: GeneratedClip[];
 }
@@ -63,6 +66,7 @@ interface ProductionVideo {
   veoCost: number;
   qualityScore?: number;
   formatVariant: string;
+  finalVideoUrl?: string;
   script?: { sceneBreakdown: Scene[] };
   generatedClips: GeneratedClip[];
 }
@@ -100,6 +104,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [assembleError, setAssembleError] = useState<string | null>(null);
   const generatingRef = useRef(false);
   const rescueTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const queueCancelledRef = useRef(false);
 
   async function fetchVideo() {
     try {
@@ -276,16 +281,6 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     }
   }, [id, videoStyle, budgetMode, pollForClip, scheduleAutoRescue]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Queue processor — runs next scene automatically when one finishes
-  useEffect(() => {
-    if (!queueRunning || generatingRef.current || queue.length === 0) return;
-    const [next, ...rest] = queue;
-    setQueue(rest);
-    runScene(next).then(() => {
-      if (rest.length === 0) setQueueRunning(false);
-    });
-  }, [queue, queueRunning, runScene]);
-
   function generateScene(sceneId: string, feedback?: string, promptOverride?: string) {
     runScene(sceneId, feedback, promptOverride);
   }
@@ -293,15 +288,27 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   function startQueue(sceneIds: string[]) {
     if (sceneIds.length === 0) return;
     setSceneError(null);
-    const [first, ...rest] = sceneIds;
-    setQueue(rest);
     setQueueRunning(true);
-    runScene(first).then(() => {
-      if (rest.length === 0) setQueueRunning(false);
-    });
+    queueCancelledRef.current = false;
+    setQueue(sceneIds);
+
+    // Simple sequential async loop — no useEffect needed.
+    // useEffect approach had a bug: after runScene finished, none of the effect
+    // dependencies changed so React never re-fired it to pick up the next scene.
+    (async () => {
+      for (const sceneId of sceneIds) {
+        if (queueCancelledRef.current) break;
+        setQueue((prev) => prev.filter((id) => id !== sceneId));
+        await runScene(sceneId);
+      }
+      setQueueRunning(false);
+      setQueue([]);
+      queueCancelledRef.current = false;
+    })();
   }
 
   function cancelQueue() {
+    queueCancelledRef.current = true;
     setQueue([]);
     setQueueRunning(false);
   }
