@@ -5,6 +5,11 @@ import prisma from '@/lib/prisma';
 
 fal.config({ credentials: process.env.FAL_KEY ?? process.env.FAL_API_KEY });
 
+const FAL_MODEL_IDS: Record<string, string> = {
+  'kling-3.0': 'fal-ai/kling-video/v1.6/pro/text-to-video',
+  'veo-3.1':   'fal-ai/veo2',
+};
+
 const COST_PER_SECOND: Record<string, number> = {
   'kling-3.0': 0.056,
   'veo-3.1': 0.08,
@@ -38,10 +43,12 @@ export async function POST(
       return NextResponse.json({ error: 'No FAL request ID stored — job was submitted before webhook support was added. Please regenerate.' }, { status: 400 });
     }
 
-    // Check FAL queue status
+    const modelId = FAL_MODEL_IDS[job.model ?? 'kling-3.0'];
+
+    // Check FAL queue status — correct API: fal.queue.status(modelId, { requestId })
     let falStatus: string;
     try {
-      const status = await fal.queue.status(falRequestId, { logs: false });
+      const status = await fal.queue.status(modelId, { requestId: falRequestId, logs: false });
       falStatus = status.status as string;
     } catch {
       return NextResponse.json({ error: 'Could not reach FAL to check job status. Try again in a moment.' }, { status: 502 });
@@ -59,8 +66,8 @@ export async function POST(
       return NextResponse.json({ status: 'failed', message: 'FAL job failed. You can regenerate safely — no double charge.' });
     }
 
-    // COMPLETED — fetch the result
-    const result = await fal.queue.result(falRequestId);
+    // COMPLETED — fetch the result: correct API: fal.queue.result(modelId, { requestId })
+    const result = await fal.queue.result(modelId, { requestId: falRequestId });
     const output = result.data as { video?: { url: string }; video_url?: string; videos?: Array<{ url: string }> };
     const videoUrl = output?.video?.url ?? output?.video_url ?? output?.videos?.[0]?.url;
 

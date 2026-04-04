@@ -46,13 +46,9 @@ export async function POST(
       );
     }
 
+    // Webhook URL is optional — if not set, FAL still processes the job and
+    // the client will recover the result via polling + rescue-scene endpoint
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl) {
-      return NextResponse.json(
-        { error: 'NEXT_PUBLIC_APP_URL not set. Add it to Vercel environment variables (e.g. https://your-app.vercel.app).' },
-        { status: 500 }
-      );
-    }
 
     const [video, scene] = await Promise.all([
       prisma.video.findUnique({
@@ -121,11 +117,13 @@ export async function POST(
         }
       : { prompt, aspect_ratio: '16:9' };
 
-    // Submit to FAL queue — returns immediately with a request_id
-    const { request_id } = await fal.queue.submit(FAL_MODEL_IDS[model], {
-      input,
-      webhookUrl: `${appUrl}/api/webhooks/fal`,
-    });
+    // Submit to FAL queue — returns immediately with a request_id.
+    // Webhook is optional: if NEXT_PUBLIC_APP_URL is set FAL calls us back automatically;
+    // otherwise the client polls and rescue-scene fetches the result directly.
+    const submitOptions: { input: typeof input; webhookUrl?: string } = { input };
+    if (appUrl) submitOptions.webhookUrl = `${appUrl}/api/webhooks/fal`;
+
+    const { request_id } = await fal.queue.submit(FAL_MODEL_IDS[model], submitOptions);
 
     // Save job with FAL request_id so webhook can look it up
     await prisma.generationJob.create({
