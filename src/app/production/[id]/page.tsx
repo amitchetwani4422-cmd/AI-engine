@@ -86,6 +86,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [loading, setLoading] = useState(true);
   const [generatingScene, setGeneratingScene] = useState<string | null>(null);
   const [sceneError, setSceneError] = useState<string | null>(null);
+  const [rescuingScene, setRescuingScene] = useState<string | null>(null);
+  const [rescueMsg, setRescueMsg] = useState<Record<string, string>>({});
   const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("mythology-fantasy");
   const [budgetMode, setBudgetMode] = useState(true);
   const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
@@ -122,7 +124,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       Promise.all(
         inProgress.map((s) =>
           pollForClip(s.id).then((ok) => {
-            if (!ok) setSceneError("A scene timed out. Try regenerating it.");
+            if (!ok) setSceneError(`scene:${s.id}`);
           })
         )
       ).finally(() => setGeneratingScene(null));
@@ -171,7 +173,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         // Queued — poll until webhook delivers the clip
         const success = await pollForClip(sceneId);
         if (!success) {
-          setSceneError("Scene generation timed out or failed. Check FAL dashboard.");
+          setSceneError(`scene:${sceneId}`);
           setQueue([]);
           setQueueRunning(false);
         }
@@ -225,6 +227,33 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   function cancelQueue() {
     setQueue([]);
     setQueueRunning(false);
+  }
+
+  async function rescueScene(sceneId: string) {
+    setRescuingScene(sceneId);
+    setRescueMsg((p) => ({ ...p, [sceneId]: "Checking FAL status..." }));
+    try {
+      const res = await fetch(`/api/production/${id}/rescue-scene`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sceneId }),
+      });
+      const data = await res.json();
+      if (data.status === "rescued") {
+        await fetchVideo();
+        setRescueMsg((p) => ({ ...p, [sceneId]: "" }));
+      } else if (data.status === "still_processing") {
+        setRescueMsg((p) => ({ ...p, [sceneId]: "⏳ Still generating on FAL. Check again in 1–2 min." }));
+      } else if (data.status === "failed") {
+        setRescueMsg((p) => ({ ...p, [sceneId]: "❌ FAL job failed. Safe to regenerate (no double charge)." }));
+      } else {
+        setRescueMsg((p) => ({ ...p, [sceneId]: data.error ?? "Could not recover. Try regenerating." }));
+      }
+    } catch {
+      setRescueMsg((p) => ({ ...p, [sceneId]: "Network error. Try again." }));
+    } finally {
+      setRescuingScene(null);
+    }
   }
 
   async function assembleVideo() {
@@ -594,7 +623,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
 
                       {isGenerating && (
                         <div className="flex items-center gap-2 mt-2 text-xs text-yellow-400">
-                          <Loader2 className="h-3 w-3 animate-spin" /> Generating clip (~30–60s)...
+                          <Loader2 className="h-3 w-3 animate-spin" /> Generating on FAL (~60–120s)... page refresh safe
                         </div>
                       )}
                       {isQueued && !isGenerating && (
@@ -602,9 +631,44 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                           <Clock className="h-3 w-3" /> Queued — waiting for previous scene to finish
                         </div>
                       )}
+                      {/* Stuck scene — webhook didn't deliver */}
+                      {!clip && !isGenerating && !isQueued && scene.status === "Generating" && (
+                        <div className="mt-2 space-y-1.5">
+                          <div className="flex items-center gap-2 text-xs text-orange-400">
+                            <Clock className="h-3 w-3" />
+                            <span>Waiting for result — FAL may still be processing</span>
+                          </div>
+                          {rescueMsg[scene.id] && (
+                            <p className="text-xs text-zinc-400">{rescueMsg[scene.id]}</p>
+                          )}
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                              onClick={() => rescueScene(scene.id)}
+                              disabled={rescuingScene === scene.id}
+                            >
+                              {rescuingScene === scene.id
+                                ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Checking...</>
+                                : "🔍 Recover Clip"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs text-zinc-500"
+                              onClick={() => generateScene(scene.id)}
+                              disabled={!!generatingScene || queueRunning}
+                              title="Only regenerate if Recover Clip confirms the FAL job failed"
+                            >
+                              Regenerate anyway
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex-shrink-0">
-                      {!clip && !isGenerating && !isQueued && (
+                      {!clip && !isGenerating && !isQueued && scene.status !== "Generating" && (
                         <Button
                           size="sm"
                           variant="outline"
