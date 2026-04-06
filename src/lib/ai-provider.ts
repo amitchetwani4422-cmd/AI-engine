@@ -7,7 +7,7 @@ import OpenAI from "openai";
 
 export type AIModel =
   | "claude-sonnet-4-6"
-  | "claude-haiku-4-5"
+  | "claude-haiku-4-5-20251001"
   | "gpt-4o"
   | "gpt-4o-mini";
 
@@ -26,7 +26,7 @@ export const AI_MODEL_OPTIONS: AIModelOption[] = [
     badge: "Best quality",
   },
   {
-    value: "claude-haiku-4-5",
+    value: "claude-haiku-4-5-20251001",
     label: "Claude Haiku 4.5",
     provider: "anthropic",
     badge: "Fast & cheap",
@@ -45,7 +45,7 @@ export const AI_MODEL_OPTIONS: AIModelOption[] = [
   },
 ];
 
-export const DEFAULT_IDEA_MODEL: AIModel = "claude-haiku-4-5";
+export const DEFAULT_IDEA_MODEL: AIModel = "claude-haiku-4-5-20251001";
 export const DEFAULT_SCRIPT_MODEL: AIModel = "claude-sonnet-4-6";
 
 // ─────────────────────────────────────────────────────────────────────────────

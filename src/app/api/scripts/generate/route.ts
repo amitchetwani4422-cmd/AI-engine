@@ -198,11 +198,16 @@ CRITICAL RULES:
     };
 
     try {
-      const jsonStr = rawContent.trim().replace(/^```json\n?|\n?```$/g, '');
-      scriptData = JSON.parse(jsonStr);
+      const stripped = rawContent
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+      const startIndex = stripped.indexOf("{");
+      if (startIndex === -1) throw new Error("No JSON object found");
+      scriptData = JSON.parse(stripped.slice(startIndex));
     } catch {
       return NextResponse.json(
-        { error: 'Failed to parse AI script response', raw: rawContent },
+        { error: 'Failed to parse AI script response', raw: rawContent.slice(0, 500) },
         { status: 500 }
       );
     }
@@ -215,13 +220,13 @@ CRITICAL RULES:
           channelId,
           title: idea.title,
           formatVariant: formatVariant ?? 'Standard',
-          hook: scriptData.hook,
-          fullScript: scriptData.fullScript,
-          narrationDraft: scriptData.narrationDraft,
-          description: scriptData.worldSetting ?? null, // world setting for background consistency
-          titleOptions: scriptData.titleOptions,
-          thumbnailConcepts: scriptData.thumbnailConcepts,
-          musicMood: scriptData.musicMood,
+          hook: scriptData.hook ?? "",
+          fullScript: scriptData.fullScript ?? "",
+          narrationDraft: scriptData.narrationDraft ?? null,
+          description: scriptData.worldSetting ?? null,
+          titleOptions: scriptData.titleOptions ?? [],
+          thumbnailConcepts: (scriptData.thumbnailConcepts ?? []) as string[],
+          musicMood: scriptData.musicMood ?? "Epic orchestral",
           status: 'Draft',
         },
       });
