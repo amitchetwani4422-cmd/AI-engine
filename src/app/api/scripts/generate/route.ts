@@ -29,6 +29,28 @@ interface SceneData {
   prompt?: string | null;
 }
 
+const GeneratedSceneSchema = z.object({
+  sequenceNumber: z.number().int().optional(),
+  description: z.string().optional(),
+  duration: z.number().int().optional(),
+  modelAssigned: z.string().optional(),
+  routingReason: z.string().optional(),
+  cameraDirection: z.string().optional(),
+  visualGuidance: z.string().optional(),
+  prompt: z.string().nullable().optional(),
+});
+
+const GeneratedScriptSchema = z.object({
+  hook: z.string().optional(),
+  fullScript: z.string().optional(),
+  narrationDraft: z.string().optional(),
+  worldSetting: z.string().optional(),
+  titleOptions: z.array(z.string()).optional(),
+  thumbnailConcepts: z.array(z.string()).optional(),
+  musicMood: z.string().optional(),
+  scenes: z.array(GeneratedSceneSchema).optional(),
+});
+
 
 function detectRelevantKandas(tags: string[], title: string, description: string) {
   const corpus = `${tags.join(" ")} ${title} ${description}`.toLowerCase();
@@ -254,20 +276,11 @@ CRITICAL RULES:
 
     const rawContent = await generateWithModel(model, systemPrompt, userPrompt, 8192);
 
-    let scriptData: {
-      hook: string;
-      fullScript: string;
-      narrationDraft: string;
-      worldSetting?: string;
-      titleOptions: string[];
-      thumbnailConcepts: string[];
-      musicMood: string;
-      scenes: SceneData[];
-    };
+    let scriptData: z.infer<typeof GeneratedScriptSchema>;
 
     try {
       const jsonStr = rawContent.trim().replace(/^```json\n?|\n?```$/g, '');
-      scriptData = JSON.parse(jsonStr);
+      scriptData = GeneratedScriptSchema.parse(JSON.parse(jsonStr));
     } catch {
       return NextResponse.json(
         { error: 'Failed to parse AI script response', raw: rawContent },
@@ -283,28 +296,28 @@ CRITICAL RULES:
           channelId,
           title: idea.title,
           formatVariant: formatVariant ?? 'Standard',
-          hook: scriptData.hook,
-          fullScript: scriptData.fullScript,
-          narrationDraft: scriptData.narrationDraft,
+          hook: scriptData.hook?.trim() || idea.title,
+          fullScript: scriptData.fullScript?.trim() || `Narration outline for: ${idea.title}`,
+          narrationDraft: scriptData.narrationDraft?.trim() || scriptData.fullScript?.trim() || idea.description,
           description: scriptData.worldSetting ?? null, // world setting for background consistency
-          titleOptions: scriptData.titleOptions,
-          thumbnailConcepts: scriptData.thumbnailConcepts,
-          musicMood: scriptData.musicMood,
+          titleOptions: scriptData.titleOptions?.length ? scriptData.titleOptions : [idea.title],
+          thumbnailConcepts: scriptData.thumbnailConcepts?.length ? scriptData.thumbnailConcepts : ["Mythology character close-up with dramatic lighting"],
+          musicMood: scriptData.musicMood?.trim() || "Epic orchestral devotional score",
           status: 'Draft',
         },
       });
 
       if (scriptData.scenes && scriptData.scenes.length > 0) {
         await tx.scene.createMany({
-          data: scriptData.scenes.map((scene) => ({
+          data: scriptData.scenes.map((scene, index) => ({
             scriptId: newScript.id,
-            sequenceNumber: scene.sequenceNumber,
-            description: scene.description,
-            duration: scene.duration,
-            modelAssigned: scene.modelAssigned,
-            routingReason: scene.routingReason,
-            cameraDirection: scene.cameraDirection,
-            visualGuidance: scene.visualGuidance,
+            sequenceNumber: scene.sequenceNumber ?? index + 1,
+            description: scene.description?.trim() || `Scene ${index + 1} for ${idea.title}`,
+            duration: scene.duration ?? 5,
+            modelAssigned: scene.modelAssigned ?? "kling-3.0",
+            routingReason: scene.routingReason ?? "Default mythology cinematic routing",
+            cameraDirection: scene.cameraDirection ?? "Medium push-in",
+            visualGuidance: scene.visualGuidance ?? "Maintain world-setting continuity and devotional tone",
             prompt: scene.prompt ?? null,
             characterIds: [],
           })),
