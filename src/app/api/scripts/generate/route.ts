@@ -18,17 +18,6 @@ const GenerateScriptSchema = z.object({
   aiModel: z.string().optional(),
 });
 
-interface SceneData {
-  sequenceNumber: number;
-  description: string;
-  duration: number;
-  modelAssigned: string;
-  routingReason: string;
-  cameraDirection: string;
-  visualGuidance: string;
-  prompt?: string | null;
-}
-
 const GeneratedSceneSchema = z.object({
   sequenceNumber: z.number().int().optional(),
   description: z.string().optional(),
@@ -50,6 +39,30 @@ const GeneratedScriptSchema = z.object({
   musicMood: z.string().optional(),
   scenes: z.array(GeneratedSceneSchema).optional(),
 });
+
+function buildFallbackScriptData(idea: { title: string; description: string }) {
+  return {
+    hook: `What can we learn from ${idea.title}?`,
+    fullScript: `${idea.description}\n\nThis is an auto-generated fallback draft because AI output was unavailable or invalid.`,
+    narrationDraft: idea.description,
+    worldSetting: "A respectful mythological visual world with temple architecture, devotional atmosphere, and cinematic continuity.",
+    titleOptions: [idea.title, `${idea.title} Explained`, `The Story of ${idea.title}`],
+    thumbnailConcepts: ["Heroic mythology character close-up with dramatic temple background lighting"],
+    musicMood: "Epic devotional orchestral score",
+    scenes: [
+      {
+        sequenceNumber: 1,
+        description: `Intro scene for ${idea.title}`,
+        duration: 5,
+        modelAssigned: "kling-3.0",
+        routingReason: "Fallback default routing",
+        cameraDirection: "Slow push-in from wide to medium",
+        visualGuidance: "Temple architecture, warm god rays, devotional tone",
+        prompt: `A cinematic opening visual of ${idea.title}, with temple architecture, sacred atmosphere, and respectful devotional tone.`,
+      },
+    ],
+  };
+}
 
 
 function detectRelevantKandas(tags: string[], title: string, description: string) {
@@ -274,18 +287,23 @@ CRITICAL RULES:
 5. Minimum 3 full sentences per prompt. No one-liners. No vague terms like "epic" or "dramatic" alone.
 6. If mythology faithfulness context is present, it is mandatory and overrides creative liberties that break canon.`;
 
-    const rawContent = await generateWithModel(model, systemPrompt, userPrompt, 8192);
+    let rawContent = "";
+    let aiGenerationError: string | null = null;
+    try {
+      rawContent = await generateWithModel(model, systemPrompt, userPrompt, 8192);
+    } catch (error) {
+      aiGenerationError = error instanceof Error ? error.message : String(error);
+    }
 
     let scriptData: z.infer<typeof GeneratedScriptSchema>;
+    let usedFallback = false;
 
     try {
       const jsonStr = rawContent.trim().replace(/^```json\n?|\n?```$/g, '');
       scriptData = GeneratedScriptSchema.parse(JSON.parse(jsonStr));
     } catch {
-      return NextResponse.json(
-        { error: 'Failed to parse AI script response', raw: rawContent },
-        { status: 500 }
-      );
+      scriptData = buildFallbackScriptData(idea);
+      usedFallback = true;
     }
 
     // Create script with scenes in a transaction
@@ -342,7 +360,16 @@ CRITICAL RULES:
       },
     });
 
-    return NextResponse.json(fullScript, { status: 201 });
+    return NextResponse.json(
+      {
+        ...fullScript,
+        generationMeta: {
+          usedFallback: usedFallback || !!aiGenerationError || !rawContent.trim(),
+          aiGenerationError,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error('POST /api/scripts/generate error:', msg);
