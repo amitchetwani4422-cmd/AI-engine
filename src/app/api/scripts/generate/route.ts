@@ -4,6 +4,12 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { generateWithModel, DEFAULT_SCRIPT_MODEL } from "@/lib/ai-provider";
 import type { AIModel } from "@/lib/ai-provider";
+import {
+  RAMAYANA_KANDAS,
+  RAMAYANA_KNOWLEDGE_BASE,
+  getKandaKnowledge,
+  isRamayanaContext,
+} from "@/lib/mythology-knowledge";
 
 const GenerateScriptSchema = z.object({
   ideaId: z.string().min(1),
@@ -21,6 +27,87 @@ interface SceneData {
   cameraDirection: string;
   visualGuidance: string;
   prompt?: string | null;
+}
+
+const GeneratedSceneSchema = z.object({
+  sequenceNumber: z.number().int().optional(),
+  description: z.string().optional(),
+  duration: z.number().int().optional(),
+  modelAssigned: z.string().optional(),
+  routingReason: z.string().optional(),
+  cameraDirection: z.string().optional(),
+  visualGuidance: z.string().optional(),
+  prompt: z.string().nullable().optional(),
+});
+
+const GeneratedScriptSchema = z.object({
+  hook: z.string().optional(),
+  fullScript: z.string().optional(),
+  narrationDraft: z.string().optional(),
+  worldSetting: z.string().optional(),
+  titleOptions: z.array(z.string()).optional(),
+  thumbnailConcepts: z.array(z.string()).optional(),
+  musicMood: z.string().optional(),
+  scenes: z.array(GeneratedSceneSchema).optional(),
+});
+
+
+function detectRelevantKandas(tags: string[], title: string, description: string) {
+  const corpus = `${tags.join(" ")} ${title} ${description}`.toLowerCase();
+  return RAMAYANA_KANDAS.filter((kanda) =>
+    corpus.includes(kanda.toLowerCase()) || corpus.includes(kanda.toLowerCase().replace(/\s+/g, "-"))
+  );
+}
+
+function buildMythologyContext(tags: string[], title: string, description: string): string {
+  if (!isRamayanaContext(tags, `${title} ${description}`)) {
+    return "";
+  }
+
+  const corpus = `${tags.join(" ")} ${title} ${description}`.toLowerCase();
+  const relevantCharacters = RAMAYANA_KNOWLEDGE_BASE.characterProfiles.filter((character) =>
+    [character.name, ...character.aliases].some((name) => corpus.includes(name.toLowerCase()))
+  );
+
+  const characters = (relevantCharacters.length > 0 ? relevantCharacters : RAMAYANA_KNOWLEDGE_BASE.characterProfiles)
+    .map((character) => `- ${character.name}: ${character.visualDescription} Traits: ${character.canonicalTraits.join(", ")}. Prompt rule: ${character.promptBlock}`)
+    .join("\n");
+
+  const relevantKandas = detectRelevantKandas(tags, title, description);
+  const mantraSource = relevantKandas.length > 0
+    ? relevantKandas.flatMap((kandaName) => getKandaKnowledge(kandaName)?.recommendedMantras ?? [])
+    : Object.values(RAMAYANA_KNOWLEDGE_BASE.kandas).flatMap((kanda) => kanda.recommendedMantras);
+
+  const mantraBank = Array.from(new Map(mantraSource.map((m) => [m.id, m])).values())
+    .slice(0, 8)
+    .map((mantra) => `- ${mantra.sanskrit} | ${mantra.transliteration} | ${mantra.translation}`)
+    .join("\n");
+
+  const scopedAccuracyRules = [
+    ...RAMAYANA_KNOWLEDGE_BASE.globalAccuracyRules,
+    ...(relevantKandas.length > 0
+      ? relevantKandas.flatMap((kandaName) => getKandaKnowledge(kandaName)?.mustIncludeThemes ?? []).map((theme) => `Ensure ${theme}`)
+      : []),
+  ];
+
+  return `MYTHOLOGY FAITHFULNESS CONTEXT (MANDATORY FOR THIS IDEA):
+- Treat this as Ramayana-canon storytelling with devotional respect.
+- Maintain traditional character relationships, chronology, and dharmic tone.
+
+RELEVANT KANDA FOCUS:
+${relevantKandas.length > 0 ? relevantKandas.map((k) => `- ${k}`).join("\n") : "- Not explicitly tagged; remain canon-safe across all Kandas."}
+
+CANONICAL CHARACTER VISUAL PROFILES:
+${characters}
+
+ACCURACY RULES:
+${scopedAccuracyRules.map((rule) => `- ${rule}`).join("\n")}
+
+FORBIDDEN MISTAKES:
+${RAMAYANA_KNOWLEDGE_BASE.forbiddenMistakes.map((rule) => `- ${rule}`).join("\n")}
+
+SANSKRIT MANTRA BANK (use 1-2 where narratively appropriate):
+${mantraBank}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -78,6 +165,8 @@ FORMAT: ${formatVariant ?? 'Standard'}
 VIDEO IDEA: ${idea.title}
 DESCRIPTION: ${idea.description}
 TAGS: ${idea.tags.join(', ')}
+
+${buildMythologyContext(idea.tags, idea.title, idea.description)}
 
 CHANNEL STYLE GUIDE (apply this to every scene prompt):
 ${styleGuide}
@@ -182,24 +271,16 @@ CRITICAL RULES:
 2. Every "prompt" must have 3-layer background: foreground atmospheric element, midground character space, background architecture/nature
 3. Close-up shots: simple bokeh background in world's color palette — no busy details behind faces
 4. Wide shots: full 3-layer environment with maximum architectural detail
-5. Minimum 3 full sentences per prompt. No one-liners. No vague terms like "epic" or "dramatic" alone.`;
+5. Minimum 3 full sentences per prompt. No one-liners. No vague terms like "epic" or "dramatic" alone.
+6. If mythology faithfulness context is present, it is mandatory and overrides creative liberties that break canon.`;
 
     const rawContent = await generateWithModel(model, systemPrompt, userPrompt, 8192);
 
-    let scriptData: {
-      hook: string;
-      fullScript: string;
-      narrationDraft: string;
-      worldSetting?: string;
-      titleOptions: string[];
-      thumbnailConcepts: string[];
-      musicMood: string;
-      scenes: SceneData[];
-    };
+    let scriptData: z.infer<typeof GeneratedScriptSchema>;
 
     try {
       const jsonStr = rawContent.trim().replace(/^```json\n?|\n?```$/g, '');
-      scriptData = JSON.parse(jsonStr);
+      scriptData = GeneratedScriptSchema.parse(JSON.parse(jsonStr));
     } catch {
       return NextResponse.json(
         { error: 'Failed to parse AI script response', raw: rawContent },
@@ -215,28 +296,28 @@ CRITICAL RULES:
           channelId,
           title: idea.title,
           formatVariant: formatVariant ?? 'Standard',
-          hook: scriptData.hook,
-          fullScript: scriptData.fullScript,
-          narrationDraft: scriptData.narrationDraft,
+          hook: scriptData.hook?.trim() || idea.title,
+          fullScript: scriptData.fullScript?.trim() || `Narration outline for: ${idea.title}`,
+          narrationDraft: scriptData.narrationDraft?.trim() || scriptData.fullScript?.trim() || idea.description,
           description: scriptData.worldSetting ?? null, // world setting for background consistency
-          titleOptions: scriptData.titleOptions,
-          thumbnailConcepts: scriptData.thumbnailConcepts,
-          musicMood: scriptData.musicMood,
+          titleOptions: scriptData.titleOptions?.length ? scriptData.titleOptions : [idea.title],
+          thumbnailConcepts: scriptData.thumbnailConcepts?.length ? scriptData.thumbnailConcepts : ["Mythology character close-up with dramatic lighting"],
+          musicMood: scriptData.musicMood?.trim() || "Epic orchestral devotional score",
           status: 'Draft',
         },
       });
 
       if (scriptData.scenes && scriptData.scenes.length > 0) {
         await tx.scene.createMany({
-          data: scriptData.scenes.map((scene) => ({
+          data: scriptData.scenes.map((scene, index) => ({
             scriptId: newScript.id,
-            sequenceNumber: scene.sequenceNumber,
-            description: scene.description,
-            duration: scene.duration,
-            modelAssigned: scene.modelAssigned,
-            routingReason: scene.routingReason,
-            cameraDirection: scene.cameraDirection,
-            visualGuidance: scene.visualGuidance,
+            sequenceNumber: scene.sequenceNumber ?? index + 1,
+            description: scene.description?.trim() || `Scene ${index + 1} for ${idea.title}`,
+            duration: scene.duration ?? 5,
+            modelAssigned: scene.modelAssigned ?? "kling-3.0",
+            routingReason: scene.routingReason ?? "Default mythology cinematic routing",
+            cameraDirection: scene.cameraDirection ?? "Medium push-in",
+            visualGuidance: scene.visualGuidance ?? "Maintain world-setting continuity and devotional tone",
             prompt: scene.prompt ?? null,
             characterIds: [],
           })),
@@ -246,7 +327,7 @@ CRITICAL RULES:
       // Update idea status
       await tx.idea.update({
         where: { id: ideaId },
-        data: { status: 'ScriptGenerated' },
+        data: { status: 'InProduction' },
       });
 
       return newScript;

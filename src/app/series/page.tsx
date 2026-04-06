@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Layers, Plus, Loader2, ChevronDown, ChevronUp, Film, CheckCircle, Clock, Edit } from "lucide-react";
+import { Layers, Plus, Loader2, ChevronDown, ChevronUp, Film, CheckCircle, Clock, WandSparkles } from "lucide-react";
 
 interface Episode { id: string; episodeNumber: number; title: string; status: string; summary?: string; videoId?: string; }
 interface Series {
@@ -19,6 +19,24 @@ interface Series {
   continuityLog?: string; episodes: Episode[];
 }
 interface Channel { id: string; name: string; }
+interface GeneratedArcEpisode {
+  ideaId: string;
+  episodeId: string;
+  title: string;
+  episodeNumber: number;
+  summary?: string;
+  mantraSanskrit?: string;
+}
+
+const RAMAYANA_KANDAS = [
+  "Bala Kanda",
+  "Ayodhya Kanda",
+  "Aranya Kanda",
+  "Kishkindha Kanda",
+  "Sundara Kanda",
+  "Yuddha Kanda",
+  "Uttara Kanda",
+] as const;
 
 const episodeStatusIcon: Record<string, React.ReactNode> = {
   Planned: <Clock className="h-3 w-3 text-zinc-500" />,
@@ -33,9 +51,13 @@ export default function SeriesPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showAddEp, setShowAddEp] = useState<string | null>(null);
+  const [showGenerateArc, setShowGenerateArc] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", channelId: "", description: "" });
   const [epForm, setEpForm] = useState({ title: "", summary: "", episodeNumber: 1 });
+  const [arcForm, setArcForm] = useState({ kandaName: "Bala Kanda", episodeCount: 5 });
   const [creating, setCreating] = useState(false);
+  const [generatingArc, setGeneratingArc] = useState(false);
+  const [generatedEpisodesBySeries, setGeneratedEpisodesBySeries] = useState<Record<string, GeneratedArcEpisode[]>>({});
 
   useEffect(() => {
     fetch("/api/channels").then((r) => r.json()).then((d) => setChannels(Array.isArray(d) ? d : []));
@@ -76,6 +98,31 @@ export default function SeriesPage() {
     fetchSeries();
   }
 
+  async function generateArc(seriesId: string) {
+    setGeneratingArc(true);
+    try {
+      const response = await fetch(`/api/series/${seriesId}/generate-arc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(arcForm),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to generate arc");
+      }
+
+      setGeneratedEpisodesBySeries((prev) => ({ ...prev, [seriesId]: payload.episodes ?? [] }));
+      setShowGenerateArc(null);
+      await fetchSeries();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate arc";
+      alert(message);
+    } finally {
+      setGeneratingArc(false);
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <Header
@@ -98,6 +145,8 @@ export default function SeriesPage() {
               const published = s.episodes.filter((e) => e.status === "Published").length;
               const inProd = s.episodes.filter((e) => e.status === "In Production").length;
               const planned = s.episodes.filter((e) => e.status === "Planned").length;
+              const generated = generatedEpisodesBySeries[s.id] ?? [];
+
               return (
                 <Card key={s.id} className="bg-zinc-900 border-zinc-800">
                   <CardContent className="p-4">
@@ -134,6 +183,7 @@ export default function SeriesPage() {
                             <p className="text-xs text-zinc-300">{s.continuityLog}</p>
                           </div>
                         )}
+
                         <div className="space-y-2 mb-3">
                           {s.episodes.map((ep) => (
                             <div key={ep.id} className="flex items-center gap-3 bg-zinc-800/40 rounded-lg px-3 py-2">
@@ -148,9 +198,37 @@ export default function SeriesPage() {
                             </div>
                           ))}
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => { setShowAddEp(s.id); setEpForm({ ...epForm, episodeNumber: s.episodes.length + 1 }); }}>
-                          <Plus className="h-3 w-3 mr-1" /> Add Episode
-                        </Button>
+
+                        {generated.length > 0 && (
+                          <div className="rounded-lg border border-emerald-800/50 bg-emerald-900/20 p-3 mb-3">
+                            <p className="text-xs font-semibold text-emerald-300 mb-2">Generated Arc Episodes</p>
+                            <div className="space-y-1.5">
+                              {generated.map((ep) => (
+                                <div key={ep.episodeId} className="text-xs text-emerald-200">
+                                  <p>E{ep.episodeNumber}: {ep.title}</p>
+                                  {ep.summary && <p className="text-emerald-300/90 mt-0.5">{ep.summary}</p>}
+                                  {ep.mantraSanskrit && <p className="text-emerald-400/90 mt-0.5">Mantra: {ep.mantraSanskrit}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" onClick={() => { setShowAddEp(s.id); setEpForm({ ...epForm, episodeNumber: s.episodes.length + 1 }); }}>
+                            <Plus className="h-3 w-3 mr-1" /> Add Episode
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white"
+                            onClick={() => {
+                              setShowGenerateArc(s.id);
+                              setArcForm({ ...arcForm, episodeCount: Math.min(8, Math.max(3, s.episodes.length + 1)) });
+                            }}
+                          >
+                            <WandSparkles className="h-3 w-3 mr-1" /> Generate Arc
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -210,6 +288,41 @@ export default function SeriesPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowAddEp(null)}>Cancel</Button>
             <Button onClick={() => showAddEp && addEpisode(showAddEp)} disabled={!epForm.title}>Add Episode</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!showGenerateArc} onOpenChange={() => setShowGenerateArc(null)}>
+        <DialogContent className="bg-zinc-900 border-zinc-800">
+          <DialogHeader><DialogTitle>Generate Arc</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Kanda</Label>
+              <Select value={arcForm.kandaName} onValueChange={(value) => setArcForm({ ...arcForm, kandaName: value })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {RAMAYANA_KANDAS.map((kanda) => (
+                    <SelectItem key={kanda} value={kanda}>{kanda}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Episode Count: {arcForm.episodeCount}</Label>
+              <Input
+                type="range"
+                min={1}
+                max={15}
+                value={arcForm.episodeCount}
+                onChange={(e) => setArcForm({ ...arcForm, episodeCount: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowGenerateArc(null)} disabled={generatingArc}>Cancel</Button>
+            <Button onClick={() => showGenerateArc && generateArc(showGenerateArc)} disabled={generatingArc}>
+              {generatingArc && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Generate
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
