@@ -4,7 +4,12 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { generateWithModel, DEFAULT_SCRIPT_MODEL } from "@/lib/ai-provider";
 import type { AIModel } from "@/lib/ai-provider";
-import { RAMAYANA_KNOWLEDGE_BASE, isRamayanaContext } from "@/lib/mythology-knowledge";
+import {
+  RAMAYANA_KANDAS,
+  RAMAYANA_KNOWLEDGE_BASE,
+  getKandaKnowledge,
+  isRamayanaContext,
+} from "@/lib/mythology-knowledge";
 
 const GenerateScriptSchema = z.object({
   ideaId: z.string().min(1),
@@ -25,30 +30,56 @@ interface SceneData {
 }
 
 
+function detectRelevantKandas(tags: string[], title: string, description: string) {
+  const corpus = `${tags.join(" ")} ${title} ${description}`.toLowerCase();
+  return RAMAYANA_KANDAS.filter((kanda) =>
+    corpus.includes(kanda.toLowerCase()) || corpus.includes(kanda.toLowerCase().replace(/\s+/g, "-"))
+  );
+}
+
 function buildMythologyContext(tags: string[], title: string, description: string): string {
   if (!isRamayanaContext(tags, `${title} ${description}`)) {
     return "";
   }
 
-  const characters = RAMAYANA_KNOWLEDGE_BASE.characterProfiles
+  const corpus = `${tags.join(" ")} ${title} ${description}`.toLowerCase();
+  const relevantCharacters = RAMAYANA_KNOWLEDGE_BASE.characterProfiles.filter((character) =>
+    [character.name, ...character.aliases].some((name) => corpus.includes(name.toLowerCase()))
+  );
+
+  const characters = (relevantCharacters.length > 0 ? relevantCharacters : RAMAYANA_KNOWLEDGE_BASE.characterProfiles)
     .map((character) => `- ${character.name}: ${character.visualDescription} Traits: ${character.canonicalTraits.join(", ")}. Prompt rule: ${character.promptBlock}`)
     .join("\n");
 
-  const mantraBank = Object.values(RAMAYANA_KNOWLEDGE_BASE.kandas)
-    .flatMap((kanda) => kanda.recommendedMantras)
+  const relevantKandas = detectRelevantKandas(tags, title, description);
+  const mantraSource = relevantKandas.length > 0
+    ? relevantKandas.flatMap((kandaName) => getKandaKnowledge(kandaName)?.recommendedMantras ?? [])
+    : Object.values(RAMAYANA_KNOWLEDGE_BASE.kandas).flatMap((kanda) => kanda.recommendedMantras);
+
+  const mantraBank = Array.from(new Map(mantraSource.map((m) => [m.id, m])).values())
     .slice(0, 8)
     .map((mantra) => `- ${mantra.sanskrit} | ${mantra.transliteration} | ${mantra.translation}`)
     .join("\n");
+
+  const scopedAccuracyRules = [
+    ...RAMAYANA_KNOWLEDGE_BASE.globalAccuracyRules,
+    ...(relevantKandas.length > 0
+      ? relevantKandas.flatMap((kandaName) => getKandaKnowledge(kandaName)?.mustIncludeThemes ?? []).map((theme) => `Ensure ${theme}`)
+      : []),
+  ];
 
   return `MYTHOLOGY FAITHFULNESS CONTEXT (MANDATORY FOR THIS IDEA):
 - Treat this as Ramayana-canon storytelling with devotional respect.
 - Maintain traditional character relationships, chronology, and dharmic tone.
 
+RELEVANT KANDA FOCUS:
+${relevantKandas.length > 0 ? relevantKandas.map((k) => `- ${k}`).join("\n") : "- Not explicitly tagged; remain canon-safe across all Kandas."}
+
 CANONICAL CHARACTER VISUAL PROFILES:
 ${characters}
 
 ACCURACY RULES:
-${RAMAYANA_KNOWLEDGE_BASE.globalAccuracyRules.map((rule) => `- ${rule}`).join("\n")}
+${scopedAccuracyRules.map((rule) => `- ${rule}`).join("\n")}
 
 FORBIDDEN MISTAKES:
 ${RAMAYANA_KNOWLEDGE_BASE.forbiddenMistakes.map((rule) => `- ${rule}`).join("\n")}

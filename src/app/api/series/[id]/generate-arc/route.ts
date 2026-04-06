@@ -191,6 +191,8 @@ Rules:
         episodeId: string;
         title: string;
         episodeNumber: number;
+        summary: string;
+        mantraSanskrit: string;
       }>;
 
       for (const ep of episodes) {
@@ -232,6 +234,8 @@ Rules:
           episodeId: episode.id,
           title: cleanTitle,
           episodeNumber: ep.episodeNumber,
+          summary: cleanSummary,
+          mantraSanskrit: ep.mantra.sanskrit,
         });
       }
 

@@ -24,6 +24,8 @@ interface GeneratedArcEpisode {
   episodeId: string;
   title: string;
   episodeNumber: number;
+  summary?: string;
+  mantraSanskrit?: string;
 }
 
 const RAMAYANA_KANDAS = [
@@ -202,9 +204,11 @@ export default function SeriesPage() {
                             <p className="text-xs font-semibold text-emerald-300 mb-2">Generated Arc Episodes</p>
                             <div className="space-y-1.5">
                               {generated.map((ep) => (
-                                <p key={ep.episodeId} className="text-xs text-emerald-200">
-                                  E{ep.episodeNumber}: {ep.title}
-                                </p>
+                                <div key={ep.episodeId} className="text-xs text-emerald-200">
+                                  <p>E{ep.episodeNumber}: {ep.title}</p>
+                                  {ep.summary && <p className="text-emerald-300/90 mt-0.5">{ep.summary}</p>}
+                                  {ep.mantraSanskrit && <p className="text-emerald-400/90 mt-0.5">Mantra: {ep.mantraSanskrit}</p>}
+                                </div>
                               ))}
                             </div>
                           </div>
