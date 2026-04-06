@@ -4,11 +4,11 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 
 const AddEpisodeSchema = z.object({
-  ideaId: z.string().optional(),
-  videoId: z.string().optional(),
   episodeNumber: z.number().int().optional(),
-  title: z.string().optional(),
-  notes: z.string().optional(),
+  title: z.string().min(1),
+  summary: z.string().optional(),
+  status: z.string().optional(),
+  videoId: z.string().optional(),
 });
 
 export async function GET(
@@ -26,25 +26,6 @@ export async function GET(
     const episodes = await prisma.episode.findMany({
       where: { seriesId: id },
       orderBy: { episodeNumber: 'asc' },
-      include: {
-        video: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            qualityScore: true,
-            klingCost: true,
-            veoCost: true,
-            analytics: {
-              select: {
-                views: true,
-                watchTimeHours: true,
-                classification: true,
-              },
-            },
-          },
-        },
-      },
     });
 
     return NextResponse.json(episodes);
@@ -91,15 +72,11 @@ export async function POST(
     const episode = await prisma.episode.create({
       data: {
         seriesId: id,
-        videoId: parsed.data.videoId ?? null,
         episodeNumber,
-        title: parsed.data.title ?? `Episode ${episodeNumber}`,
-        summary: parsed.data.notes ?? '',
-      },
-      include: {
-        video: {
-          select: { id: true, title: true, status: true },
-        },
+        title: parsed.data.title,
+        summary: parsed.data.summary ?? '',
+        status: parsed.data.status ?? 'Planned',
+        videoId: parsed.data.videoId ?? null,
       },
     });
 

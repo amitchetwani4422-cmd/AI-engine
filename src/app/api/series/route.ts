@@ -7,10 +7,7 @@ const CreateSeriesSchema = z.object({
   channelId: z.string().min(1),
   name: z.string().min(1),
   description: z.string().optional(),
-  characterId: z.string().optional(),
-  format: z.string().optional(),
-  targetEpisodes: z.number().int().optional(),
-  tags: z.array(z.string()).optional(),
+  characterIds: z.array(z.string()).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -26,8 +23,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       include: {
         channel: { select: { id: true, name: true } },
-        character: { select: { id: true, name: true } },
-        _count: { select: { episodes: true } },
+        episodes: { orderBy: { episodeNumber: 'asc' } },
       },
     });
 
@@ -64,16 +60,13 @@ export async function POST(request: NextRequest) {
       data: {
         channelId: parsed.data.channelId,
         name: parsed.data.name,
-        description: parsed.data.description ?? null,
-        characterId: parsed.data.characterId ?? null,
-        format: parsed.data.format ?? null,
-        targetEpisodes: parsed.data.targetEpisodes ?? null,
-        tags: parsed.data.tags ?? [],
+        description: parsed.data.description ?? '',
+        characterIds: parsed.data.characterIds ?? [],
         status: 'Active',
       },
       include: {
         channel: { select: { id: true, name: true } },
-        character: { select: { id: true, name: true } },
+        episodes: true,
       },
     });
 
