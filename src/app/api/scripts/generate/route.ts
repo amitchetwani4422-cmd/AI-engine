@@ -314,7 +314,7 @@ CRITICAL RULES:
       // Update idea status
       await tx.idea.update({
         where: { id: ideaId },
-        data: { status: 'ScriptGenerated' },
+        data: { status: 'InProduction' },
       });
 
       return newScript;
