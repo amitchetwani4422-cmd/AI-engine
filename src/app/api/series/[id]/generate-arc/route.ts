@@ -17,17 +17,42 @@ const GenerateArcSchema = z.object({
   aiModel: z.string().optional(),
 });
 
-interface GeneratedArcEpisode {
-  episodeNumber: number;
-  title: string;
-  summary: string;
-  keyStoryBeats: string[];
-  mantra: {
-    sanskrit: string;
-    transliteration: string;
-    meaning: string;
-  };
-  tags: string[];
+const GeneratedEpisodeSchema = z.object({
+  episodeNumber: z.number().int(),
+  title: z.string().min(1),
+  summary: z.string().min(1),
+  keyStoryBeats: z.array(z.string()).default([]),
+  mantra: z.object({
+    sanskrit: z.string().min(1),
+    transliteration: z.string().min(1),
+    meaning: z.string().min(1),
+  }),
+  tags: z.array(z.string()).default([]),
+});
+
+const GeneratedArcSchema = z.object({
+  episodes: z.array(GeneratedEpisodeSchema).min(1),
+});
+
+type GeneratedArcEpisode = z.infer<typeof GeneratedEpisodeSchema>;
+
+function normalizeKandaTag(kandaName: RamayanaKandaName): string {
+  return kandaName.toLowerCase().replace(/\s+/g, "-");
+}
+
+function normalizeEpisodes(
+  generatedEpisodes: GeneratedArcEpisode[],
+  startEpisode: number,
+  count: number
+): GeneratedArcEpisode[] {
+  return generatedEpisodes.slice(0, count).map((ep, idx) => ({
+    ...ep,
+    episodeNumber: startEpisode + idx,
+    title: ep.title.trim(),
+    summary: ep.summary.trim(),
+    keyStoryBeats: ep.keyStoryBeats.map((beat) => beat.trim()).filter(Boolean),
+    tags: ep.tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean),
+  }));
 }
 
 export async function POST(
@@ -71,6 +96,7 @@ export async function POST(
     }
 
     const startEpisode = (series.episodes[0]?.episodeNumber ?? 0) + 1;
+    const kandaTag = normalizeKandaTag(kandaName);
 
     const systemPrompt = `You are a Ramayana canon consultant and screenplay architect.
 Always return valid JSON only, no markdown.
@@ -134,7 +160,7 @@ Return this JSON format:
         "transliteration": "...",
         "meaning": "..."
       },
-      "tags": ["ramayana", "${kandaName.toLowerCase()}", "mythology"]
+      "tags": ["ramayana", "${kandaTag}", "mythology"]
     }
   ]
 }
@@ -144,36 +170,39 @@ Rules:
 2) Stick ONLY to ${kandaName} events; no cross-kanda spoilers unless in ending teaser.
 3) Every summary must include at least one named canonical character.
 4) Every mantra must be copied accurately from provided list.
-5) Tags must include ramayana, mythology, and ${kandaName.toLowerCase()}.`;
+5) Tags must include ramayana, mythology, and ${kandaTag}.`;
 
     const raw = await generateWithModel(model, systemPrompt, userPrompt, 8192);
 
-    let generated: { episodes: GeneratedArcEpisode[] };
+    let generatedEpisodes: GeneratedArcEpisode[];
     try {
       const json = raw.trim().replace(/^```json\n?|\n?```$/g, "");
-      generated = JSON.parse(json);
+      const parsedGenerated = GeneratedArcSchema.parse(JSON.parse(json));
+      generatedEpisodes = parsedGenerated.episodes;
     } catch {
       return NextResponse.json({ error: "Failed to parse AI output", raw }, { status: 500 });
     }
 
-    const episodes = Array.isArray(generated.episodes) ? generated.episodes.slice(0, episodeCount) : [];
-    if (episodes.length === 0) {
-      return NextResponse.json({ error: "AI returned no episodes", raw }, { status: 500 });
-    }
+    const episodes = normalizeEpisodes(generatedEpisodes, startEpisode, episodeCount);
 
     const created = await prisma.$transaction(async (tx) => {
-      const createdRows = [] as Array<{ ideaId: string; episodeId: string; title: string; episodeNumber: number }>;
+      const createdRows = [] as Array<{
+        ideaId: string;
+        episodeId: string;
+        title: string;
+        episodeNumber: number;
+      }>;
 
       for (const ep of episodes) {
-        const cleanTitle = ep.title?.trim() || `Episode ${ep.episodeNumber}`;
-        const cleanSummary = ep.summary?.trim() || "";
-        const tags = Array.from(new Set(["ramayana", "mythology", kandaName.toLowerCase(), ...(ep.tags ?? [])]));
+        const cleanTitle = ep.title || `Episode ${ep.episodeNumber}`;
+        const cleanSummary = ep.summary || "";
+        const tags = Array.from(new Set(["ramayana", "mythology", kandaTag, ...ep.tags]));
 
         const idea = await tx.idea.create({
           data: {
             channelId: series.channelId,
             title: cleanTitle,
-            description: `${cleanSummary}\n\nStory Beats: ${(ep.keyStoryBeats ?? []).join(" | ")}\nMantra: ${ep.mantra?.sanskrit ?? ""}`,
+            description: `${cleanSummary}\n\nStory Beats: ${ep.keyStoryBeats.join(" | ")}\nMantra: ${ep.mantra.sanskrit}`,
             type: "series",
             format: "episodic",
             tags,
@@ -190,7 +219,7 @@ Rules:
             status: "Planned",
             characterArcs: {
               kanda: kandaName,
-              storyBeats: ep.keyStoryBeats ?? [],
+              storyBeats: ep.keyStoryBeats,
               mantra: ep.mantra,
               accuracyCheckpoint: "Validated against Ramayana knowledge rules",
               linkedIdeaId: idea.id,
