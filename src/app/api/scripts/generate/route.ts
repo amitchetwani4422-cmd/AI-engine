@@ -4,6 +4,7 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { generateWithModel, DEFAULT_SCRIPT_MODEL } from "@/lib/ai-provider";
 import type { AIModel } from "@/lib/ai-provider";
+import { RAMAYANA_KNOWLEDGE_BASE, isRamayanaContext } from "@/lib/mythology-knowledge";
 
 const GenerateScriptSchema = z.object({
   ideaId: z.string().min(1),
@@ -21,6 +22,39 @@ interface SceneData {
   cameraDirection: string;
   visualGuidance: string;
   prompt?: string | null;
+}
+
+
+function buildMythologyContext(tags: string[], title: string, description: string): string {
+  if (!isRamayanaContext(tags, `${title} ${description}`)) {
+    return "";
+  }
+
+  const characters = RAMAYANA_KNOWLEDGE_BASE.characterProfiles
+    .map((character) => `- ${character.name}: ${character.visualDescription} Traits: ${character.canonicalTraits.join(", ")}. Prompt rule: ${character.promptBlock}`)
+    .join("\n");
+
+  const mantraBank = Object.values(RAMAYANA_KNOWLEDGE_BASE.kandas)
+    .flatMap((kanda) => kanda.recommendedMantras)
+    .slice(0, 8)
+    .map((mantra) => `- ${mantra.sanskrit} | ${mantra.transliteration} | ${mantra.translation}`)
+    .join("\n");
+
+  return `MYTHOLOGY FAITHFULNESS CONTEXT (MANDATORY FOR THIS IDEA):
+- Treat this as Ramayana-canon storytelling with devotional respect.
+- Maintain traditional character relationships, chronology, and dharmic tone.
+
+CANONICAL CHARACTER VISUAL PROFILES:
+${characters}
+
+ACCURACY RULES:
+${RAMAYANA_KNOWLEDGE_BASE.globalAccuracyRules.map((rule) => `- ${rule}`).join("\n")}
+
+FORBIDDEN MISTAKES:
+${RAMAYANA_KNOWLEDGE_BASE.forbiddenMistakes.map((rule) => `- ${rule}`).join("\n")}
+
+SANSKRIT MANTRA BANK (use 1-2 where narratively appropriate):
+${mantraBank}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -78,6 +112,8 @@ FORMAT: ${formatVariant ?? 'Standard'}
 VIDEO IDEA: ${idea.title}
 DESCRIPTION: ${idea.description}
 TAGS: ${idea.tags.join(', ')}
+
+${buildMythologyContext(idea.tags, idea.title, idea.description)}
 
 CHANNEL STYLE GUIDE (apply this to every scene prompt):
 ${styleGuide}
@@ -182,7 +218,8 @@ CRITICAL RULES:
 2. Every "prompt" must have 3-layer background: foreground atmospheric element, midground character space, background architecture/nature
 3. Close-up shots: simple bokeh background in world's color palette — no busy details behind faces
 4. Wide shots: full 3-layer environment with maximum architectural detail
-5. Minimum 3 full sentences per prompt. No one-liners. No vague terms like "epic" or "dramatic" alone.`;
+5. Minimum 3 full sentences per prompt. No one-liners. No vague terms like "epic" or "dramatic" alone.
+6. If mythology faithfulness context is present, it is mandatory and overrides creative liberties that break canon.`;
 
     const rawContent = await generateWithModel(model, systemPrompt, userPrompt, 8192);
 
