@@ -72,8 +72,9 @@ model Idea {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  channel Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  scripts Script[]
+  channel  Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  scripts  Script[]
+  episodes Episode[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -244,6 +245,7 @@ model Video {
   script         Script?          @relation(fields: [scriptId], references: [id], onDelete: SetNull)
   generatedClips GeneratedClip[]
   analytics      VideoAnalytics?
+  episodes       Episode[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -275,10 +277,11 @@ model Series {
   id             String   @id @default(cuid())
   channelId      String
   name           String
-  description    String
+  description    String   @default("")
   characterIds   String[]
   status         String   @default("Active")
   continuityLog  String?  @db.Text
+  kanda          String?  // Bala | Ayodhya | Aranya | Kishkindha | Sundara | Yuddha | Uttara
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -296,12 +299,41 @@ model Episode {
   title         String
   status        String   @default("Planned")
   characterArcs Json?
-  summary       String
+  summary       String   @default("")
   videoId       String?
+  ideaId        String?
+  scriptId      String?
+  storyBeatId   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  series    Series              @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  video     Video?              @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  idea      Idea?               @relation(fields: [ideaId], references: [id], onDelete: SetNull)
+  storyBeat RamayanaStoryBeat?  @relation(fields: [storyBeatId], references: [id], onDelete: SetNull)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RAMAYANA STORY BEAT (Knowledge Base)
+// ─────────────────────────────────────────────────────────────────────────────
+model RamayanaStoryBeat {
+  id             String   @id @default(cuid())
+  kanda          String   // Bala | Ayodhya | Aranya | Kishkindha | Sundara | Yuddha | Uttara
+  kandaNumber    Int      // 1–7
+  beatNumber     Int      // within kanda
+  globalSequence Int      @unique
+  titleHindi     String
+  summaryHindi   String   @db.Text
+  storyPoints    String[] // key narrative beats in Hindi
+  characters     String[] // character names involved
+  keyMantra      String?  // Sanskrit shloka/mantra
+  mantraHindi    String?  // Hindi meaning
+  hookLine       String   // opening hook for the short
+  emotionalTone  String
+  visualTone     String
+  createdAt      DateTime @default(now())
+
+  episodes Episode[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
