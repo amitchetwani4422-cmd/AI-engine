@@ -1055,6 +1055,100 @@ async function main() {
     console.log(`  + Beat ${beat.globalSequence}: ${beat.titleHindi}`);
   }
 
+  // ── Sundara Kanda (44–55) ─────────────────────────────────────────────────
+  console.log("\nSeeding Sundara Kanda story beats...");
+  const sundaraBeats = [
+    {
+      kanda: "Sundara", kandaNumber: 5, beatNumber: 1, globalSequence: 44,
+      titleHindi: "लंका में प्रवेश",
+      summaryHindi: "हनुमान रात के अंधेरे में लंका में घुसे। छोटा रूप धारण किया। सोने की लंका का वैभव देखा। रावण के महल, सेना और किलेबंदी देखी।",
+      storyPoints: ["लघु रूप धारण करना", "रात में लंका प्रवेश", "स्वर्ण लंका का वैभव", "रावण के महल का दर्शन", "खोज शुरू"],
+      characters: ["हनुमान"],
+      keyMantra: null, mantraHindi: null,
+      hookLine: "सोने की लंका — और उसमें घुसा एक छोटा सा वानर...",
+      emotionalTone: "साहस, विस्मय, सतर्कता",
+      visualTone: "रात में चमकती स्वर्ण लंका, हनुमान का लघु रूप, पहरेदार",
+    },
+    {
+      kanda: "Sundara", kandaNumber: 5, beatNumber: 2, globalSequence: 45,
+      titleHindi: "सीता की खोज",
+      summaryHindi: "हनुमान ने पूरी लंका खोजी — रावण का महल, अंतःपुर, हर कोना। अंत में अशोक वाटिका में एक दुबली-पतली, मैली वस्त्र पहने स्त्री दिखी।",
+      storyPoints: ["पूरी लंका की खोज", "रावण के अंतःपुर में", "अशोक वाटिका पहुँचना", "सीता का दर्शन", "पहचान का क्षण"],
+      characters: ["हनुमान", "सीता"],
+      keyMantra: "जानकी जीवनं नमामि",
+      mantraHindi: "जानकी के प्राण राम में हैं — हनुमान ने उन्हें दुख में देखा",
+      hookLine: "स्वर्ण नगरी में एक टूटी हुई देवी...",
+      emotionalTone: "करुणा, पहचान, दुख",
+      visualTone: "फूलों में बैठी अकेली सीता, मैले वस्त्र, राक्षसियों की निगरानी",
+    },
+    {
+      kanda: "Sundara", kandaNumber: 5, beatNumber: 3, globalSequence: 46,
+      titleHindi: "हनुमान-सीता संवाद",
+      summaryHindi: "हनुमान ने पेड़ पर बैठकर राम कथा सुनाई। सीता चौंकीं। हनुमान उतरे, राम की अंगूठी दी। सीता ने पहचाना। दोनों की आँखों में आँसू आए।",
+      storyPoints: ["पेड़ पर बैठकर राम कथा", "सीता का चौंकना", "राम की अंगूठी देना", "सीता की पहचान", "चूड़ामणि देना"],
+      characters: ["हनुमान", "सीता"],
+      keyMantra: "रामदूतं शिरसा नमामि",
+      mantraHindi: "राम के दूत हनुमान को शीश नवाता हूँ",
+      hookLine: "एक अंगूठी जो हज़ारों मील की दूरी मिटा गई...",
+      emotionalTone: "आशा का पुनर्जन्म, भावुकता, दिव्य मिलन",
+      visualTone: "पेड़ पर हनुमान, सीता का चेहरा, अंगूठी की चमक, आँसू",
+    },
+    {
+      kanda: "Sundara", kandaNumber: 5, beatNumber: 4, globalSequence: 47,
+      titleHindi: "अशोक वाटिका विध्वंस",
+      summaryHindi: "हनुमान ने अशोक वाटिका उजाड़ी — पेड़ तोड़े, राक्षस मारे। रावण ने अक्षय कुमार को भेजा — हनुमान ने मार दिया। फिर मेघनाद को भेजा।",
+      storyPoints: ["वाटिका का विध्वंस", "राक्षसों का संहार", "अक्षय कुमार का वध", "मेघनाद का आगमन", "ब्रह्मास्त्र से बंदी"],
+      characters: ["हनुमान"],
+      keyMantra: null, mantraHindi: null,
+      hookLine: "जब राम के दूत ने रावण के घर में तबाही मचाई...",
+      emotionalTone: "शक्ति, विजय, संदेश",
+      visualTone: "उखड़ते पेड़, भागते राक्षस, हनुमान का विशाल रूप",
+    },
+    {
+      kanda: "Sundara", kandaNumber: 5, beatNumber: 5, globalSequence: 48,
+      titleHindi: "रावण की सभा में हनुमान",
+      summaryHindi: "हनुमान रावण के दरबार में बंदी बनकर आए। रावण ने पूछताछ की। हनुमान ने निडरता से राम का संदेश दिया — सीता लौटाओ नहीं तो विनाश होगा।",
+      storyPoints: ["रावण के दरबार में प्रस्तुति", "रावण का क्रोध", "हनुमान का निडर संदेश", "सीता लौटाने की माँग", "पूंछ में आग लगाने का आदेश"],
+      characters: ["हनुमान", "रावण"],
+      keyMantra: "रावण रावण तेरा नाश होगा",
+      mantraHindi: "अहंकारी का नाश निश्चित है — हनुमान का रावण को चेतावनी",
+      hookLine: "दुनिया के सबसे शक्तिशाली राजा के सामने — निडर खड़ा एक वानर...",
+      emotionalTone: "साहस, धमकी, धर्म का संदेश",
+      visualTone: "विशाल दरबार, दस सिर वाला रावण, निडर हनुमान",
+    },
+    {
+      kanda: "Sundara", kandaNumber: 5, beatNumber: 6, globalSequence: 49,
+      titleHindi: "लंका दहन",
+      summaryHindi: "रावण के आदेश पर हनुमान की पूंछ में आग लगाई। हनुमान ने विशाल रूप लिया और पूरी लंका में आग लगा दी। सोने की लंका जलने लगी।",
+      storyPoints: ["पूंछ में आग", "हनुमान का विशाल रूप", "लंका में आग लगाना", "स्वर्ण लंका का जलना", "सीता की चिंता और रक्षा"],
+      characters: ["हनुमान", "रावण"],
+      keyMantra: "जय बजरंग बली",
+      mantraHindi: "वज्र जैसे शरीर वाले हनुमान की जय",
+      hookLine: "जब आग ने सोने को पिघलाया — और रावण को पहला डर लगा...",
+      emotionalTone: "विध्वंस, शक्ति, चेतावनी",
+      visualTone: "जलती स्वर्ण लंका, हनुमान की जलती पूंछ, धुआँ और आग",
+    },
+    {
+      kanda: "Sundara", kandaNumber: 5, beatNumber: 7, globalSequence: 50,
+      titleHindi: "वापसी और समाचार",
+      summaryHindi: "हनुमान समुद्र पार कर वापस आए। वानर सेना आनंद से मिली। राम के पास पहुँचे। सीता का चूड़ामणि दिया। राम की आँखों में आँसू और उम्मीद आई।",
+      storyPoints: ["समुद्र पार वापसी", "वानरों का उत्सव", "राम को सीता का समाचार", "चूड़ामणि देना", "राम का आँसू और संकल्प"],
+      characters: ["हनुमान", "राम", "सुग्रीव"],
+      keyMantra: "सीतारामं समस्मरेत्",
+      mantraHindi: "सीता-राम का सदा स्मरण करो",
+      hookLine: "जब दूत ने कहा — माँ मिल गईं...",
+      emotionalTone: "राहत, भावुकता, नया संकल्प",
+      visualTone: "राम के हाथ में चूड़ामणि, आँसू, हनुमान की श्रद्धा",
+    },
+  ];
+
+  for (const beat of sundaraBeats) {
+    const existing = await prisma.ramayanaStoryBeat.findUnique({ where: { globalSequence: beat.globalSequence } });
+    if (existing) { console.log(`  ✓ Beat ${beat.globalSequence} already exists — skipping`); continue; }
+    await prisma.ramayanaStoryBeat.create({ data: beat });
+    console.log(`  + Beat ${beat.globalSequence}: ${beat.titleHindi}`);
+  }
+
   console.log("\nDone.");
 }
 
