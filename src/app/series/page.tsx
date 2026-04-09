@@ -10,20 +10,44 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Layers, Plus, Loader2, ChevronDown, ChevronUp, Film, CheckCircle, Clock, Edit } from "lucide-react";
+import { Layers, Plus, Loader2, ChevronDown, ChevronUp, Film, CheckCircle, Clock, FileText, Video, ExternalLink } from "lucide-react";
 
-interface Episode { id: string; episodeNumber: number; title: string; status: string; summary?: string; videoId?: string; }
-interface Series {
-  id: string; name: string; channelId: string; channel?: { name: string };
-  description?: string; status: string; characterIds: string[];
-  continuityLog?: string; episodes: Episode[];
+interface Episode {
+  id: string;
+  episodeNumber: number;
+  title: string;
+  status: string;
+  summary?: string;
+  videoId?: string;
+  scriptId?: string;
+  storyBeatId?: string;
 }
+
+interface Series {
+  id: string;
+  name: string;
+  channelId: string;
+  kanda?: string;
+  channel?: { name: string };
+  description?: string;
+  status: string;
+  characterIds: string[];
+  continuityLog?: string;
+  episodes: Episode[];
+}
+
 interface Channel { id: string; name: string; }
 
-const episodeStatusIcon: Record<string, React.ReactNode> = {
+const statusIcon: Record<string, React.ReactNode> = {
   Planned: <Clock className="h-3 w-3 text-zinc-500" />,
   "In Production": <Loader2 className="h-3 w-3 text-yellow-400 animate-spin" />,
   Published: <CheckCircle className="h-3 w-3 text-green-400" />,
+};
+
+const statusColor: Record<string, string> = {
+  Planned: "bg-zinc-700 text-zinc-400",
+  "In Production": "bg-yellow-500/20 text-yellow-400",
+  Published: "bg-green-500/20 text-green-400",
 };
 
 export default function SeriesPage() {
@@ -32,10 +56,10 @@ export default function SeriesPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [showAddEp, setShowAddEp] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", channelId: "", description: "" });
-  const [epForm, setEpForm] = useState({ title: "", summary: "", episodeNumber: 1 });
   const [creating, setCreating] = useState(false);
+  const [generatingScript, setGeneratingScript] = useState<string | null>(null);
+  const [scriptError, setScriptError] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch("/api/channels").then((r) => r.json()).then((d) => setChannels(Array.isArray(d) ? d : []));
@@ -65,15 +89,27 @@ export default function SeriesPage() {
     } finally { setCreating(false); }
   }
 
-  async function addEpisode(seriesId: string) {
-    await fetch(`/api/series/${seriesId}/episodes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...epForm, status: "Planned" }),
-    });
-    setShowAddEp(null);
-    setEpForm({ title: "", summary: "", episodeNumber: 1 });
-    fetchSeries();
+  async function generateScript(episodeId: string) {
+    setGeneratingScript(episodeId);
+    setScriptError((prev) => ({ ...prev, [episodeId]: "" }));
+    try {
+      const res = await fetch(`/api/episodes/${episodeId}/generate-script`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setScriptError((prev) => ({ ...prev, [episodeId]: data.error ?? "Failed" }));
+        return;
+      }
+      // Navigate to script page
+      window.location.href = `/scripts/${data.id}`;
+    } catch (err) {
+      setScriptError((prev) => ({ ...prev, [episodeId]: String(err) }));
+    } finally {
+      setGeneratingScript(null);
+    }
   }
 
   return (
@@ -81,7 +117,16 @@ export default function SeriesPage() {
       <Header
         title="Series Tracker"
         description="Manage multi-episode continuity"
-        actions={<Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> New Series</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => window.location.href = "/arcs"}>
+              <Film className="h-4 w-4 mr-2" /> Arc Generator
+            </Button>
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4 mr-2" /> New Series
+            </Button>
+          </div>
+        }
       />
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
@@ -89,8 +134,15 @@ export default function SeriesPage() {
         ) : series.length === 0 ? (
           <div className="text-center py-16">
             <Layers className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-            <p className="text-zinc-400 mb-2">No series yet</p>
-            <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-2" /> Create Series</Button>
+            <p className="text-zinc-400 mb-2">कोई series नहीं है</p>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => window.location.href = "/arcs"}>
+                <Film className="h-4 w-4 mr-2" /> Arc Generator से शुरू करें
+              </Button>
+              <Button variant="outline" onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4 mr-2" /> Manual Create
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -98,6 +150,7 @@ export default function SeriesPage() {
               const published = s.episodes.filter((e) => e.status === "Published").length;
               const inProd = s.episodes.filter((e) => e.status === "In Production").length;
               const planned = s.episodes.filter((e) => e.status === "Planned").length;
+              const hasScript = s.episodes.filter((e) => e.scriptId).length;
               return (
                 <Card key={s.id} className="bg-zinc-900 border-zinc-800">
                   <CardContent className="p-4">
@@ -110,12 +163,16 @@ export default function SeriesPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-zinc-100">{s.name}</p>
-                            <Badge className={s.status === "Active" ? "bg-blue-500/20 text-blue-400" : s.status === "Completed" ? "bg-green-500/20 text-green-400" : "bg-zinc-700 text-zinc-400"}>
+                            {s.kanda && (
+                              <Badge className="bg-orange-500/20 text-orange-400 text-xs">{s.kanda} Kanda</Badge>
+                            )}
+                            <Badge className={s.status === "Active" ? "bg-blue-500/20 text-blue-400" : "bg-zinc-700 text-zinc-400"}>
                               {s.status}
                             </Badge>
                           </div>
                           <p className="text-xs text-zinc-500 mt-0.5">
                             {s.channel?.name} · {s.episodes.length} episodes
+                            {hasScript > 0 && <span className="text-blue-400"> · {hasScript} scripts</span>}
                             {published > 0 && <span className="text-green-400"> · {published} published</span>}
                             {inProd > 0 && <span className="text-yellow-400"> · {inProd} in production</span>}
                             {planned > 0 && <span className="text-zinc-500"> · {planned} planned</span>}
@@ -128,29 +185,55 @@ export default function SeriesPage() {
                     {expanded === s.id && (
                       <div className="mt-4 border-t border-zinc-800 pt-4">
                         {s.description && <p className="text-sm text-zinc-400 mb-3">{s.description}</p>}
-                        {s.continuityLog && (
-                          <div className="bg-zinc-800/50 rounded p-3 mb-3">
-                            <p className="text-xs text-zinc-500 mb-1">Story So Far</p>
-                            <p className="text-xs text-zinc-300">{s.continuityLog}</p>
-                          </div>
-                        )}
-                        <div className="space-y-2 mb-3">
+                        <div className="space-y-2">
                           {s.episodes.map((ep) => (
-                            <div key={ep.id} className="flex items-center gap-3 bg-zinc-800/40 rounded-lg px-3 py-2">
-                              <span className="text-xs font-mono text-zinc-600 w-8">E{ep.episodeNumber}</span>
-                              {episodeStatusIcon[ep.status]}
-                              <p className="text-sm text-zinc-300 flex-1">{ep.title}</p>
-                              <Badge className={
-                                ep.status === "Published" ? "bg-green-500/20 text-green-400 text-xs" :
-                                ep.status === "In Production" ? "bg-yellow-500/20 text-yellow-400 text-xs" :
-                                "bg-zinc-700 text-zinc-400 text-xs"
-                              }>{ep.status}</Badge>
+                            <div key={ep.id} className="flex items-center gap-2 bg-zinc-800/40 rounded-lg px-3 py-2">
+                              <span className="text-xs font-mono text-zinc-600 w-6 shrink-0">E{ep.episodeNumber}</span>
+                              {statusIcon[ep.status] ?? <Clock className="h-3 w-3 text-zinc-500" />}
+                              <p className="text-sm text-zinc-300 flex-1 min-w-0 truncate">{ep.title}</p>
+                              <Badge className={`text-xs shrink-0 ${statusColor[ep.status] ?? "bg-zinc-700 text-zinc-400"}`}>
+                                {ep.status}
+                              </Badge>
+
+                              {/* Action buttons */}
+                              {ep.scriptId ? (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs text-blue-400 shrink-0"
+                                  onClick={() => window.location.href = `/scripts/${ep.scriptId}`}
+                                >
+                                  <ExternalLink className="h-3 w-3 mr-1" /> Script
+                                </Button>
+                              ) : ep.videoId ? (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs text-green-400 shrink-0"
+                                  onClick={() => window.location.href = `/production/${ep.videoId}`}
+                                >
+                                  <Video className="h-3 w-3 mr-1" /> Video
+                                </Button>
+                              ) : ep.storyBeatId ? (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {scriptError[ep.id] && (
+                                    <span className="text-xs text-red-400 max-w-24 truncate">{scriptError[ep.id]}</span>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    className="h-6 px-2 text-xs bg-orange-600 hover:bg-orange-700"
+                                    disabled={generatingScript === ep.id}
+                                    onClick={() => generateScript(ep.id)}
+                                  >
+                                    {generatingScript === ep.id
+                                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                                      : <><FileText className="h-3 w-3 mr-1" /> Script बनाएं</>}
+                                  </Button>
+                                </div>
+                              ) : null}
                             </div>
                           ))}
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => { setShowAddEp(s.id); setEpForm({ ...epForm, episodeNumber: s.episodes.length + 1 }); }}>
-                          <Plus className="h-3 w-3 mr-1" /> Add Episode
-                        </Button>
                       </div>
                     )}
                   </CardContent>
@@ -167,7 +250,7 @@ export default function SeriesPage() {
           <form onSubmit={createSeries} className="space-y-3">
             <div className="space-y-1.5">
               <Label>Series Name *</Label>
-              <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Ram and Sita — Episode Series" />
+              <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. रामायण — बाल काण्ड" />
             </div>
             <div className="space-y-1.5">
               <Label>Channel *</Label>
@@ -178,39 +261,13 @@ export default function SeriesPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Description</Label>
-              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} placeholder="What is this series about?" />
+              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} />
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button type="submit" disabled={creating}>{creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Create Series</Button>
+              <Button type="submit" disabled={creating}>{creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Create</Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!showAddEp} onOpenChange={() => setShowAddEp(null)}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
-          <DialogHeader><DialogTitle>Add Episode</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Episode #</Label>
-                <Input type="number" min={1} value={epForm.episodeNumber} onChange={(e) => setEpForm({ ...epForm, episodeNumber: parseInt(e.target.value) })} />
-              </div>
-              <div className="space-y-1.5 col-span-1">
-                <Label>Title *</Label>
-                <Input value={epForm.title} onChange={(e) => setEpForm({ ...epForm, title: e.target.value })} placeholder="Episode title" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Summary</Label>
-              <Textarea value={epForm.summary} onChange={(e) => setEpForm({ ...epForm, summary: e.target.value })} rows={2} placeholder="What happens in this episode?" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowAddEp(null)}>Cancel</Button>
-            <Button onClick={() => showAddEp && addEpisode(showAddEp)} disabled={!epForm.title}>Add Episode</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
