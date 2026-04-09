@@ -1301,6 +1301,90 @@ async function main() {
     console.log(`  + Beat ${beat.globalSequence}: ${beat.titleHindi}`);
   }
 
+  // ── Uttara Kanda (63–68) ──────────────────────────────────────────────────
+  console.log("\nSeeding Uttara Kanda story beats...");
+  const uttaraBeats = [
+    {
+      kanda: "Uttara", kandaNumber: 7, beatNumber: 1, globalSequence: 63,
+      titleHindi: "अयोध्या में राम का राज्याभिषेक",
+      summaryHindi: "चौदह वर्ष बाद राम अयोध्या लौटे। भरत ने खड़ाऊं वापस कीं। भव्य राज्याभिषेक हुआ। राम राजा बने, सीता रानी। अयोध्या में दीपावली मनाई गई।",
+      storyPoints: ["भरत का स्वागत", "खड़ाऊं की वापसी", "राज्याभिषेक की तैयारी", "सिंहासन पर राम-सीता", "अयोध्या की दीपावली"],
+      characters: ["राम", "सीता", "लक्ष्मण", "भरत", "हनुमान"],
+      keyMantra: "रामराज्यं च धर्मिष्ठं सर्वलोकसुखावहम्",
+      mantraHindi: "रामराज्य — धर्म पर आधारित, सबको सुख देने वाला",
+      hookLine: "चौदह साल बाद — वो घड़ी आई...",
+      emotionalTone: "आनंद, विजय, पूर्णता",
+      visualTone: "दीपों से जगमगाती अयोध्या, सिंहासन, राम-सीता का राज्याभिषेक",
+    },
+    {
+      kanda: "Uttara", kandaNumber: 7, beatNumber: 2, globalSequence: 64,
+      titleHindi: "रामराज्य",
+      summaryHindi: "राम के राज्य में न कोई दुखी, न बीमार, न गरीब। प्रजा सुखी थी। धर्म का पालन होता था। यही था आदर्श रामराज्य।",
+      storyPoints: ["प्रजा की खुशहाली", "धर्म का पालन", "न दुख न रोग", "राम का न्याय", "आदर्श शासन"],
+      characters: ["राम", "सीता"],
+      keyMantra: "यत्र योगेश्वरः कृष्णो यत्र पार्थो धनुर्धरः | तत्र श्रीर्विजयो भूतिः",
+      mantraHindi: "जहाँ धर्म है, वहाँ विजय और समृद्धि है — रामराज्य का सार",
+      hookLine: "वो राज्य जहाँ कोई रोता नहीं था...",
+      emotionalTone: "शांति, समृद्धि, आदर्श",
+      visualTone: "सुखी प्रजा, हरे-भरे खेत, न्यायालय, राम का दरबार",
+    },
+    {
+      kanda: "Uttara", kandaNumber: 7, beatNumber: 3, globalSequence: 65,
+      titleHindi: "सीता का वनवास",
+      summaryHindi: "एक धोबी के कहने पर राम ने सीता को वन भेजा — लोक-मर्यादा के लिए। सीता गर्भवती थीं। लक्ष्मण उन्हें वाल्मीकि आश्रम छोड़ आए। राम का सबसे कठिन निर्णय।",
+      storyPoints: ["धोबी का संदेह", "राम का कठिन निर्णय", "लक्ष्मण का दुख", "सीता का वाल्मीकि आश्रम जाना", "राम की एकाकी पीड़ा"],
+      characters: ["राम", "सीता", "लक्ष्मण"],
+      keyMantra: "रामो राजमणिः सदा विजयते",
+      mantraHindi: "राम राजाओं के शिरोमणि — जिन्होंने राजधर्म के लिए सब सहा",
+      hookLine: "जब राजा का कर्तव्य और पति का प्रेम टकराया...",
+      emotionalTone: "गहरा दुख, राजधर्म, बलिदान",
+      visualTone: "रोते लक्ष्मण, शांत सीता, घना वन, राम का सूना महल",
+    },
+    {
+      kanda: "Uttara", kandaNumber: 7, beatNumber: 4, globalSequence: 66,
+      titleHindi: "लव-कुश का जन्म और शिक्षा",
+      summaryHindi: "वाल्मीकि आश्रम में सीता ने लव और कुश को जन्म दिया। वाल्मीकि ने उन्हें रामायण सिखाई। दोनों बालक असाधारण शूरवीर बने।",
+      storyPoints: ["लव-कुश का जन्म", "वाल्मीकि की शिक्षा", "रामायण गाना सीखना", "शस्त्र विद्या", "बालकों का तेज"],
+      characters: ["सीता"],
+      keyMantra: "पुत्रं देहि धनं देहि सर्वकामांश्च देहि मे",
+      mantraHindi: "पुत्र रूप में धन मिला — सीता को लव-कुश",
+      hookLine: "आश्रम में पले दो बच्चे — जिन्हें पता नहीं था वे राजकुमार हैं...",
+      emotionalTone: "मातृत्व, शिक्षा, भविष्य",
+      visualTone: "आश्रम, सीता और दो बालक, वाल्मीकि की शिक्षा",
+    },
+    {
+      kanda: "Uttara", kandaNumber: 7, beatNumber: 5, globalSequence: 67,
+      titleHindi: "अश्वमेध यज्ञ — लव-कुश का गान",
+      summaryHindi: "राम ने अश्वमेध यज्ञ किया। लव-कुश ने यज्ञ में रामायण गाई। राम ने सुना — यह तो उन्हीं की कहानी है। पूछा — तुम कौन हो? लव-कुश का परिचय।",
+      storyPoints: ["अश्वमेध यज्ञ", "लव-कुश का रामायण गान", "राम का चौंकना", "पहचान का क्षण", "पिता-पुत्र मिलन"],
+      characters: ["राम", "लक्ष्मण", "हनुमान"],
+      keyMantra: "रामायणं श्रुत्वा मुनिः सत्यवान्",
+      mantraHindi: "रामायण सुनकर सत्य का ज्ञान होता है",
+      hookLine: "बाप ने बेटों की ज़ुबान से अपनी कहानी सुनी...",
+      emotionalTone: "भावुकता, पहचान, दिव्य मिलन",
+      visualTone: "यज्ञशाला, गाते लव-कुश, राम की आँखों में आँसू",
+    },
+    {
+      kanda: "Uttara", kandaNumber: 7, beatNumber: 6, globalSequence: 68,
+      titleHindi: "सीता की धरती में समाना",
+      summaryHindi: "राम ने सीता को वापस बुलाया। सीता ने कहा — अगर मैं निर्मल हूँ तो धरती माँ मुझे अपनाएं। धरती फटी और सीता उसमें समा गईं। राम का अंतिम विछोह।",
+      storyPoints: ["राम का सीता को बुलाना", "सीता की अंतिम प्रतिज्ञा", "धरती का फटना", "सीता का समाना", "राम का विलाप"],
+      characters: ["राम", "सीता", "लक्ष्मण"],
+      keyMantra: "जय जय सीता राम",
+      mantraHindi: "सीता-राम की जय — जो युगों तक अमर है",
+      hookLine: "धरती ने अपनी बेटी को वापस ले लिया...",
+      emotionalTone: "गहरा विरह, अमरता, मोक्ष",
+      visualTone: "फटती धरती, सीता का प्रकाश में विलीन होना, राम का टूटा चेहरा",
+    },
+  ];
+
+  for (const beat of uttaraBeats) {
+    const existing = await prisma.ramayanaStoryBeat.findUnique({ where: { globalSequence: beat.globalSequence } });
+    if (existing) { console.log(`  ✓ Beat ${beat.globalSequence} already exists — skipping`); continue; }
+    await prisma.ramayanaStoryBeat.create({ data: beat });
+    console.log(`  + Beat ${beat.globalSequence}: ${beat.titleHindi}`);
+  }
+
   console.log("\nDone.");
 }
 
