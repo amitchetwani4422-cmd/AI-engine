@@ -31,11 +31,13 @@ import {
   ChevronDown,
   Menu,
   X,
+  Zap,
 } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", icon: Home, href: "/" },
   { label: "Channels", icon: Tv, href: "/channels" },
+  { label: "Arc Generator", icon: Zap, href: "/arcs" },
   { label: "Research", icon: Search, href: "/research" },
   { label: "Planner", icon: Calendar, href: "/planner" },
   { label: "Scripts", icon: FileText, href: "/scripts" },
