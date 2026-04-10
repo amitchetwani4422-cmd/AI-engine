@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       include: {
         channel: { select: { id: true, name: true } },
-        episodes: { orderBy: { episodeNumber: 'asc' }, select: { id: true, episodeNumber: true, title: true, status: true, videoId: true, scriptId: true } },
+        episodes: { orderBy: { episodeNumber: 'asc' }, select: { id: true, episodeNumber: true, title: true, status: true, videoId: true, scriptId: true, storyBeatId: true } },
       },
     });
 
