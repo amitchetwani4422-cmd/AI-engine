@@ -112,6 +112,7 @@ RESPONSE FORMAT:
       "routingReason": "कारण",
       "cameraDirection": "shot type + movement",
       "visualGuidance": "रंग, मूड, 3-layer background",
+      "locationTag": "Ayodhya",
       "prompt": "3-5 sentence Kling-style prompt: character+action, 3-layer environment, camera movement, lighting — in English",
       "promptEn": "Concise English prompt for LTX2/Wan2.1: subject, action, environment, lighting, camera — comma-separated keywords, max 2 sentences"
     }
@@ -125,7 +126,8 @@ RESPONSE FORMAT:
 - हर scene में worldSetting का reference
 - prompt और promptEn दोनों ENGLISH में लिखें
 - promptEn: short keyword style — "Ram, blue-skinned prince, golden dhoti, ancient temple, volumetric light, slow push-in"
-- modelAssigned: "ltx-video-2" default, hero shots के लिए "kling-3.0"`;
+- modelAssigned: "ltx-video-2" default, hero shots के लिए "kling-3.0"
+- locationTag: scene की location — इनमें से एक चुनें: "Ayodhya", "Mithila", "Dandaka Forest", "Panchavati", "Lanka", "Ashoka Vatika", "Kishkindha", "Mahendra Mountain", "Ram Setu", "Battlefield Lanka", "Valmiki Ashram", "Sarayu River"`;
 
     const raw = await generateWithModel(aiModel, systemPrompt, userPrompt, 8192);
 
@@ -133,7 +135,7 @@ RESPONSE FORMAT:
       hook: string; fullScript: string; narrationDraft: string;
       worldSetting?: string; titleOptions: string[]; thumbnailConcepts: string[];
       musicMood: string;
-      scenes: { sequenceNumber: number; description: string; duration: number; modelAssigned: string; routingReason: string; cameraDirection: string; visualGuidance: string; prompt?: string; promptEn?: string }[];
+      scenes: { sequenceNumber: number; description: string; duration: number; modelAssigned: string; routingReason: string; cameraDirection: string; visualGuidance: string; locationTag?: string; prompt?: string; promptEn?: string }[];
     };
 
     try {
@@ -187,6 +189,7 @@ RESPONSE FORMAT:
             visualGuidance: s.visualGuidance,
             prompt: s.prompt ?? null,
             promptEn: s.promptEn ?? null,
+            locationTag: s.locationTag ?? null,
             characterIds: [],
           })),
         });

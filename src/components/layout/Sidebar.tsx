@@ -32,12 +32,14 @@ import {
   Menu,
   X,
   Zap,
+  MapPin,
 } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", icon: Home, href: "/" },
   { label: "Channels", icon: Tv, href: "/channels" },
   { label: "Arc Generator", icon: Zap, href: "/arcs" },
+  { label: "Locations", icon: MapPin, href: "/locations" },
   { label: "Research", icon: Search, href: "/research" },
   { label: "Planner", icon: Calendar, href: "/planner" },
   { label: "Scripts", icon: FileText, href: "/scripts" },

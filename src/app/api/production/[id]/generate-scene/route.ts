@@ -59,7 +59,7 @@ export async function POST(
         where: { id: videoId },
         include: { script: { select: { description: true } } }, // description = worldSetting
       }),
-      prisma.scene.findUnique({ where: { id: sceneId }, select: { id: true, duration: true, modelAssigned: true, prompt: true, promptEn: true, visualGuidance: true, description: true, cameraDirection: true } }),
+      prisma.scene.findUnique({ where: { id: sceneId }, select: { id: true, duration: true, modelAssigned: true, prompt: true, promptEn: true, visualGuidance: true, description: true, cameraDirection: true, locationTag: true } }),
     ]);
 
     if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
@@ -68,6 +68,16 @@ export async function POST(
     const model: VideoModel = forceKling ? 'kling-3.0' : ((modelOverride ?? scene.modelAssigned ?? 'ltx-video-2') as VideoModel);
     const usesEnPrompt = model === 'ltx-video-2' || model === 'wan-2.1';
     const durationSeconds = scene.duration ?? 5;
+
+    // Look up location reference image for img2video
+    const locationTag = (scene as Record<string, unknown>).locationTag as string | undefined;
+    let locationRefImage: string | undefined;
+    if (locationTag) {
+      const locAsset = await prisma.locationAsset.findUnique({ where: { name: locationTag } });
+      if (locAsset && locAsset.referenceImages.length > 0) {
+        locationRefImage = locAsset.referenceImages[0];
+      }
+    }
 
     // World setting: shared background/environment description for visual consistency across all scenes
     const worldSetting = video.script?.description?.trim() ?? '';
@@ -138,16 +148,27 @@ export async function POST(
     // Delete existing clips (regenerate case)
     await prisma.generatedClip.deleteMany({ where: { sceneId } });
 
-    // Build FAL input per model
+    // Build FAL input — use img2video if location reference image exists
     const klingDuration = durationSeconds >= 8 ? '10' : '5';
     const negPrompt = 'watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, floating objects, camera shake, overexposed, underexposed, washed out colors, ugly, worst quality, bad anatomy, mutation, duplicate subjects, stock footage look';
-    const input = model === 'kling-3.0'
-      ? { prompt, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: 0.5 }
-      : model === 'ltx-video-2'
-        ? { prompt, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 97, aspect_ratio: '16:9' }
-      : model === 'wan-2.1'
-        ? { prompt, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 81, aspect_ratio: '16:9' }
-      : { prompt, aspect_ratio: '16:9' }; // veo
+
+    let falModelId = FAL_MODEL_IDS[model];
+    let input: Record<string, unknown>;
+
+    if (locationRefImage && model === 'kling-3.0') {
+      falModelId = 'fal-ai/kling-video/v1.6/pro/image-to-video';
+      input = { prompt, image_url: locationRefImage, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: 0.5 };
+    } else if (locationRefImage && model === 'wan-2.1') {
+      input = { prompt, image_url: locationRefImage, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 81, aspect_ratio: '16:9' };
+    } else if (model === 'kling-3.0') {
+      input = { prompt, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: 0.5 };
+    } else if (model === 'ltx-video-2') {
+      input = { prompt, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 97, aspect_ratio: '16:9' };
+    } else if (model === 'wan-2.1') {
+      input = { prompt, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 81, aspect_ratio: '16:9' };
+    } else {
+      input = { prompt, aspect_ratio: '16:9' }; // veo
+    }
 
     // Submit to FAL queue — returns immediately with a request_id.
     // Webhook is optional: if NEXT_PUBLIC_APP_URL is set FAL calls us back automatically;
@@ -155,7 +176,7 @@ export async function POST(
     const submitOptions: { input: typeof input; webhookUrl?: string } = { input };
     if (appUrl) submitOptions.webhookUrl = `${appUrl}/api/webhooks/fal`;
 
-    const { request_id } = await fal.queue.submit(FAL_MODEL_IDS[model], submitOptions);
+    const { request_id } = await fal.queue.submit(falModelId, submitOptions);
 
     // Save job with FAL request_id so webhook can look it up
     await prisma.generationJob.create({

@@ -78,6 +78,21 @@ const BEATS = [
   { kanda: "Uttara", kandaNumber: 7, beatNumber: 6, globalSequence: 68, titleHindi: "राम का महाप्रयाण", summaryHindi: "सीता के जाने के बाद राम ने सरयू नदी में जल-समाधि ली। देवताओं ने स्वागत किया। राम का जीवन-चक्र पूर्ण हुआ।", storyPoints: ["सरयू नदी पर राम का जाना", "नगरवासियों का साथ", "जल में प्रवेश", "विष्णु के रूप में वापसी", "राम-कथा का अंत"], characters: ["राम", "लक्ष्मण", "भरत", "हनुमान", "लव", "कुश"], keyMantra: "रामं स्कन्धं महाभागं भक्तानां त्राणकारकम् | जानकीवल्लभं देवं जटायुप्रिय बन्धवम्", mantraHindi: "राम — भक्तों के रक्षक, जानकी के प्रिय, जटायु के बंधु — उन्हें नमन", hookLine: "जब सूर्य अस्त हुआ — और अयोध्या ने माना कि वो सदा उनका था...", emotionalTone: "मोक्ष, पूर्णता, शांति", visualTone: "सरयू की लहरें, राम का सफेद वस्त्र, आकाश में दिव्य प्रकाश" },
 ];
 
+const LOCATIONS = [
+  { name: "Ayodhya", nameHindi: "अयोध्या", kandas: ["Bala", "Ayodhya", "Uttara"], visualKeywords: "grand golden palace city, towering spires, Sarayu river banks, warm saffron and gold tones, ancient Indian architecture, lush gardens, divine glow", description: "राम की जन्मभूमि — सरयू नदी के किनारे बसी स्वर्णिम नगरी। विशाल राजमहल, ऊँचे मीनार, हरे-भरे उद्यान।" },
+  { name: "Mithila", nameHindi: "मिथिला", kandas: ["Bala"], visualKeywords: "ancient royal city, decorated for swayamvar, colorful banners, flower garlands, festive atmosphere, stone courtyards, Himalayan backdrop", description: "जनक राजा की नगरी — सीता का घर। स्वयंवर के लिए सजी-धजी, रंग-बिरंगी पताकाओं से भरी।" },
+  { name: "Dandaka Forest", nameHindi: "दण्डकारण्य", kandas: ["Aranya"], visualKeywords: "dense ancient forest, massive trees, dappled sunlight, misty undergrowth, tribal huts, river streams, mysterious dark canopy", description: "वनवास का घना जंगल — विशाल वृक्ष, धुंध, नदियाँ। ऋषियों के आश्रम और राक्षसों का निवास।" },
+  { name: "Panchavati", nameHindi: "पञ्चवटी", kandas: ["Aranya"], visualKeywords: "peaceful forest clearing, five banyan trees, simple hermitage hut, Godavari river, golden hour light, flowers, serene atmosphere", description: "पाँच वट वृक्षों की शांत जगह — गोदावरी के किनारे। राम-सीता-लक्ष्मण का वन-निवास।" },
+  { name: "Lanka", nameHindi: "लंका", kandas: ["Sundara", "Yuddha"], visualKeywords: "golden fortress city on mountain, dark ominous clouds, bioluminescent demons, massive stone walls, fire torches, dramatic red sky, evil grandeur", description: "रावण की स्वर्ण लंका — समुद्र के बीच पर्वत पर। विशाल किले, सोने की दीवारें, राक्षसी वैभव।" },
+  { name: "Ashoka Vatika", nameHindi: "अशोक वाटिका", kandas: ["Sundara"], visualKeywords: "lush garden inside Lanka, ashoka trees in bloom, golden flowers, captive Sita alone, contrast of beauty and sadness, orange blossoms, morning mist", description: "लंका के अंदर रावण का बगीचा — अशोक वृक्षों से भरा। सुंदर मगर कैद में रखी सीता।" },
+  { name: "Kishkindha", nameHindi: "किष्किन्धा", kandas: ["Kishkindha"], visualKeywords: "monkey kingdom rocky mountain, Rishyamuka peak, jungle terrain, warm earthy tones, cave entrances, waterfalls, ancient monkey city", description: "वानरों की किष्किंधा — ऋष्यमूक पर्वत। सुग्रीव का राज्य, गुफाएं, झरने।" },
+  { name: "Mahendra Mountain", nameHindi: "महेंद्र पर्वत", kandas: ["Kishkindha", "Sundara"], visualKeywords: "massive ocean-side cliff, stormy sea below, dawn breaking, Hanuman poised to leap, epic scale, dramatic lighting, crashing waves", description: "समुद्र किनारे विशाल पर्वत — जहाँ से हनुमान ने लंका के लिए छलांग लगाई।" },
+  { name: "Ram Setu", nameHindi: "राम सेतु", kandas: ["Yuddha"], visualKeywords: "stone bridge over ocean, Ram written on floating rocks, vast army crossing, golden sunset, divine miracle, sea spray, monkey soldiers", description: "समुद्र पर बना पत्थरों का पुल — राम नाम लिखे पत्थर पानी पर तैरते। वानर सेना का लंका की ओर प्रस्थान।" },
+  { name: "Battlefield Lanka", nameHindi: "युद्धभूमि", kandas: ["Yuddha"], visualKeywords: "massive war scene, fire and smoke, demon warriors vs monkey army, dramatic battle lighting, epic scale destruction, blood red sky, chaos", description: "लंका का रणक्षेत्र — वानर सेना और राक्षसों का महायुद्ध। आग, धुआँ, लाल आकाश।" },
+  { name: "Valmiki Ashram", nameHindi: "वाल्मीकि आश्रम", kandas: ["Uttara"], visualKeywords: "peaceful forest hermitage, simple huts, sacred fire, forest clearings, children playing, ancient sage, spiritual calm, dappled light", description: "वाल्मीकि ऋषि का शांत आश्रम — जहाँ सीता ने शरण ली और लव-कुश का जन्म हुआ।" },
+  { name: "Sarayu River", nameHindi: "सरयू नदी", kandas: ["Bala", "Uttara"], visualKeywords: "wide holy river, golden banks, lotus flowers, evening lamps floating, devotees, ancient ghats, misty dawn, sacred atmosphere", description: "अयोध्या की पवित्र सरयू नदी — राम जन्म और महाप्रयाण दोनों इसी के किनारे।" },
+];
+
 export async function POST() {
   let seeded = 0, skipped = 0;
   for (const beat of BEATS) {
@@ -86,5 +101,13 @@ export async function POST() {
     await prisma.ramayanaStoryBeat.create({ data: beat });
     seeded++;
   }
-  return NextResponse.json({ ok: true, seeded, skipped, kanda: "Bala" });
+  // Seed locations
+  let locSeeded = 0, locSkipped = 0;
+  for (const loc of LOCATIONS) {
+    const exists = await prisma.locationAsset.findUnique({ where: { name: loc.name } });
+    if (exists) { locSkipped++; continue; }
+    await prisma.locationAsset.create({ data: { ...loc, referenceImages: [] } });
+    locSeeded++;
+  }
+  return NextResponse.json({ ok: true, seeded, skipped, locSeeded, locSkipped });
 }

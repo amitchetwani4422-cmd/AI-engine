@@ -114,12 +114,13 @@ model Scene {
   sequenceNumber   Int
   description      String
   duration         Int      // seconds
-  modelAssigned    String   // kling-3.0 | veo-3.1
+  modelAssigned    String   // kling-3.0 | veo-3.1 | ltx-video-2 | wan-2.1
   routingReason    String
   cameraDirection  String
   visualGuidance   String
   prompt           String?  @db.Text
   promptEn         String?  @db.Text  // English prompt for LTX2/Wan2.1
+  locationTag      String?            // e.g. "Ayodhya", "Lanka", "Dandaka Forest"
   characterIds     String[]
   status           String   @default("Pending")
   createdAt        DateTime @default(now())
@@ -127,6 +128,21 @@ model Scene {
 
   script         Script          @relation(fields: [scriptId], references: [id], onDelete: Cascade)
   generatedClips GeneratedClip[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOCATION ASSET — environment/location reference images for img2video
+// ─────────────────────────────────────────────────────────────────────────────
+model LocationAsset {
+  id              String   @id @default(cuid())
+  name            String   @unique  // "Ayodhya", "Lanka", "Dandaka Forest" etc.
+  nameHindi       String            // "अयोध्या", "लंका"
+  description     String   @db.Text
+  kandas          String[]          // which kandas this location appears in
+  referenceImages String[]          // uploaded reference image URLs
+  visualKeywords  String            // English keywords for prompts
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
