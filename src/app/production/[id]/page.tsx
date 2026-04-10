@@ -72,9 +72,18 @@ interface ProductionVideo {
 }
 
 const modelStyle: Record<string, string> = {
-  "kling-3.0": "bg-blue-500/20 text-blue-400",
-  "veo-3.1": "bg-purple-500/20 text-purple-400",
+  "kling-3.0":   "bg-blue-500/20 text-blue-400",
+  "veo-3.1":     "bg-purple-500/20 text-purple-400",
+  "ltx-video-2": "bg-green-500/20 text-green-400",
+  "wan-2.1":     "bg-orange-500/20 text-orange-400",
 };
+
+const MODEL_OPTIONS = [
+  { value: "ltx-video-2", label: "LTX-Video 2", badge: "~$0.02/5s" },
+  { value: "wan-2.1",     label: "Wan 2.1",     badge: "~$0.015/5s" },
+  { value: "kling-3.0",  label: "Kling 1.6 Pro", badge: "~$0.28/5s" },
+  { value: "veo-3.1",    label: "Veo 3.1",      badge: "~$0.40/5s" },
+];
 
 const sceneStatusIcon = {
   Pending: <Clock className="h-4 w-4 text-zinc-500" />,
@@ -96,6 +105,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [budgetMode, setBudgetMode] = useState(true);
   const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState<Record<string, string>>({});
+  const [sceneModels, setSceneModels] = useState<Record<string, string>>({});
   const [customPrompt, setCustomPrompt] = useState<Record<string, string>>({});
   const [queue, setQueue] = useState<string[]>([]); // scene IDs waiting to generate
   const [queueRunning, setQueueRunning] = useState(false);
@@ -221,6 +231,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           sceneId,
           stylePrefix,
           forceKling: budgetMode,
+          modelOverride: sceneModels[sceneId] || undefined,
           feedback: feedback || undefined,
           promptOverride: promptOverride || undefined,
         }),
@@ -626,9 +637,15 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-xs font-medium text-zinc-400">Scene {scene.sequenceNumber}</span>
-                        <Badge className={`text-xs ${modelStyle[scene.modelAssigned] ?? "bg-zinc-800 text-zinc-400"}`}>
-                          {budgetMode ? "kling-3.0" : scene.modelAssigned}
-                        </Badge>
+                        <select
+                          value={sceneModels[scene.id] ?? scene.modelAssigned}
+                          onChange={(e) => setSceneModels((prev) => ({ ...prev, [scene.id]: e.target.value }))}
+                          className={`text-xs px-1.5 py-0.5 rounded border border-zinc-700 bg-zinc-800 cursor-pointer ${modelStyle[sceneModels[scene.id] ?? scene.modelAssigned] ?? "text-zinc-400"}`}
+                        >
+                          {MODEL_OPTIONS.map((m) => (
+                            <option key={m.value} value={m.value}>{m.label} ({m.badge})</option>
+                          ))}
+                        </select>
                         <span className="text-xs text-zinc-500">{scene.duration}s</span>
                       </div>
                       <p className="text-sm text-zinc-300 mb-2">{scene.description}</p>

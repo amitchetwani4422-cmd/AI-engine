@@ -119,6 +119,7 @@ model Scene {
   cameraDirection  String
   visualGuidance   String
   prompt           String?  @db.Text
+  promptEn         String?  @db.Text  // English prompt for LTX2/Wan2.1
   characterIds     String[]
   status           String   @default("Pending")
   createdAt        DateTime @default(now())

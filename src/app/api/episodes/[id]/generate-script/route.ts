@@ -108,11 +108,12 @@ RESPONSE FORMAT:
       "sequenceNumber": 1,
       "description": "इस scene का कथात्मक उद्देश्य",
       "duration": 5,
-      "modelAssigned": "kling-3.0",
+      "modelAssigned": "ltx-video-2",
       "routingReason": "कारण",
       "cameraDirection": "shot type + movement",
       "visualGuidance": "रंग, मूड, 3-layer background",
-      "prompt": "3-5 वाक्य Kling prompt: पात्र+क्रिया, 3-layer environment, camera movement, lighting"
+      "prompt": "3-5 sentence Kling-style prompt: character+action, 3-layer environment, camera movement, lighting — in English",
+      "promptEn": "Concise English prompt for LTX2/Wan2.1: subject, action, environment, lighting, camera — comma-separated keywords, max 2 sentences"
     }
   ]
 }
@@ -122,7 +123,9 @@ RESPONSE FORMAT:
 - ज़्यादातर scenes 5 सेकंड, establishing shots 10 सेकंड
 - मंत्र/श्लोक EXACTLY सही लिखें
 - हर scene में worldSetting का reference
-- model: "kling-3.0" सभी के लिए`;
+- prompt और promptEn दोनों ENGLISH में लिखें
+- promptEn: short keyword style — "Ram, blue-skinned prince, golden dhoti, ancient temple, volumetric light, slow push-in"
+- modelAssigned: "ltx-video-2" default, hero shots के लिए "kling-3.0"`;
 
     const raw = await generateWithModel(aiModel, systemPrompt, userPrompt, 8192);
 
@@ -130,7 +133,7 @@ RESPONSE FORMAT:
       hook: string; fullScript: string; narrationDraft: string;
       worldSetting?: string; titleOptions: string[]; thumbnailConcepts: string[];
       musicMood: string;
-      scenes: { sequenceNumber: number; description: string; duration: number; modelAssigned: string; routingReason: string; cameraDirection: string; visualGuidance: string; prompt?: string }[];
+      scenes: { sequenceNumber: number; description: string; duration: number; modelAssigned: string; routingReason: string; cameraDirection: string; visualGuidance: string; prompt?: string; promptEn?: string }[];
     };
 
     try {
@@ -183,6 +186,7 @@ RESPONSE FORMAT:
             cameraDirection: s.cameraDirection,
             visualGuidance: s.visualGuidance,
             prompt: s.prompt ?? null,
+            promptEn: s.promptEn ?? null,
             characterIds: [],
           })),
         });

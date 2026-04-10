@@ -14,13 +14,17 @@ fal.config({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COST_PER_SECOND: Record<string, number> = {
-  "kling-3.0": 0.056, // Kling v1.6 Pro — ~$0.28/5s, no watermark
-  "veo-3.1":   0.08,
+  "kling-3.0":    0.056,  // Kling v1.6 Pro — ~$0.28/5s
+  "veo-3.1":      0.08,
+  "ltx-video-2":  0.004,  // LTX-Video 2 — ~$0.02/5s
+  "wan-2.1":      0.003,  // Wan 2.1 — ~$0.015/5s
 };
 
 const FAL_MODEL_IDS: Record<string, string> = {
-  "kling-3.0": "fal-ai/kling-video/v1.6/pro/text-to-video",
-  "veo-3.1":   "fal-ai/veo2",
+  "kling-3.0":    "fal-ai/kling-video/v1.6/pro/text-to-video",
+  "veo-3.1":      "fal-ai/veo2",
+  "ltx-video-2":  "fal-ai/ltx-video",
+  "wan-2.1":      "fal-ai/wan-i2v/v2.1/1.3b",
 };
 
 // Quality keywords automatically appended to every prompt
@@ -33,7 +37,7 @@ const RETRY_DELAY_MS = 2000;
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type VideoModel = "kling-3.0" | "veo-3.1";
+export type VideoModel = "kling-3.0" | "veo-3.1" | "ltx-video-2" | "wan-2.1";
 
 export interface VideoGenerationParams {
   model: VideoModel;
@@ -99,6 +103,20 @@ export async function generateVideoScene(
       aspect_ratio: aspectRatio,
       negative_prompt: negativePrompt ?? "watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, floating objects, camera shake, overexposed, washed out colors, ugly, worst quality, bad anatomy, mutation, duplicate subjects, stock footage look",
       ...(referenceImage && { image_url: referenceImage }),
+    };
+  } else if (model === "ltx-video-2") {
+    input = {
+      prompt: enhancedPrompt,
+      negative_prompt: negativePrompt ?? "watermark, text, blurry, low quality, distorted",
+      num_frames: duration >= 8 ? 161 : 97,
+      aspect_ratio: aspectRatio,
+    };
+  } else if (model === "wan-2.1") {
+    input = {
+      prompt: enhancedPrompt,
+      negative_prompt: negativePrompt ?? "watermark, text, blurry, low quality, distorted, extra limbs",
+      num_frames: duration >= 8 ? 161 : 81,
+      aspect_ratio: aspectRatio,
     };
   } else {
     // veo-3.1

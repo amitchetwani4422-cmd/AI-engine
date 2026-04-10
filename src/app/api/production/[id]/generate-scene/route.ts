@@ -10,8 +10,10 @@ import type { VideoModel } from '@/lib/fal';
 fal.config({ credentials: process.env.FAL_KEY ?? process.env.FAL_API_KEY });
 
 const FAL_MODEL_IDS: Record<string, string> = {
-  'kling-3.0': 'fal-ai/kling-video/v1.6/pro/text-to-video',
-  'veo-3.1':   'fal-ai/veo2',
+  'kling-3.0':   'fal-ai/kling-video/v1.6/pro/text-to-video',
+  'veo-3.1':     'fal-ai/veo2',
+  'ltx-video-2': 'fal-ai/ltx-video',
+  'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
 };
 
 const QUALITY_SUFFIX = ', cinematic 4K, ultra-detailed, razor-sharp focus, professional color grading, smooth motion, no watermark, no text overlays, no artifacts, no compression noise';
@@ -20,6 +22,7 @@ const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
   stylePrefix: z.string().optional(),
   forceKling: z.boolean().optional(),
+  modelOverride: z.string().optional(),
   feedback: z.string().optional(),
   promptOverride: z.string().optional(),
 });
@@ -37,7 +40,7 @@ export async function POST(
       return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { sceneId, stylePrefix, forceKling, feedback, promptOverride } = parsed.data;
+    const { sceneId, stylePrefix, forceKling, modelOverride, feedback, promptOverride } = parsed.data;
 
     if (!process.env.FAL_KEY && !process.env.FAL_API_KEY) {
       return NextResponse.json(
@@ -55,13 +58,14 @@ export async function POST(
         where: { id: videoId },
         include: { script: { select: { description: true } } }, // description = worldSetting
       }),
-      prisma.scene.findUnique({ where: { id: sceneId } }),
+      prisma.scene.findUnique({ where: { id: sceneId }, select: { id: true, duration: true, modelAssigned: true, prompt: true, promptEn: true, visualGuidance: true, description: true, cameraDirection: true } }),
     ]);
 
     if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     if (!scene) return NextResponse.json({ error: 'Scene not found' }, { status: 404 });
 
-    const model: VideoModel = forceKling ? 'kling-3.0' : ((scene.modelAssigned ?? 'kling-3.0') as VideoModel);
+    const model: VideoModel = forceKling ? 'kling-3.0' : ((modelOverride ?? scene.modelAssigned ?? 'ltx-video-2') as VideoModel);
+    const usesEnPrompt = model === 'ltx-video-2' || model === 'wan-2.1';
     const durationSeconds = scene.duration ?? 5;
 
     // World setting: shared background/environment description for visual consistency across all scenes
@@ -72,8 +76,10 @@ export async function POST(
     if (promptOverride?.trim()) {
       basePrompt = promptOverride.trim();
     } else {
-      // Core visual prompt (prefer the explicit prompt field, fall back to visualGuidance, then description)
-      const corePrompt = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
+      // For LTX2/Wan use English keyword prompt; for Kling/Veo use full descriptive prompt
+      const corePrompt = usesEnPrompt
+        ? ((scene as Record<string, unknown>).promptEn as string | undefined)?.trim() || scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || ''
+        : scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
 
       // Append cameraDirection if it adds info not already in the core prompt
       const camDir = scene.cameraDirection?.trim();
@@ -105,17 +111,16 @@ export async function POST(
     // Delete existing clips (regenerate case)
     await prisma.generatedClip.deleteMany({ where: { sceneId } });
 
-    // Build FAL input
+    // Build FAL input per model
     const klingDuration = durationSeconds >= 8 ? '10' : '5';
+    const negPrompt = 'watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, floating objects, camera shake, overexposed, underexposed, washed out colors, ugly, worst quality, bad anatomy, mutation, duplicate subjects, stock footage look';
     const input = model === 'kling-3.0'
-      ? {
-          prompt,
-          duration: klingDuration,
-          aspect_ratio: '16:9',
-          negative_prompt: 'watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, floating objects, camera shake, overexposed, underexposed, washed out colors, ugly, worst quality, bad anatomy, mutation, duplicate subjects, stock footage look',
-          cfg_scale: 0.5,
-        }
-      : { prompt, aspect_ratio: '16:9' };
+      ? { prompt, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: 0.5 }
+      : model === 'ltx-video-2'
+        ? { prompt, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 97, aspect_ratio: '16:9' }
+      : model === 'wan-2.1'
+        ? { prompt, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 81, aspect_ratio: '16:9' }
+      : { prompt, aspect_ratio: '16:9' }; // veo
 
     // Submit to FAL queue — returns immediately with a request_id.
     // Webhook is optional: if NEXT_PUBLIC_APP_URL is set FAL calls us back automatically;
