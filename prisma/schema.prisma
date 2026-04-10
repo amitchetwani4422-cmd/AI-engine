@@ -166,6 +166,8 @@ model Character {
   universeId          String
   seriesIds           String[]
   channelId           String
+  referencePrompt     String?  @db.Text  // Flux prompt used to generate reference image
+  activeImage         String?            // currently active reference image URL
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

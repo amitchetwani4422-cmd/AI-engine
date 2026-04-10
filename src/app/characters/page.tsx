@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, Plus, Loader2, User } from "lucide-react";
+import { Users, Plus, Loader2, User, Wand2, CheckCircle, RefreshCw } from "lucide-react";
 
 interface Character {
   id: string;
@@ -36,6 +36,8 @@ interface Character {
   approvedImages: string[];
   colorPalette: string[];
   seriesIds: string[];
+  referencePrompt?: string;
+  activeImage?: string;
   _count?: { approvedPrompts: number };
 }
 
@@ -50,6 +52,8 @@ export default function CharactersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [filter, setFilter] = useState<string>("all");
   const [creating, setCreating] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     name: "",
     speciesOrType: "",
@@ -105,6 +109,27 @@ export default function CharactersPage() {
     }
   }
 
+  async function generateReferenceImage(e: React.MouseEvent, charId: string) {
+    e.preventDefault(); // prevent Link navigation
+    e.stopPropagation();
+    setGeneratingImage(charId);
+    setImageError(prev => ({ ...prev, [charId]: "" }));
+    try {
+      const res = await fetch(`/api/characters/${charId}/generate-reference-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) { setImageError(prev => ({ ...prev, [charId]: data.error ?? "Failed" })); return; }
+      fetchCharacters();
+    } catch (err) {
+      setImageError(prev => ({ ...prev, [charId]: String(err) }));
+    } finally {
+      setGeneratingImage(null);
+    }
+  }
+
   const filtered = filter === "all" ? characters : characters.filter((c) => c.preferredModel === filter || c.universeId === filter);
 
   return (
@@ -152,55 +177,70 @@ export default function CharactersPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map((char) => (
-              <Link key={char.id} href={`/characters/${char.id}`}>
-                <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer h-full">
-                  <CardContent className="p-4">
+              <Card key={char.id} className={`bg-zinc-900 border-zinc-800 hover:border-zinc-600 transition-colors h-full ${char.activeImage ? "border-green-800/40" : ""}`}>
+                <CardContent className="p-4">
+                  <Link href={`/characters/${char.id}`} className="block">
                     <div className="flex items-start gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
-                        {char.approvedImages[0] ? (
-                          <img
-                            src={char.approvedImages[0]}
-                            alt={char.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
+                      <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700">
+                        {char.activeImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={char.activeImage} alt={char.name} className="w-12 h-12 object-cover" />
+                        ) : char.approvedImages[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={char.approvedImages[0]} alt={char.name} className="w-12 h-12 object-cover" />
                         ) : (
                           <User className="h-5 w-5 text-zinc-500" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-zinc-100 truncate">{char.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-zinc-100 truncate">{char.name}</p>
+                          {char.activeImage && <CheckCircle className="h-3 w-3 text-green-400 shrink-0" />}
+                        </div>
                         <p className="text-xs text-zinc-500 truncate">{char.speciesOrType}</p>
                       </div>
                     </div>
-
                     <p className="text-xs text-zinc-400 mb-3 line-clamp-2">{char.personality}</p>
+                  </Link>
 
-                    <div className="flex flex-wrap gap-1.5 mt-auto">
-                      <span className={`text-xs px-2 py-0.5 rounded border ${modelColors[char.preferredModel] ?? "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
-                        {char.preferredModel}
-                      </span>
-                      {char.universeId && (
-                        <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                          Universe {char.universeId}
-                        </span>
-                      )}
-                    </div>
-
-                    {char.colorPalette.length > 0 && (
-                      <div className="flex gap-1 mt-3">
-                        {char.colorPalette.slice(0, 5).map((color, i) => (
-                          <div
-                            key={i}
-                            className="w-4 h-4 rounded-full border border-zinc-700"
-                            style={{ backgroundColor: color }}
-                            title={color}
-                          />
-                        ))}
-                      </div>
+                  {/* Generate Reference Image button */}
+                  <div className="mb-3">
+                    {imageError[char.id] && (
+                      <p className="text-xs text-red-400 mb-1 truncate">{imageError[char.id]}</p>
                     )}
-                  </CardContent>
-                </Card>
-              </Link>
+                    <Button
+                      size="sm"
+                      className={`w-full h-7 text-xs ${char.activeImage ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-300" : "bg-orange-600 hover:bg-orange-700 text-white"}`}
+                      disabled={generatingImage === char.id}
+                      onClick={(e) => generateReferenceImage(e, char.id)}
+                    >
+                      {generatingImage === char.id ? (
+                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating (~30s)...</>
+                      ) : char.activeImage ? (
+                        <><RefreshCw className="h-3 w-3 mr-1" /> Regenerate Image</>
+                      ) : (
+                        <><Wand2 className="h-3 w-3 mr-1" /> Generate Reference Image</>
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={`text-xs px-2 py-0.5 rounded border ${modelColors[char.preferredModel] ?? "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
+                      {char.preferredModel}
+                    </span>
+                    {char.universeId && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                        U{char.universeId}
+                      </span>
+                    )}
+                    {char.approvedImages.length > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-500 border border-zinc-700">
+                        {char.approvedImages.length} images
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
