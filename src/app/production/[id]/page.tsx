@@ -683,11 +683,21 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                             <span className="flex items-center gap-1 text-xs text-green-400">
                               <CheckCircle className="h-3 w-3" /> Clip ready · {formatCurrency(clip.cost)}
                             </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs"
+                              disabled={isGenerating || !!generatingScene}
+                              onClick={() => runScene(scene.id)}
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Regenerate with {sceneModels[scene.id] ?? scene.modelAssigned}
+                            </Button>
                             <button
                               onClick={() => setFeedbackOpen(isFeedbackOpen ? null : scene.id)}
                               className="text-xs text-zinc-400 hover:text-zinc-200 underline"
                             >
-                              Not happy? Give feedback &amp; regenerate
+                              Feedback &amp; custom prompt
                             </button>
                           </div>
                         </div>
