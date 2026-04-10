@@ -10,8 +10,10 @@ cloudinary.config({
 });
 
 const COST_PER_SECOND: Record<string, number> = {
-  'kling-3.0': 0.056,
-  'veo-3.1': 0.08,
+  'kling-3.0':   0.056,
+  'veo-3.1':     0.08,
+  'ltx-video-2': 0.004,
+  'wan-2.1':     0.003,
 };
 
 export async function POST(request: NextRequest) {
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Update job, scene, video cost
-    const costUpdate = model === 'veo-3.1'
+    const costUpdate = (model === 'veo-3.1' || model === 'ltx-video-2' || model === 'wan-2.1')
       ? { veoCost: { increment: cost }, totalCost: { increment: cost } }
       : { klingCost: { increment: cost }, totalCost: { increment: cost } };
 
