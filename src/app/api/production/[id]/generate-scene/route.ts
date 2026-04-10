@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { fal } from '@fal-ai/client';
 import prisma from '@/lib/prisma';
+import { generateWithModel } from '@/lib/ai-provider';
 import type { VideoModel } from '@/lib/fal';
 
 fal.config({ credentials: process.env.FAL_KEY ?? process.env.FAL_API_KEY });
@@ -76,10 +77,36 @@ export async function POST(
     if (promptOverride?.trim()) {
       basePrompt = promptOverride.trim();
     } else {
-      // For LTX2/Wan use English keyword prompt; for Kling/Veo use full descriptive prompt
-      const corePrompt = usesEnPrompt
-        ? ((scene as Record<string, unknown>).promptEn as string | undefined)?.trim() || scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || ''
-        : scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
+      // For LTX2/Wan: use English promptEn; auto-translate if missing
+      let corePrompt: string;
+      if (usesEnPrompt) {
+        const promptEn = (scene as Record<string, unknown>).promptEn as string | undefined;
+        if (promptEn?.trim()) {
+          corePrompt = promptEn.trim();
+        } else {
+          // Auto-translate Hindi prompt to English keywords for LTX2/Wan
+          const hindiSource = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
+          if (hindiSource) {
+            try {
+              const translated = await generateWithModel(
+                'gpt-4o-mini',
+                'You are a video prompt translator. Convert the given Hindi video scene description into concise English visual keywords for AI video generation. Format: subject+action, environment, lighting, camera movement. Max 2 sentences. No Hindi words.',
+                hindiSource,
+                200
+              );
+              corePrompt = translated.trim();
+              // Save back so we don't re-translate next time
+              await prisma.scene.update({ where: { id: sceneId }, data: { promptEn: corePrompt } });
+            } catch {
+              corePrompt = hindiSource; // fallback to Hindi if translation fails
+            }
+          } else {
+            corePrompt = '';
+          }
+        }
+      } else {
+        corePrompt = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
+      }
 
       // Append cameraDirection if it adds info not already in the core prompt
       const camDir = scene.cameraDirection?.trim();

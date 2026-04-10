@@ -51,6 +51,7 @@ interface Scene {
   cameraDirection?: string;
   visualGuidance?: string;
   prompt?: string;
+  promptEn?: string;
   status: string;
   generatedClips: GeneratedClip[];
 }
@@ -651,16 +652,21 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                       <p className="text-sm text-zinc-300 mb-2">{scene.description}</p>
 
                       {/* Current prompt (collapsible) */}
-                      {scene.prompt && (
-                        <details className="mb-2">
-                          <summary className="text-xs text-zinc-600 cursor-pointer hover:text-zinc-400 select-none">
-                            View AI prompt
-                          </summary>
-                          <p className="text-xs text-zinc-500 mt-1 font-mono leading-relaxed bg-zinc-800/40 rounded p-2">
-                            {scene.prompt}
-                          </p>
-                        </details>
-                      )}
+                      {(scene.prompt || scene.promptEn) && (() => {
+                        const selectedModel = sceneModels[scene.id] ?? scene.modelAssigned;
+                        const usesEn = selectedModel === 'ltx-video-2' || selectedModel === 'wan-2.1';
+                        const displayPrompt = usesEn ? (scene.promptEn || scene.prompt) : scene.prompt;
+                        return (
+                          <details className="mb-2">
+                            <summary className="text-xs text-zinc-600 cursor-pointer hover:text-zinc-400 select-none">
+                              View AI prompt {usesEn && <span className="text-green-600">(English)</span>}
+                            </summary>
+                            <p className="text-xs text-zinc-500 mt-1 font-mono leading-relaxed bg-zinc-800/40 rounded p-2">
+                              {displayPrompt}
+                            </p>
+                          </details>
+                        );
+                      })()}
 
                       {/* Clip preview */}
                       {clip && !isGenerating && (
