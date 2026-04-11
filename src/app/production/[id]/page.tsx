@@ -1050,10 +1050,12 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                         <div className="mt-2 space-y-1.5">
                           <div className="flex items-center gap-2 text-xs text-orange-400">
                             <Clock className="h-3 w-3" />
-                            <span>Waiting for result — FAL may still be processing</span>
+                            <span>Previous generation incomplete — click Recover Clip to check FAL status</span>
                           </div>
                           {rescueMsg[scene.id] && (
-                            <p className="text-xs text-zinc-400">{rescueMsg[scene.id]}</p>
+                            <p className={`text-xs ${rescueMsg[scene.id].startsWith("❌") ? "text-red-400" : "text-zinc-400"}`}>
+                              {rescueMsg[scene.id]}
+                            </p>
                           )}
                           <div className="flex gap-2">
                             <Button
