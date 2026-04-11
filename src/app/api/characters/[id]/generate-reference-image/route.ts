@@ -34,16 +34,16 @@ export async function POST(
 
       imagePrompt = await generateWithModel(
         "gpt-4o-mini",
-        `You generate Flux image prompts for Ramayana characters.
-Output a single English prompt (max 80 words) for a character portrait:
-- Front-facing, full upper body visible
-- Ancient Indian mythological art style, cinematic 8K
-- Clean simple background (divine light or temple interior)
-- Exact clothing, colors, accessories as described
-- No text, no watermark
-- Format: [character description], [clothing details], [background], [art style keywords]`,
+        `You write Flux image generation prompts for Valmiki Ramayana characters in Raja Ravi Varma divine Indian oil painting style.
+
+Rules:
+- Output ONE English prompt, max 120 words, no line breaks
+- Always include: character name + role, exact skin tone/complexion, full body pose, exact clothing fabric+color+zari details, all accessories and weapons, background setting (ancient Indian temple/forest/palace), lighting (divine god rays / torch glow / celestial light)
+- Always end with: "Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, no modern elements, no western clothing, no anime, no cartoon"
+- For non-human characters (vanara, rakshasa): explicitly describe species features — simian face, demon form etc.
+- Never use vague words like "traditional" or "mythological" — be specific about fabrics, ornaments, poses`,
         charContext,
-        200
+        300
       );
       imagePrompt = imagePrompt.trim().replace(/^["']|["']$/g, "");
     }
@@ -53,12 +53,15 @@ Output a single English prompt (max 80 words) for a character portrait:
       return NextResponse.json({ error: "FAL_KEY not configured" }, { status: 500 });
     }
 
+    const negativePrompt = "modern clothing, western outfit, suit, jeans, t-shirt, sneakers, sunglasses, cartoon style, anime, 3D CGI, plastic look, ugly, deformed, extra limbs, blurry, watermark, text, logo, multiple heads shown literally, european face, chinese style, japanese style, low quality, bad anatomy";
+
     const result = await fal.subscribe("fal-ai/flux/dev", {
       input: {
         prompt: imagePrompt,
+        negative_prompt: negativePrompt,
         image_size: "portrait_4_3",
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
+        num_inference_steps: 35,
+        guidance_scale: 4.5,
         num_images: 1,
         enable_safety_checker: false,
       },
