@@ -154,18 +154,3 @@ export async function PATCH(
   });
   return NextResponse.json({ ok: true, activeImage: updated.activeImage });
 }
-
-
-// PATCH — set activeImage from existing approvedImages
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const { activeImage } = await request.json();
-  const updated = await prisma.character.update({
-    where: { id },
-    data: { activeImage },
-  });
-  return NextResponse.json({ ok: true, activeImage: updated.activeImage });
-}
