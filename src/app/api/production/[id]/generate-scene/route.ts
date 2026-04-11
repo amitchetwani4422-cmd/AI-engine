@@ -17,7 +17,7 @@ const FAL_MODEL_IDS: Record<string, string> = {
   'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
 };
 
-const QUALITY_SUFFIX = ', cinematic 4K, ultra-detailed, razor-sharp focus, professional color grading, smooth motion, no watermark, no text overlays, no artifacts, no compression noise';
+const QUALITY_SUFFIX = ', Ravi Varma divine Indian painting brought to life, ancient Treta Yuga aesthetic, volumetric celestial god rays, divine aura glow, cinematic 8K ultra-HD, razor-sharp focus, professional cinematic color grading, smooth motion, no watermark, no text overlays, no artifacts, no compression noise, no modern elements, no western clothing, no anachronistic objects, no generic AI art look';
 
 const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
@@ -150,7 +150,7 @@ export async function POST(
 
     // Build FAL input — use img2video if location reference image exists
     const klingDuration = durationSeconds >= 8 ? '10' : '5';
-    const negPrompt = 'watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, floating objects, camera shake, overexposed, underexposed, washed out colors, ugly, worst quality, bad anatomy, mutation, duplicate subjects, stock footage look';
+    const negPrompt = 'watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, floating objects, camera shake, overexposed, underexposed, washed out colors, ugly, worst quality, bad anatomy, mutation, duplicate subjects, stock footage look, modern clothing, western outfit, suit, jeans, t-shirt, contemporary architecture, cars, phones, electricity poles, anachronistic props, cartoon style, anime, 3D CGI plastic look, generic fantasy, european medieval, chinese dragon style';
 
     let falModelId = FAL_MODEL_IDS[model];
     let input: Record<string, unknown>;

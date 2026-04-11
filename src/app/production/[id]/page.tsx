@@ -23,12 +23,23 @@ import {
 import { formatCurrency } from "@/lib/utils";
 
 const VIDEO_STYLES = [
+  {
+    value: "ramayana-divine",
+    label: "🔱 Ramayana Divine (recommended)",
+    prefix: "Ravi Varma divine Indian oil painting brought to life, ancient Treta Yuga India, Nagara temple architecture, silk dhoti with zari embroidery, divine celestial aura halos, volumetric saffron god rays, sacred geometry, jewelled ornaments, no modern elements,",
+  },
+  {
+    value: "ramayana-battle",
+    label: "⚔️ Ramayana Battle / Epic",
+    prefix: "Epic Treta Yuga warfare, ancient Indian battlefield, divine astras with cosmic fire trails, crimson battle sky, smoke and fire, warrior dharma, Ravi Varma epic style, no modern elements,",
+  },
+  {
+    value: "ramayana-devotional",
+    label: "🪔 Ramayana Devotional / Soft",
+    prefix: "Serene Treta Yuga devotional scene, soft golden temple light, oil lamp glow, lotus flowers, divine peace, Ravi Varma painting style, gentle volumetric rays, no modern elements,",
+  },
   { value: "cinematic-vfx", label: "🎬 Cinematic VFX", prefix: "Photorealistic cinematic, Hollywood VFX, 8K ultra-detailed, dramatic lighting," },
-  { value: "mythology-fantasy", label: "🔱 Mythology Fantasy", prefix: "Epic Indian mythology art style, divine celestial VFX, glowing auras, sacred geometry, ultra-detailed," },
-  { value: "animated-3d", label: "🎨 Animated 3D", prefix: "High-quality 3D animation, Pixar/DreamWorks style, vibrant colors, smooth motion," },
-  { value: "anime", label: "⚡ Anime / 2D", prefix: "Japanese anime style, 2D animation, expressive characters, dynamic action lines," },
-  { value: "documentary", label: "📷 Documentary Realism", prefix: "Realistic documentary style, natural lighting, handheld camera feel, authentic," },
-  { value: "none", label: "✏️ Use AI Prompt As-Is", prefix: "" },
+  { value: "none", label: "✏️ Use Prompt As-Is", prefix: "" },
 ] as const;
 
 type VideoStyleValue = typeof VIDEO_STYLES[number]["value"];
@@ -114,7 +125,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [sceneError, setSceneError] = useState<string | null>(null);
   const [rescuingScene, setRescuingScene] = useState<string | null>(null);
   const [rescueMsg, setRescueMsg] = useState<Record<string, string>>({});
-  const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("mythology-fantasy");
+  const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("ramayana-divine");
   const [budgetMode, setBudgetMode] = useState(true);
   const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState<Record<string, string>>({});
