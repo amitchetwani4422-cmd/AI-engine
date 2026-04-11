@@ -669,6 +669,173 @@ const CHARACTERS = [
     preferredModel: "kling-3.0",
     universeId: "A",
   },
+
+  // ─── Batch 5 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Vashishtha",
+    speciesOrType: "Human — Brahmarishi",
+    worldRole: "Royal guru of the Ikshvaku dynasty — spiritual preceptor of Dasharath and Ram; performed coronations and sacred rites",
+    personality: "Infinite calm, supreme wisdom, unshakeable spiritual authority — the still centre around which Ayodhya revolves; his serenity is more powerful than any weapon",
+    visualReferences: [
+      "ancient sage in his 70s — long white flowing hair and white beard",
+      "serene face radiating infinite wisdom and compassion",
+      "pure white dhoti, sacred janeu thread, rudraksha mala",
+      "holding rudraksha mala in right hand, brass kamandal in left",
+      "seated on tiger skin in meditation or standing in blessing pose",
+      "divine white-silver light aura of highest brahmarishi energy",
+    ],
+    clothingRules:
+      "Pure white dhoti only — no upper garment. Long white matted or flowing hair and beard. Rudraksha mala always around neck. Kamandal in hand. Tiger skin seat in meditation scenes. White-silver aura.",
+    colorPalette: ["pure white", "silver", "pale gold", "ash grey"],
+    restrictedChanges: [
+      "always white clothing and white hair — never saffron like Vishwamitra",
+      "always calm serene expression — never fierce or angry",
+      "white aura — distinct from Vishwamitra's fire-orange energy",
+      "seated or standing still — never shown in motion or battle",
+    ],
+    samplePoses: [
+      "blessing Ram at coronation — hand raised over Ram's bowed head",
+      "seated in deep meditation — lotus pose on tiger skin",
+      "counselling Dasharath — calm wisdom in the palace court",
+      "performing yajna — fire before him, sacred chants",
+    ],
+    referencePrompt: "Sage Vashishtha the brahmarishi royal guru of Ayodhya full body portrait, ancient sage in his 70s exuding infinite calm spiritual authority, serene noble face with long flowing white hair and long white beard, large wise compassionate eyes holding the peace of supreme realisation, wearing only a simple pure white cotton dhoti — bare chest with sacred janeu thread across it, long rudraksha mala beads around neck, holding rudraksha mala in right hand fingers counting beads, brass kamandal water vessel in left hand, seated cross-legged in deep meditation on a folded tiger skin mat, divine white-silver light aura of highest brahmarishi mastery emanating softly around his entire body, ancient Ayodhya royal ashram background with Saraswati river glimpsed through carved stone arches, sacred fire glow and morning light, expression of absolute serene omniscient calm and compassionate wisdom, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, ANCIENT WHITE-HAIRED SAGE serene not fierce, WHITE aura not orange, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Jambavan",
+    speciesOrType: "Divine Bear — king of bears",
+    worldRole: "Ancient bear king created by Brahma — elder statesman of the vanara sena; reminds Hanuman of his forgotten powers",
+    personality: "Profoundly ancient, wise beyond measure — has lived since creation itself; gentle in counsel, immovable in faith; the one who awakens Hanuman to his own greatness",
+    visualReferences: [
+      "massive bear form standing upright — large round bear head, dark brown-black fur",
+      "white chest fur patch — distinguishing elder bear marking",
+      "wise ancient eyes filled with deep cosmic knowledge",
+      "sacred janeu thread across broad bear chest",
+      "simple white dhoti around bear waist",
+      "heavy gnarled wooden staff or stone club in one hand",
+    ],
+    clothingRules:
+      "Simple white dhoti around the bear waist. Sacred janeu thread across chest. No crown — his dignity comes from age not rank. Heavy wooden staff. White chest fur always visible. Standing upright, not on all fours.",
+    colorPalette: ["dark brown-black", "white chest", "forest green", "warm amber"],
+    restrictedChanges: [
+      "always bear head and body — never human face",
+      "always standing upright on two legs",
+      "white chest fur patch always visible — his identifier",
+      "expression always wise and calm — ancient elder energy",
+    ],
+    samplePoses: [
+      "whispering to Hanuman — placing paw on Hanuman's shoulder, awakening him",
+      "seated at war council — wise elder advising Ram's generals",
+      "pointing toward Lanka across the ocean — strategic counsel",
+      "standing guard with heavy staff — ancient protector",
+    ],
+    referencePrompt: "King Jambavan the ancient divine bear king full body portrait, massive bear deity standing upright on two powerful legs, large round dark brown-black bear head with flat wide nose, small round ears, wise ancient eyes filled with profound cosmic knowledge and gentle compassion, distinctive white fur patch on broad barrel chest — his defining feature, thick dark brown-black fur covering entire powerful body, wearing simple white cotton dhoti around bear waist, sacred janeu thread draped across white chest fur, holding a heavy ancient gnarled wooden staff in right paw-hand, left paw raised in gentle wise counsel gesture, standing tall with dignified ancient bearing — the oldest living being who has seen creation itself, deep ancient forest clearing background with enormous old banyan tree roots and moss-covered stone altar, warm amber forest light filtering through canopy, expression of profound gentle wisdom and patient ancient authority, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, BEAR HEAD BEAR BODY standing upright, WHITE CHEST PATCH visible, not human face, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Shurpanakha",
+    speciesOrType: "Rakshasi",
+    worldRole: "Ravan's sister — her desire for Ram and disfigurement by Lakshman triggers the chain of events leading to Sita's abduction",
+    personality: "Wild, brazen, driven by desire and pride; her humiliation becomes the spark that burns two kingdoms; in natural form she is fearsome, not comic",
+    visualReferences: [
+      "dark olive-brown complexioned demon woman — wild fierce features",
+      "large clawed fingers and toes, wild tangled black hair",
+      "wearing rough dark red woven rakshasi sari with tribal bone ornaments",
+      "large silver nose ring, thick heavy silver bangles",
+      "forest flowers and leaves woven into tangled hair",
+      "eyes gleaming with fierce desire and menace",
+    ],
+    clothingRules:
+      "Rough dark red woven tribal rakshasi sari. Bone and shell ornaments, large silver nose ring, thick bangles. No gold — she is rakshasi not royalty. Wild tangled hair. Clawed hands always visible. Barefoot with clawed feet.",
+    colorPalette: ["dark crimson", "forest brown", "bone white", "shadow black"],
+    restrictedChanges: [
+      "always wild demon woman — not beautiful, not tamed",
+      "clawed hands and feet always visible",
+      "tribal bone ornaments — never gold like Lanka royalty",
+      "wild tangled hair — never neatly arranged",
+    ],
+    samplePoses: [
+      "advancing toward Ram in the forest — fierce desire and menace",
+      "after disfigurement — covering face, rage and humiliation",
+      "at Ravan's court — fury and accusation driving Lanka to war",
+      "lurking in dark Dandaka forest — watching Ram's ashram",
+    ],
+    referencePrompt: "Shurpanakha the rakshasi sister of Ravan full body portrait in her true demon form, dark olive-brown complexioned wild demon woman with fierce rakshasi features, long clawed dark fingers and clawed bare feet, wild thick tangled black hair with forest flowers dry leaves and small bones woven through it, wearing rough dark crimson red woven tribal rakshasi sari with rough-hemmed border, large heavy silver nose ring through left nostril, thick heavy silver bangles on both wrists, animal bone necklace around neck, standing in dense dark Dandaka forest with enormous dark trees and deep shadows behind her, eyes gleaming with fierce burning desire and menace — she is dangerous not comic, expression of wild predatory hunger and rakshasi power, dramatic dark forest dusk lighting with only shafts of fading red sunlight cutting through the darkness, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, WILD DEMON WOMAN fierce features and claws, tribal NOT royal ornaments, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Maricha",
+    speciesOrType: "Rakshasa",
+    worldRole: "Ravan's uncle — powerful demon who takes the form of a golden deer to lure Ram away from Sita; dies by Ram's arrow crying Ram's name",
+    personality: "Wise enough to know this mission means his death, yet bound by Ravan's order; a reluctant instrument of evil — warns Ravan but obeys; his death cry in Ram's voice is the real weapon",
+    visualReferences: [
+      "in golden deer form: impossibly beautiful magical deer, coat of pure shimmering gold",
+      "silver spots catching supernatural light across golden flanks",
+      "large supernatural eyes with hidden rakshasa intelligence behind them",
+      "golden hooves and delicate golden antlers with gem-like tips",
+      "magical unnatural shimmer and glow — too perfect to be real",
+      "standing in dappled forest sunlight that makes the gold body blaze",
+    ],
+    clothingRules:
+      "Shown in golden deer form only — no clothing. Pure golden coat, silver spots, gem-tipped antlers. The wrongness is only in the eyes — too intelligent for an animal. Always shown in the forest with light making the gold shimmer supernaturally.",
+    colorPalette: ["pure gold", "silver", "gem blue", "forest green"],
+    restrictedChanges: [
+      "always golden deer form — never show demon form in this context",
+      "the eyes must betray the demon within — too knowing",
+      "supernatural golden shimmer — real deer do not glow like this",
+      "no clothing, no ornaments — pure deer form",
+    ],
+    samplePoses: [
+      "standing in forest clearing — blazing gold in a shaft of sunlight",
+      "grazing near Sita's ashram — deliberately drawing her eye",
+      "bounding away through trees — luring Ram deeper into forest",
+      "struck by Ram's arrow — transforming back, crying Ram's name",
+    ],
+    referencePrompt: "Maricha the demon in golden deer illusion form full body portrait, impossibly beautiful supernatural golden deer standing in a forest clearing, coat of pure blazing gold covering the entire body — every hair a thread of pure gold catching and refracting forest light, small delicate silver spots scattered across golden flanks shimmering like stars, graceful slender deer legs ending in golden hooves, elegant pair of golden antlers with tips that glow like precious gemstones, large dark deer eyes — but look closely and something is deeply wrong, a rakshasa's cunning intelligence gleams behind the animal gaze, the whole body radiates an unnatural supernatural shimmer and golden glow that no real deer possesses, standing in dappled Panchavati forest sunlight where the golden light makes the supernatural coat blaze almost blindingly, tall ancient forest trees in background with Sita's ashram hut visible in far distance, expression of calculated supernatural lure — beautiful but deeply wrong, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, GOLDEN DEER supernatural shimmer, WRONG EYES with demon intelligence, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Sumitra",
+    speciesOrType: "Human",
+    worldRole: "Third queen of Ayodhya — mother of Lakshman and Shatrughan; embodies quiet acceptance and spiritual strength",
+    personality: "Gentle, spiritually grounded, selflessly accepting — sends her sons to exile without complaint, sustaining herself with faith; the quiet strength behind Lakshman's steadfastness",
+    visualReferences: [
+      "gentle queen in her 40s — soft warm complexion, kind compassionate eyes",
+      "dark hair with small yellow flowers in a simple braid",
+      "soft green-yellow silk sari with thin gold border — gentle colours",
+      "simple gold ornaments — small earrings and thin delicate bangles",
+      "delicate refined manner, seated in peaceful garden setting",
+      "holding small brass oil lamp — her ritual of daily prayer",
+    ],
+    clothingRules:
+      "Soft green or pale yellow silk sari with thin gold border — never vibrant colours. Simple minimal gold ornaments. Small flowers in hair. Always in garden or palace interior — peaceful setting. Gentle posture, never commanding.",
+    colorPalette: ["soft sage green", "pale yellow", "ivory", "delicate gold"],
+    restrictedChanges: [
+      "always soft gentle colours — never orange like Kaikeyi or red like Sita",
+      "always gentle compassionate expression — never fierce or proud",
+      "minimal ornaments — the least adorned of the three queens",
+      "small flowers in hair — her gentle signature",
+    ],
+    samplePoses: [
+      "sending Lakshman to forest with Ram — blessing him with both hands",
+      "seated in Ayodhya garden — waiting, praying, at peace",
+      "consoling Kaushalya — gentle arm around her grieving sister-queen",
+      "morning puja by garden pond — peaceful devotion",
+    ],
+    referencePrompt: "Queen Sumitra third queen of Ayodhya mother of Lakshman and Shatrughan full body portrait, gentle beautiful queen in her mid-40s, soft warm golden complexion radiating quiet inner peace, large kind compassionate dark eyes filled with gentle sorrow and spiritual acceptance, dark hair in simple neat braid adorned with small fresh yellow champa flowers, wearing soft sage-green pure silk sari with thin delicate gold border — gentle quiet colours not vibrant, simple pearl drop earrings and thin delicate gold bangles — minimal ornaments the least adorned of the queens, holding a small lit brass diya oil lamp in both cupped palms as a quiet daily offering, seated on carved stone bench in a peaceful Ayodhya palace garden with a lotus pond and flowering trees behind her, soft afternoon golden light filtering through garden leaves, expression of serene quiet spiritual strength and gentle maternal love — accepts dharma even when it takes her sons, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, GENTLE SOFT COLOURS not vibrant, MINIMAL ornaments, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
 ];
 
 export async function POST(request: NextRequest) {
