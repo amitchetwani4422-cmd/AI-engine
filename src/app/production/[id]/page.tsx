@@ -19,6 +19,7 @@ import {
   Zap,
   Mic,
   Volume2,
+  Shuffle,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -144,6 +145,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [movingToQC, setMovingToQC] = useState(false);
   const [assembling, setAssembling] = useState(false);
   const [assembleError, setAssembleError] = useState<string | null>(null);
+  const [rerouting, setRerouting] = useState(false);
+  const [rerouteResult, setRerouteResult] = useState<string | null>(null);
   const [voiceAssets, setVoiceAssets] = useState<VoiceAsset[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>("");
   const [generatingVoices, setGeneratingVoices] = useState(false);
@@ -163,6 +166,27 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       setLoading(false);
     }
     return null;
+  }
+
+  async function rerouteScenes() {
+    setRerouting(true);
+    setRerouteResult(null);
+    try {
+      const res = await fetch(`/api/production/${id}/reroute-scenes`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        const s = data.summary as Record<string, number>;
+        const parts = Object.entries(s).map(([model, count]) => `${count}× ${model}`).join(", ");
+        setRerouteResult(`Rerouted ${data.total} scenes — ${parts}`);
+        await fetchVideo();
+      } else {
+        setRerouteResult(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      setRerouteResult(`Error: ${String(e)}`);
+    } finally {
+      setRerouting(false);
+    }
   }
 
   async function fetchVoiceAssets(channelId: string) {
@@ -754,6 +778,11 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
 
         {/* Scenes */}
         <div className="space-y-3">
+          {rerouteResult && (
+            <div className={`px-4 py-2.5 rounded-lg text-sm border ${rerouteResult.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-green-500/10 border-green-500/20 text-green-400"}`}>
+              {rerouteResult}
+            </div>
+          )}
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h3 className="text-sm font-medium text-zinc-300">Scene Generation</h3>
@@ -764,6 +793,19 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
               )}
             </div>
             <div className="flex items-center gap-2">
+              {/* Auto-route: re-analyses scene text and assigns LTX2/Wan/Kling per scene */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-zinc-700 text-zinc-400 hover:text-zinc-200"
+                onClick={rerouteScenes}
+                disabled={rerouting || queueRunning}
+                title="Analyse each scene and assign the cheapest suitable model (Wide→LTX2, Mid→Wan, Close-up→Kling)"
+              >
+                {rerouting
+                  ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Routing...</>
+                  : <><Shuffle className="h-3 w-3 mr-1.5" /> Auto-Route Models</>}
+              </Button>
               {queueRunning && (
                 <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg">
                   <Loader2 className="h-3 w-3 animate-spin" />
