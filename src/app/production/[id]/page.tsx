@@ -109,6 +109,14 @@ const MODEL_OPTIONS = [
   { value: "veo-3.1",    label: "Veo 3.1",      badge: "~$0.40/5s" },
 ];
 
+// Human-readable shot type info per model (for the scene cards)
+const MODEL_META: Record<string, { shotType: string; icon: string; price: string; colorClass: string; bgClass: string }> = {
+  "ltx-video-2": { shotType: "Wide / Landscape",  icon: "🌅", price: "~$0.02", colorClass: "text-green-400",  bgClass: "bg-green-500/10 border-green-500/20" },
+  "wan-2.1":     { shotType: "Mid / Exterior",     icon: "🌲", price: "~$0.02", colorClass: "text-orange-400", bgClass: "bg-orange-500/10 border-orange-500/20" },
+  "kling-3.0":   { shotType: "Close-up / Hero",    icon: "👁",  price: "~$0.28", colorClass: "text-blue-400",   bgClass: "bg-blue-500/10 border-blue-500/20" },
+  "veo-3.1":     { shotType: "Divine / Cinematic", icon: "✨", price: "~$0.40", colorClass: "text-purple-400", bgClass: "bg-purple-500/10 border-purple-500/20" },
+};
+
 const sceneStatusIcon = {
   Pending: <Clock className="h-4 w-4 text-zinc-500" />,
   Generating: <Loader2 className="h-4 w-4 text-yellow-400 animate-spin" />,
@@ -126,7 +134,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [rescuingScene, setRescuingScene] = useState<string | null>(null);
   const [rescueMsg, setRescueMsg] = useState<Record<string, string>>({});
   const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("ramayana-divine");
-  const [budgetMode, setBudgetMode] = useState(true);
+  const [budgetMode, setBudgetMode] = useState(false); // false = smart routing per scene; true = force all to Kling
   const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState<Record<string, string>>({});
   const [sceneModels, setSceneModels] = useState<Record<string, string>>({});
@@ -492,6 +500,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const allScenesGenerated = scenes.length > 0 && generatedScenes.length >= scenes.length;
   const klingScenes = scenes.filter((s) => s.modelAssigned === "kling-3.0");
   const veoScenes = scenes.filter((s) => s.modelAssigned === "veo-3.1");
+  const ltxScenes = scenes.filter((s) => s.modelAssigned === "ltx-video-2");
+  const wanScenes = scenes.filter((s) => s.modelAssigned === "wan-2.1");
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -568,10 +578,12 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-3 text-center">
               <p className="text-xs text-zinc-500 mb-1">Model Split</p>
-              <p className="text-sm">
-                <span className="text-blue-400">{klingScenes.length}K</span>
-                <span className="text-zinc-600"> / </span>
-                <span className="text-purple-400">{veoScenes.length}V</span>
+              <p className="text-xs flex flex-wrap gap-x-1.5 gap-y-0.5 justify-center">
+                {ltxScenes.length > 0 && <span className="text-green-400">{ltxScenes.length} LTX</span>}
+                {wanScenes.length > 0 && <span className="text-orange-400">{wanScenes.length} Wan</span>}
+                {klingScenes.length > 0 && <span className="text-blue-400">{klingScenes.length} Kling</span>}
+                {veoScenes.length > 0 && <span className="text-purple-400">{veoScenes.length} Veo</span>}
+                {ltxScenes.length + wanScenes.length + klingScenes.length + veoScenes.length === 0 && <span className="text-zinc-600">—</span>}
               </p>
             </CardContent>
           </Card>
@@ -617,21 +629,36 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         {/* Video Style + Budget Selector */}
         <Card className="bg-zinc-900 border-zinc-800 mb-6">
           <CardContent className="p-4">
-            {/* Budget Mode Toggle */}
+            {/* Smart Routing / Force Kling Toggle */}
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-zinc-800">
               <div>
-                <p className="text-sm font-medium text-zinc-200">Budget Mode</p>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Forces all scenes to use <span className="text-blue-400">Kling 3.0</span> (~$0.25–0.50/scene).
-                  Disable only if you need Veo2 lip-sync (<span className="text-red-400">~$1.50/scene</span>).
+                <p className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                  {budgetMode
+                    ? <><span className="text-blue-400">⚡ Force Kling</span> — all scenes use Kling 1.6 Pro</>
+                    : <><span className="text-green-400">✦ Smart Routing</span> — each scene uses the best model for its shot type</>}
+                </p>
+                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                  {budgetMode
+                    ? "All scenes → Kling 1.6 Pro (~$0.28/5s). Override smart routing."
+                    : <span>
+                        <span className="text-green-400">🌅 Wide shots → LTX2 (~$0.02)</span>
+                        {" · "}
+                        <span className="text-orange-400">🌲 Mid shots → Wan (~$0.02)</span>
+                        {" · "}
+                        <span className="text-blue-400">👁 Close-ups → Kling (~$0.28)</span>
+                        {" — AI assigned per scene"}
+                      </span>}
                 </p>
               </div>
-              <button
-                onClick={() => setBudgetMode(!budgetMode)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${budgetMode ? "bg-green-600" : "bg-zinc-600"}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${budgetMode ? "translate-x-6" : "translate-x-1"}`} />
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs text-zinc-500">{budgetMode ? "Force Kling" : "Smart"}</span>
+                <button
+                  onClick={() => setBudgetMode(!budgetMode)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${budgetMode ? "bg-blue-600" : "bg-green-600"}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${budgetMode ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
             </div>
 
             <div className="flex items-start gap-4 flex-wrap">
@@ -781,18 +808,50 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                       {clip ? <CheckCircle className="h-3.5 w-3.5" /> : scene.sequenceNumber}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-xs font-medium text-zinc-400">Scene {scene.sequenceNumber}</span>
+                      {/* Scene header: shot type badge + generate button */}
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-xs font-mono text-zinc-500">#{scene.sequenceNumber}</span>
+                        {/* Shot type + model badge */}
+                        {(() => {
+                          const activeModel = budgetMode ? "kling-3.0" : (sceneModels[scene.id] ?? scene.modelAssigned ?? "ltx-video-2");
+                          const meta = MODEL_META[activeModel] ?? MODEL_META["ltx-video-2"];
+                          return (
+                            <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${meta.bgClass} ${meta.colorClass}`}>
+                              {meta.icon} {meta.shotType} · {meta.price}
+                            </span>
+                          );
+                        })()}
+                        <span className="text-xs text-zinc-600">{scene.duration}s</span>
+                        {/* Spacer push generate to right */}
+                        <div className="flex-1" />
+                        {/* Generate button — shown when scene has no clip */}
+                        {!clip && !isGenerating && !isQueued && scene.status !== "Generating" && (
+                          <Button
+                            size="sm"
+                            className="h-7 px-3 text-xs bg-blue-600 hover:bg-blue-700"
+                            disabled={!!generatingScene}
+                            onClick={() => generateScene(scene.id)}
+                          >
+                            <Zap className="h-3 w-3 mr-1" /> Generate
+                          </Button>
+                        )}
+                      </div>
+                      {/* Routing reason from AI */}
+                      {scene.routingReason && !budgetMode && (
+                        <p className="text-xs text-zinc-600 italic mb-1.5">{scene.routingReason}</p>
+                      )}
+                      {/* Manual model override */}
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-xs text-zinc-600">Override:</span>
                         <select
                           value={sceneModels[scene.id] ?? scene.modelAssigned}
                           onChange={(e) => setSceneModels((prev) => ({ ...prev, [scene.id]: e.target.value }))}
-                          className={`text-xs px-1.5 py-0.5 rounded border border-zinc-700 bg-zinc-800 cursor-pointer ${modelStyle[sceneModels[scene.id] ?? scene.modelAssigned] ?? "text-zinc-400"}`}
+                          className="text-xs px-1.5 py-0.5 rounded border border-zinc-700/50 bg-zinc-800/50 text-zinc-500 cursor-pointer hover:border-zinc-600 hover:text-zinc-300 transition-colors"
                         >
                           {MODEL_OPTIONS.map((m) => (
                             <option key={m.value} value={m.value}>{m.label} ({m.badge})</option>
                           ))}
                         </select>
-                        <span className="text-xs text-zinc-500">{scene.duration}s</span>
                       </div>
                       <p className="text-sm text-zinc-300 mb-2">{scene.description}</p>
 
@@ -883,7 +942,11 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                               onClick={() => runScene(scene.id)}
                             >
                               <RefreshCw className="h-3 w-3 mr-1" />
-                              Regenerate with {sceneModels[scene.id] ?? scene.modelAssigned}
+                              {(() => {
+                                const m = budgetMode ? "kling-3.0" : (sceneModels[scene.id] ?? scene.modelAssigned);
+                                const meta = MODEL_META[m];
+                                return meta ? `${meta.icon} Redo with ${m}` : `Regenerate`;
+                              })()}
                             </Button>
                             <button
                               onClick={() => setFeedbackOpen(isFeedbackOpen ? null : scene.id)}
