@@ -281,7 +281,9 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         (s: SceneRow) => s.status === "Generating" && s.generatedClips.length === 0
       );
       if (inProgress.length === 0) return;
-      setGeneratingScene(inProgress[0].id);
+      // Don't set generatingScene here — it would disable all other scenes' Regenerate buttons.
+      // The stuck scene already shows its orange "Recover Clip" UI from DB status === "Generating".
+      // Background rescue: quietly check FAL and recover if done.
       Promise.all(
         inProgress.map((s) =>
           pollForClip(s.id).then(async (ok) => {
@@ -306,7 +308,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
             }
           })
         )
-      ).finally(() => setGeneratingScene(null));
+      );
     });
     return () => {
       // Cleanup auto-rescue timers on unmount
@@ -966,9 +968,22 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                       {clip && !isGenerating && (
                         <div className="space-y-2 mt-2">
                           {videoErrors[clip.id] ? (
-                            <div className="w-full max-w-md rounded-lg border border-zinc-700 bg-zinc-800/60 flex flex-col items-center justify-center gap-2 p-4" style={{ maxHeight: "200px", minHeight: "80px" }}>
+                            <div className="w-full max-w-md rounded-lg border border-red-500/30 bg-red-500/10 flex flex-col items-center justify-center gap-2 p-4" style={{ minHeight: "80px" }}>
                               <XCircle className="h-5 w-5 text-red-400" />
-                              <p className="text-xs text-red-400 text-center">Clip URL expired — click Regenerate to create a new clip</p>
+                              <p className="text-xs text-red-400 text-center">Clip URL expired</p>
+                              <Button
+                                size="sm"
+                                className="bg-orange-600 hover:bg-orange-700 h-7 text-xs"
+                                onClick={() => {
+                                  // Clear any stale generating lock so this scene can run immediately
+                                  generatingRef.current = false;
+                                  setGeneratingScene(null);
+                                  setVideoErrors((p) => ({ ...p, [clip.id]: false }));
+                                  runScene(scene.id);
+                                }}
+                              >
+                                <RefreshCw className="h-3 w-3 mr-1" /> Regenerate Clip
+                              </Button>
                             </div>
                           ) : (
                           <video
