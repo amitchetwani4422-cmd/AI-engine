@@ -1,18 +1,29 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
+import { v2 as cloudinary } from 'cloudinary';
 import prisma from '@/lib/prisma';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 fal.config({ credentials: process.env.FAL_KEY ?? process.env.FAL_API_KEY });
 
 const FAL_MODEL_IDS: Record<string, string> = {
-  'kling-3.0': 'fal-ai/kling-video/v1.6/pro/text-to-video',
-  'veo-3.1':   'fal-ai/veo2',
+  'kling-3.0':   'fal-ai/kling-video/v1.6/pro/text-to-video',
+  'veo-3.1':     'fal-ai/veo2',
+  'ltx-video-2': 'fal-ai/ltx-video',
+  'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
 };
 
 const COST_PER_SECOND: Record<string, number> = {
-  'kling-3.0': 0.056,
-  'veo-3.1': 0.08,
+  'kling-3.0':   0.056,
+  'veo-3.1':     0.08,
+  'ltx-video-2': 0.004,
+  'wan-2.1':     0.003,
 };
 
 // Rescue a stuck scene by fetching the FAL result directly using stored request_id
@@ -75,6 +86,20 @@ export async function POST(
       return NextResponse.json({ error: 'FAL job completed but no video URL found in result.' }, { status: 500 });
     }
 
+    // Upload to Cloudinary for a permanent CDN URL (FAL URLs expire in hours)
+    let clipUrl = videoUrl;
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+      try {
+        const upload = await cloudinary.uploader.upload(videoUrl, {
+          resource_type: 'video',
+          folder: 'ai-engine/clips',
+        });
+        clipUrl = upload.secure_url;
+      } catch {
+        console.warn('[rescue-scene] Cloudinary upload failed — using FAL URL as fallback');
+      }
+    }
+
     const model = (job.model ?? 'kling-3.0') as string;
     const durationSeconds = (inputData.duration as number) ?? 5;
     const prompt = (inputData.prompt as string) ?? '';
@@ -88,7 +113,7 @@ export async function POST(
       data: {
         sceneId,
         videoId,
-        clipUrl: videoUrl,
+        clipUrl,
         model,
         prompt,
         duration: durationSeconds,
@@ -98,12 +123,12 @@ export async function POST(
       },
     });
 
-    const costUpdate = model === 'veo-3.1'
+    const costUpdate = (model === 'veo-3.1' || model === 'ltx-video-2' || model === 'wan-2.1')
       ? { veoCost: { increment: cost }, totalCost: { increment: cost } }
       : { klingCost: { increment: cost }, totalCost: { increment: cost } };
 
     await Promise.all([
-      prisma.generationJob.update({ where: { id: job.id }, data: { status: 'completed', cost, outputData: { clipId: clip.id, videoUrl } } }),
+      prisma.generationJob.update({ where: { id: job.id }, data: { status: 'completed', cost, outputData: { clipId: clip.id, videoUrl: clipUrl } } }),
       prisma.scene.update({ where: { id: sceneId }, data: { status: 'Generated' } }),
       prisma.video.update({ where: { id: videoId }, data: costUpdate }),
     ]);

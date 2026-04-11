@@ -153,6 +153,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [generatingSceneVoice, setGeneratingSceneVoice] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [voiceResult, setVoiceResult] = useState<{ generated: number; totalDialogues: number; narratorName: string } | null>(null);
+  const [videoErrors, setVideoErrors] = useState<Record<string, boolean>>({});
   const generatingRef = useRef(false);
   const rescueTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const queueCancelledRef = useRef(false);
@@ -934,7 +935,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                           {scene.sceneAudio ? (
 
                             <div className="flex items-center gap-2">
-                              <audio controls className="h-7 flex-1" src={scene.sceneAudio} />
+                              <audio controls preload="none" className="h-7 flex-1" src={scene.sceneAudio} />
                               <button
                                 onClick={() => generateSceneVoice(scene.id)}
                                 disabled={generatingSceneVoice === scene.id || generatingVoices}
@@ -964,6 +965,12 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                       {/* Clip preview */}
                       {clip && !isGenerating && (
                         <div className="space-y-2 mt-2">
+                          {videoErrors[clip.id] ? (
+                            <div className="w-full max-w-md rounded-lg border border-zinc-700 bg-zinc-800/60 flex flex-col items-center justify-center gap-2 p-4" style={{ maxHeight: "200px", minHeight: "80px" }}>
+                              <XCircle className="h-5 w-5 text-red-400" />
+                              <p className="text-xs text-red-400 text-center">Clip URL expired — click Regenerate to create a new clip</p>
+                            </div>
+                          ) : (
                           <video
                             src={clip.clipUrl}
                             controls
@@ -971,7 +978,9 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                             playsInline
                             className="w-full max-w-md rounded-lg border border-zinc-700"
                             style={{ maxHeight: "200px" }}
+                            onError={() => setVideoErrors((p) => ({ ...p, [clip.id]: true }))}
                           />
+                          )}
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="flex items-center gap-1 text-xs text-green-400">
                               <CheckCircle className="h-3 w-3" /> Clip ready · {formatCurrency(clip.cost)}
