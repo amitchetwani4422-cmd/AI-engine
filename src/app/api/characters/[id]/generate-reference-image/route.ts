@@ -14,15 +14,16 @@ export async function POST(
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const customPrompt = (body as Record<string, unknown>).prompt as string | undefined;
+    // referenceImageUrl = use img2img mode (Flux Kontext) to edit an existing image
+    const referenceImageUrl = (body as Record<string, unknown>).referenceImageUrl as string | undefined;
 
     const character = await prisma.character.findUnique({ where: { id } });
     if (!character) return NextResponse.json({ error: "Character not found" }, { status: 404 });
 
-    // Step 1: Build or reuse Flux image prompt
+    // Step 1: Build or reuse prompt
     let imagePrompt = customPrompt?.trim() || character.referencePrompt?.trim() || "";
 
     if (!imagePrompt) {
-      // Auto-generate prompt from character data using GPT
       const charContext = [
         `Name: ${character.name}`,
         `Type: ${character.speciesOrType}`,
@@ -48,30 +49,48 @@ Rules:
       imagePrompt = imagePrompt.trim().replace(/^["']|["']$/g, "");
     }
 
-    // Step 2: Generate image via Flux on FAL
     if (!process.env.FAL_KEY && !process.env.FAL_API_KEY) {
       return NextResponse.json({ error: "FAL_KEY not configured" }, { status: 500 });
     }
 
-    const negativePrompt = "modern clothing, western outfit, suit, jeans, t-shirt, sneakers, sunglasses, cartoon style, anime, 3D CGI, plastic look, ugly, deformed, extra limbs, blurry, watermark, text, logo, multiple heads shown literally, european face, chinese style, japanese style, low quality, bad anatomy";
+    const negativePrompt = "modern clothing, western outfit, suit, jeans, t-shirt, sneakers, sunglasses, cartoon style, anime, 3D CGI, plastic look, ugly, deformed, extra limbs, blurry, watermark, text, logo, multiple heads shown literally, european face, chinese style, japanese style, low quality, bad anatomy, human face on animal body";
 
-    const result = await fal.subscribe("fal-ai/flux/dev", {
-      input: {
-        prompt: imagePrompt,
-        negative_prompt: negativePrompt,
-        image_size: "portrait_4_3",
-        num_inference_steps: 35,
-        guidance_scale: 4.5,
-        num_images: 1,
-        enable_safety_checker: false,
-      },
-    });
+    let imageUrl: string | undefined;
 
-    const output = result.data as { images?: Array<{ url: string }> };
-    const imageUrl = output?.images?.[0]?.url;
+    if (referenceImageUrl?.trim()) {
+      // ── IMG2IMG MODE — Flux Kontext: edit specific parts while preserving the rest ──
+      // Ideal for "keep the body, fix only the face and weapon"
+      const result = await fal.subscribe("fal-ai/flux-pro/kontext", {
+        input: {
+          prompt: imagePrompt,
+          image_url: referenceImageUrl.trim(),
+          guidance_scale: 3.5,
+          num_inference_steps: 28,
+          num_images: 1,
+          output_format: "jpeg",
+        },
+      });
+      const output = result.data as { images?: Array<{ url: string }> };
+      imageUrl = output?.images?.[0]?.url;
+    } else {
+      // ── TEXT-TO-IMAGE MODE — Flux Dev ──
+      const result = await fal.subscribe("fal-ai/flux/dev", {
+        input: {
+          prompt: imagePrompt,
+          negative_prompt: negativePrompt,
+          image_size: "portrait_4_3",
+          num_inference_steps: 35,
+          guidance_scale: 4.5,
+          num_images: 1,
+          enable_safety_checker: false,
+        },
+      });
+      const output = result.data as { images?: Array<{ url: string }> };
+      imageUrl = output?.images?.[0]?.url;
+    }
+
     if (!imageUrl) return NextResponse.json({ error: "No image returned from FAL" }, { status: 500 });
 
-    // Step 3: Save prompt + image to character
     const updated = await prisma.character.update({
       where: { id },
       data: {
@@ -85,6 +104,7 @@ Rules:
       ok: true,
       imageUrl,
       prompt: imagePrompt,
+      mode: referenceImageUrl ? "img2img" : "text2img",
       character: { id: updated.id, name: updated.name, activeImage: updated.activeImage },
     });
   } catch (error) {

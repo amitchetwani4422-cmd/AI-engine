@@ -25,6 +25,8 @@ import {
   Sparkles,
   X,
   ZoomIn,
+  Crosshair,
+  RefreshCw,
 } from "lucide-react";
 import { ModelSelector } from "@/components/ui/model-selector";
 import type { AIModel } from "@/lib/ai-provider";
@@ -75,6 +77,7 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   const [aiModel, setAiModel] = useState<AIModel>(DEFAULT_SCRIPT_MODEL);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [baseImageUrl, setBaseImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/characters/${id}`)
@@ -135,16 +138,20 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   async function generateImage() {
     setGeneratingImage(true);
     try {
-      // Use generate-reference-image which applies referencePrompt + negative prompt + better settings
+      const body: Record<string, string> = {};
+      if (imagePromptDraft.trim()) body.prompt = imagePromptDraft.trim();
+      if (baseImageUrl) body.referenceImageUrl = baseImageUrl;
+
       const res = await fetch(`/api/characters/${id}/generate-reference-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(imagePromptDraft.trim() ? { prompt: imagePromptDraft.trim() } : {}),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.imageUrl && character) {
         setCharacter({ ...character, approvedImages: [...character.approvedImages, data.imageUrl] });
         if (data.prompt) setImagePromptDraft(data.prompt); // sync saved prompt back
+        setBaseImageUrl(null); // clear base after generation
       }
     } finally {
       setGeneratingImage(false);
@@ -297,7 +304,16 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm">Approved Images</CardTitle>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center flex-wrap justify-end">
+                  {baseImageUrl && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
+                      <Crosshair className="h-3 w-3" />
+                      <span>Base image set</span>
+                      <button onClick={() => setBaseImageUrl(null)} className="ml-1 hover:text-amber-200">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"
@@ -306,10 +322,18 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                   >
                     {showPromptEditor ? "Hide Prompt" : "Edit Prompt"}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={generateImage} disabled={generatingImage}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={baseImageUrl ? "border-amber-500/50 text-amber-400 hover:border-amber-400" : ""}
+                    onClick={generateImage}
+                    disabled={generatingImage}
+                  >
                     {generatingImage
                       ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Generating...</>
-                      : <><Sparkles className="h-3 w-3 mr-1.5" /> Generate with FLUX</>}
+                      : baseImageUrl
+                        ? <><RefreshCw className="h-3 w-3 mr-1.5" /> Refine with Kontext</>
+                        : <><Sparkles className="h-3 w-3 mr-1.5" /> Generate with FLUX</>}
                   </Button>
                 </div>
               </CardHeader>
@@ -330,17 +354,32 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                 {character.approvedImages.length > 0 ? (
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     {character.approvedImages.map((url, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setLightboxUrl(url)}
-                        className="relative group w-full aspect-square rounded border border-zinc-700 overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
+                      <div key={i} className={`relative group w-full aspect-square rounded overflow-hidden border transition-colors ${baseImageUrl === url ? "border-amber-500" : "border-zinc-700"}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={url} alt={`Ref ${i + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                          <ZoomIn className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {/* Hover overlay with two action buttons */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                          <button
+                            onClick={() => setLightboxUrl(url)}
+                            className="flex items-center gap-1 px-2 py-1 bg-black/70 rounded text-white text-xs hover:bg-black/90"
+                          >
+                            <ZoomIn className="h-3 w-3" /> View
+                          </button>
+                          <button
+                            onClick={() => {
+                              setBaseImageUrl(url === baseImageUrl ? null : url);
+                              setShowPromptEditor(true);
+                            }}
+                            className={`flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-amber-600 ${baseImageUrl === url ? "bg-amber-500 text-black" : "bg-black/70 text-amber-300"}`}
+                          >
+                            <Crosshair className="h-3 w-3" /> {baseImageUrl === url ? "Base ✓" : "Use as base"}
+                          </button>
                         </div>
-                      </button>
+                        {/* Active base indicator */}
+                        {baseImageUrl === url && (
+                          <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400 shadow" />
+                        )}
+                      </div>
                     ))}
                   </div>
                 ) : (
