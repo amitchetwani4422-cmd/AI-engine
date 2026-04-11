@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Upload, Trash2, Loader2, Image as ImageIcon, CheckCircle } from "lucide-react";
+import { MapPin, Upload, Trash2, Loader2, Image as ImageIcon, CheckCircle, RefreshCw, Lock } from "lucide-react";
 
 interface LocationAsset {
   id: string;
@@ -16,6 +16,8 @@ interface LocationAsset {
   kandas: string[];
   referenceImages: string[];
   visualKeywords: string;
+  lockedVisualDesc?: string;
+  isVisualLocked?: boolean;
 }
 
 export default function LocationsPage() {
@@ -23,6 +25,8 @@ export default function LocationsPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState<Record<string, string>>({});
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<string | null>(null);
 
   useEffect(() => { fetchLocations(); }, []);
 
@@ -32,6 +36,25 @@ export default function LocationsPage() {
       const d = await fetch("/api/locations").then(r => r.json());
       setLocations(Array.isArray(d) ? d : []);
     } finally { setLoading(false); }
+  }
+
+  async function seedLocations() {
+    setSeeding(true);
+    setSeedResult(null);
+    try {
+      const res = await fetch("/api/seed/ramayana", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setSeedResult(`Done — ${data.locSeeded ?? 0} new, ${data.locUpdated ?? 0} updated with locked visuals`);
+        await fetchLocations();
+      } else {
+        setSeedResult(`Error: ${data.error ?? "Seed failed"}`);
+      }
+    } catch (e) {
+      setSeedResult(`Error: ${String(e)}`);
+    } finally {
+      setSeeding(false);
+    }
   }
 
   async function addImageUrl(loc: LocationAsset) {
@@ -63,8 +86,25 @@ export default function LocationsPage() {
       <Header
         title="Location References"
         description="Upload environment reference images for consistent scene backgrounds"
+        actions={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={seedLocations}
+            disabled={seeding}
+          >
+            {seeding
+              ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Seeding...</>
+              : <><RefreshCw className="h-3 w-3 mr-1.5" /> Seed / Refresh Locations</>}
+          </Button>
+        }
       />
       <div className="flex-1 overflow-auto p-6">
+        {seedResult && (
+          <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm border ${seedResult.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-green-500/10 border-green-500/20 text-green-400"}`}>
+            {seedResult}
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
@@ -73,7 +113,12 @@ export default function LocationsPage() {
           <div className="text-center py-16">
             <MapPin className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
             <p className="text-zinc-400 mb-2">No locations seeded yet</p>
-            <p className="text-zinc-600 text-sm">Run POST /api/seed/ramayana to seed locations</p>
+            <p className="text-zinc-600 text-sm mb-4">Click "Seed / Refresh Locations" in the top-right to create all 12 Ramayana locations.</p>
+            <Button onClick={seedLocations} disabled={seeding}>
+              {seeding
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Seeding...</>
+                : <><RefreshCw className="h-4 w-4 mr-2" /> Seed Locations Now</>}
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -104,6 +149,20 @@ export default function LocationsPage() {
 
                   {/* Visual keywords */}
                   <p className="text-xs text-zinc-600 font-mono">{loc.visualKeywords}</p>
+
+                  {/* Locked visual description */}
+                  {loc.lockedVisualDesc && (
+                    <div className="bg-amber-950/20 border border-amber-700/30 rounded-lg p-2.5">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Lock className="h-3 w-3 text-amber-400" />
+                        <span className="text-xs font-medium text-amber-400">Locked Visual Description</span>
+                        {loc.isVisualLocked && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 ml-auto">Active</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-amber-200/70 leading-relaxed italic">"{loc.lockedVisualDesc}"</p>
+                    </div>
+                  )}
 
                   {/* Reference images */}
                   {loc.referenceImages.length > 0 && (
