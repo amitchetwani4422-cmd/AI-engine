@@ -162,6 +162,7 @@ model Character {
   personality         String
   visualReferences    String[]
   approvedImages      String[]
+  pendingImages       String[]  @default([])
   approvedExpressions String[]
   clothingRules       String
   colorPalette        String[]

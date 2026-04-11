@@ -27,6 +27,10 @@ import {
   ZoomIn,
   Crosshair,
   RefreshCw,
+  Trash2,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { ModelSelector } from "@/components/ui/model-selector";
 import type { AIModel } from "@/lib/ai-provider";
@@ -49,6 +53,7 @@ interface Character {
   personality: string;
   visualReferences: string[];
   approvedImages: string[];
+  pendingImages: string[];
   approvedExpressions: string[];
   clothingRules?: string;
   colorPalette: string[];
@@ -157,6 +162,16 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
       setGeneratingImage(false);
       setShowPromptEditor(false);
     }
+  }
+
+  async function imageAction(action: "delete-image" | "unapprove-image" | "approve-image", imageUrl: string, imageFrom?: "approved" | "pending") {
+    const res = await fetch(`/api/characters/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, imageUrl, imageFrom }),
+    });
+    const data = await res.json();
+    if (data && !data.error) setCharacter(data);
   }
 
   if (loading) {
@@ -357,25 +372,23 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                       <div key={i} className={`relative group w-full aspect-square rounded overflow-hidden border transition-colors ${baseImageUrl === url ? "border-amber-500" : "border-zinc-700"}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={url} alt={`Ref ${i + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                        {/* Hover overlay with two action buttons */}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
-                          <button
-                            onClick={() => setLightboxUrl(url)}
-                            className="flex items-center gap-1 px-2 py-1 bg-black/70 rounded text-white text-xs hover:bg-black/90"
-                          >
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 p-1">
+                          <button onClick={() => setLightboxUrl(url)} className="flex items-center gap-1 px-2 py-0.5 bg-black/70 rounded text-white text-xs hover:bg-black/90 w-full justify-center">
                             <ZoomIn className="h-3 w-3" /> View
                           </button>
                           <button
-                            onClick={() => {
-                              setBaseImageUrl(url === baseImageUrl ? null : url);
-                              setShowPromptEditor(true);
-                            }}
-                            className={`flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-amber-600 ${baseImageUrl === url ? "bg-amber-500 text-black" : "bg-black/70 text-amber-300"}`}
+                            onClick={() => { setBaseImageUrl(url === baseImageUrl ? null : url); setShowPromptEditor(true); }}
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs w-full justify-center ${baseImageUrl === url ? "bg-amber-500 text-black" : "bg-black/70 text-amber-300 hover:bg-amber-700"}`}
                           >
                             <Crosshair className="h-3 w-3" /> {baseImageUrl === url ? "Base ✓" : "Use as base"}
                           </button>
+                          <button onClick={() => imageAction("unapprove-image", url, "approved")} className="flex items-center gap-1 px-2 py-0.5 bg-black/70 rounded text-zinc-400 text-xs hover:bg-zinc-700 w-full justify-center">
+                            <ChevronDown className="h-3 w-3" /> Unapprove
+                          </button>
+                          <button onClick={() => imageAction("delete-image", url, "approved")} className="flex items-center gap-1 px-2 py-0.5 bg-black/70 rounded text-red-400 text-xs hover:bg-red-900/60 w-full justify-center">
+                            <Trash2 className="h-3 w-3" /> Delete
+                          </button>
                         </div>
-                        {/* Active base indicator */}
                         {baseImageUrl === url && (
                           <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400 shadow" />
                         )}
@@ -390,6 +403,36 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                 )}
               </CardContent>
             </Card>
+
+            {/* Pending / Unapproved Images */}
+            {(character.pendingImages ?? []).length > 0 && (
+              <Card className="bg-zinc-900 border-zinc-800 border-dashed">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm text-zinc-400">Pending / Unapproved <span className="ml-1.5 text-xs font-normal bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded">{character.pendingImages.length}</span></CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {character.pendingImages.map((url, i) => (
+                      <div key={i} className="relative group w-full aspect-square rounded overflow-hidden border border-zinc-700/50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`Pending ${i + 1}`} className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 p-1">
+                          <button onClick={() => setLightboxUrl(url)} className="flex items-center gap-1 px-2 py-0.5 bg-black/70 rounded text-white text-xs hover:bg-black/90 w-full justify-center">
+                            <ZoomIn className="h-3 w-3" /> View
+                          </button>
+                          <button onClick={() => imageAction("approve-image", url, "pending")} className="flex items-center gap-1 px-2 py-0.5 bg-black/70 rounded text-green-400 text-xs hover:bg-green-900/60 w-full justify-center">
+                            <ChevronUp className="h-3 w-3" /> Approve
+                          </button>
+                          <button onClick={() => imageAction("delete-image", url, "pending")} className="flex items-center gap-1 px-2 py-0.5 bg-black/70 rounded text-red-400 text-xs hover:bg-red-900/60 w-full justify-center">
+                            <Trash2 className="h-3 w-3" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader><CardTitle className="text-sm">Approved Expressions</CardTitle></CardHeader>

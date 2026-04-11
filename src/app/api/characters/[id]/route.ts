@@ -14,11 +14,16 @@ const UpdateCharacterSchema = z.object({
   colorPalette: z.array(z.string()).optional(),
   visualReferences: z.array(z.string()).optional(),
   approvedImages: z.array(z.string()).optional(),
+  pendingImages: z.array(z.string()).optional(),
   approvedExpressions: z.array(z.string()).optional(),
   restrictedChanges: z.array(z.string()).optional(),
   samplePoses: z.array(z.string()).optional(),
   seriesIds: z.array(z.string()).optional(),
   voiceId: z.string().nullable().optional(),
+  // Image management actions
+  action: z.enum(["delete-image", "unapprove-image", "approve-image"]).optional(),
+  imageUrl: z.string().optional(),
+  imageFrom: z.enum(["approved", "pending"]).optional(),
 });
 
 export async function GET(
@@ -56,9 +61,40 @@ export async function PATCH(
       return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
     }
 
+    const { action, imageUrl, imageFrom, ...fields } = parsed.data;
+
+    // Handle image management actions
+    if (action && imageUrl) {
+      const current = await prisma.character.findUnique({ where: { id }, select: { approvedImages: true, pendingImages: true } });
+      if (!current) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+
+      let updateData: { approvedImages?: string[]; pendingImages?: string[] } = {};
+
+      if (action === "delete-image") {
+        if (imageFrom === "pending") {
+          updateData.pendingImages = current.pendingImages.filter(u => u !== imageUrl);
+        } else {
+          updateData.approvedImages = current.approvedImages.filter(u => u !== imageUrl);
+        }
+      } else if (action === "unapprove-image") {
+        updateData.approvedImages = current.approvedImages.filter(u => u !== imageUrl);
+        updateData.pendingImages = [...current.pendingImages, imageUrl];
+      } else if (action === "approve-image") {
+        updateData.pendingImages = current.pendingImages.filter(u => u !== imageUrl);
+        updateData.approvedImages = [...current.approvedImages, imageUrl];
+      }
+
+      const character = await prisma.character.update({
+        where: { id },
+        data: updateData,
+        include: { voice: { select: { id: true, name: true } }, approvedPrompts: { orderBy: { createdAt: 'desc' } } },
+      });
+      return NextResponse.json(character);
+    }
+
     const character = await prisma.character.update({
       where: { id },
-      data: parsed.data,
+      data: fields,
       include: {
         voice: { select: { id: true, name: true } },
         approvedPrompts: { orderBy: { createdAt: 'desc' } },
