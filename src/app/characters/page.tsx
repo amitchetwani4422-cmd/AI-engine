@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, Plus, Loader2, User, Wand2, CheckCircle, RefreshCw, Sparkles } from "lucide-react";
+import { Users, Plus, Loader2, User, Wand2, CheckCircle, RefreshCw, Sparkles, Mic } from "lucide-react";
 
 interface Character {
   id: string;
@@ -56,6 +56,8 @@ export default function CharactersPage() {
   const [imageError, setImageError] = useState<Record<string, string>>({});
   const [seedingChars, setSeedingChars] = useState(false);
   const [seedCharResult, setSeedCharResult] = useState<string | null>(null);
+  const [seedingVoices, setSeedingVoices] = useState(false);
+  const [seedVoiceResult, setSeedVoiceResult] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     speciesOrType: "",
@@ -99,6 +101,24 @@ export default function CharactersPage() {
       setSeedCharResult(`Error: ${String(e)}`);
     } finally {
       setSeedingChars(false);
+    }
+  }
+
+  async function seedRamayanaVoices() {
+    setSeedingVoices(true);
+    setSeedVoiceResult(null);
+    try {
+      const res = await fetch("/api/seed/ramayana/voices", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setSeedVoiceResult(`Voices done — ${data.summary.created} created, ${data.summary.skipped} skipped`);
+      } else {
+        setSeedVoiceResult(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      setSeedVoiceResult(`Error: ${String(e)}`);
+    } finally {
+      setSeedingVoices(false);
     }
   }
 
@@ -165,6 +185,11 @@ export default function CharactersPage() {
                 ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Seeding...</>
                 : <><Sparkles className="h-4 w-4 mr-2" /> Seed Ramayana Characters</>}
             </Button>
+            <Button variant="outline" onClick={seedRamayanaVoices} disabled={seedingVoices}>
+              {seedingVoices
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Seeding Voices...</>
+                : <><Mic className="h-4 w-4 mr-2" /> Seed Voices</>}
+            </Button>
             <Button onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4 mr-2" /> New Character
             </Button>
@@ -175,6 +200,11 @@ export default function CharactersPage() {
         {seedCharResult && (
           <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm border ${seedCharResult.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-green-500/10 border-green-500/20 text-green-400"}`}>
             {seedCharResult}
+          </div>
+        )}
+        {seedVoiceResult && (
+          <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm border ${seedVoiceResult.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-purple-500/10 border-purple-500/20 text-purple-400"}`}>
+            {seedVoiceResult}
           </div>
         )}
         {/* Filters */}
