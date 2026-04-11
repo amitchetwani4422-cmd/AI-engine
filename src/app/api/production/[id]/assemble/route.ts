@@ -48,7 +48,7 @@ export async function POST(
         url: s.generatedClips[0].clipUrl,
         sequenceNumber: s.sequenceNumber,
         duration: s.duration,
-        audioPublicId: (s as Record<string, unknown>).sceneAudioPublicId as string | undefined || undefined,
+        audioPublicId: s.sceneAudioPublicId ?? undefined,
       }));
 
     if (clips.length === 0) {
@@ -74,6 +74,7 @@ export async function POST(
       url: clip.url,
       sequenceNumber: clip.sequenceNumber,
       duration: clip.duration,
+      audioPublicId: clip.audioPublicId || undefined, // narration audio — merged per clip before concat
     }));
 
     // Get music mood from script
