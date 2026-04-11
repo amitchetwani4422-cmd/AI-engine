@@ -111,7 +111,7 @@ export default function CharactersPage() {
       const res = await fetch("/api/seed/ramayana/voices", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        setSeedVoiceResult(`Voices done — ${data.summary.created} created, ${data.summary.skipped} skipped`);
+        setSeedVoiceResult(`Voices done — ${data.summary.created} created, ${data.summary.skipped} skipped · Narrator: ${data.summary.narrator}`);
       } else {
         setSeedVoiceResult(`Error: ${data.error}`);
       }

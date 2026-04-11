@@ -181,16 +181,19 @@ const VOICE_MAP: Array<{
 
 export async function POST(_req: NextRequest) {
   try {
-    // Get the first channel
-    const channel = await prisma.channel.findFirst();
+    // Get the DevLok channel (Ramayana channel); fall back to first channel
+    const channel = await prisma.channel.findFirst({
+      where: { name: "DevLok" },
+    }) ?? await prisma.channel.findFirst();
+
     if (!channel) {
       return NextResponse.json({ error: "No channel found. Create a channel first." }, { status: 400 });
     }
 
     const results: Array<{ name: string; status: "created" | "skipped"; reason?: string }> = [];
 
+    // ── 1. Character voices ────────────────────────────────────────────────
     for (const entry of VOICE_MAP) {
-      // Find the character by name + channelId
       const character = await prisma.character.findFirst({
         where: { name: entry.name, channelId: channel.id },
         select: { id: true, name: true, voiceId: true },
@@ -206,7 +209,6 @@ export async function POST(_req: NextRequest) {
         continue;
       }
 
-      // Create VoiceAsset
       const voice = await prisma.voiceAsset.create({
         data: {
           name: `${entry.name} — ${entry.voiceName}`,
@@ -220,7 +222,6 @@ export async function POST(_req: NextRequest) {
         },
       });
 
-      // Link to character
       await prisma.character.update({
         where: { id: character.id },
         data: { voiceId: voice.id },
@@ -229,12 +230,37 @@ export async function POST(_req: NextRequest) {
       results.push({ name: entry.name, status: "created" });
     }
 
+    // ── 2. Narrator voice — Akshay (Indian Accent Narrator) ───────────────
+    // Linked to channel.narratorVoiceId; used for all off-screen narration
+    let narratorStatus = "skipped — already set";
+    if (!channel.narratorVoiceId) {
+      const narratorVoice = await prisma.voiceAsset.create({
+        data: {
+          name: "DevLok Narrator — Akshay (Indian Accent)",
+          elevenlabsVoiceId: "CZdRaSQ51p0onta4eec8",
+          channelId: channel.id,
+          characterId: null,
+          language: "Hindi",
+          isMultilingual: true,
+          tonePresets: ["reverent", "authoritative", "deep", "storyteller", "Sanskrit-inflected"],
+          referenceAudios: [],
+        },
+      });
+
+      await prisma.channel.update({
+        where: { id: channel.id },
+        data: { narratorVoiceId: narratorVoice.id },
+      });
+
+      narratorStatus = `created — voice ID: ${narratorVoice.id}`;
+    }
+
     const created = results.filter((r) => r.status === "created").length;
     const skipped = results.filter((r) => r.status === "skipped").length;
 
     return NextResponse.json({
       ok: true,
-      summary: { created, skipped, total: VOICE_MAP.length },
+      summary: { created, skipped, total: VOICE_MAP.length, narrator: narratorStatus },
       results,
     });
   } catch (error) {
