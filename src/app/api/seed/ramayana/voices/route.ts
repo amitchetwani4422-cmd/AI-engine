@@ -2,175 +2,180 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// ElevenLabs pre-made voice assignments for Ramayana characters
-// Ram, Lakshman, Hanuman already have voices — skip them
+// All 27 voices are native Hindi / Indian-language community voices from
+// the ElevenLabs Voice Library (confirmed IDs via json2video.com/elevenlabs).
+// Use model: eleven_multilingual_v2 when calling TTS for authentic Hindi output.
+// Ram, Lakshman, Hanuman already have voices assigned — those are skipped automatically.
 const VOICE_MAP: Array<{
   name: string;
   voiceName: string;
   elevenlabsVoiceId: string;
   tonePresets: string[];
 }> = [
+  // ── FEMALE CHARACTERS ────────────────────────────────────────────────────
   {
     name: "Sita",
-    voiceName: "Rachel",
-    elevenlabsVoiceId: "21m00Tcm4TlvDq8ikWAM",
+    voiceName: "Priya (Hindi)",
+    elevenlabsVoiceId: "amiAXapsDOAiHJqbsAZj",
     tonePresets: ["gentle", "devotional", "sorrowful", "serene"],
   },
   {
-    name: "Ravan",
-    voiceName: "Daniel",
-    elevenlabsVoiceId: "onwK4e9ZLuTAKqWW03F9",
-    tonePresets: ["commanding", "authoritative", "arrogant", "fierce"],
-  },
-  {
-    name: "Dasharath",
-    voiceName: "George",
-    elevenlabsVoiceId: "CwhRBWXzGAHq8TQ4Fs17",
-    tonePresets: ["regal", "paternal", "grieving", "noble"],
-  },
-  {
     name: "Kaushalya",
-    voiceName: "Bella",
-    elevenlabsVoiceId: "EXAVITQu4vr4xnSDxMaL",
+    voiceName: "Anjali — Soothing Hindi",
+    elevenlabsVoiceId: "gHu9GtaHOXcSqFTK06ux",
     tonePresets: ["maternal", "calm", "devout", "dignified"],
   },
   {
     name: "Kaikeyi",
-    voiceName: "Domi",
-    elevenlabsVoiceId: "AZnzlk1XvdvUeBnXmlld",
+    voiceName: "Natasha — Energetic Hindi",
+    elevenlabsVoiceId: "DJDkcaY4POaxra3iaZ5b",
     tonePresets: ["proud", "scheming", "passionate", "regal"],
   },
   {
-    name: "Bharat",
-    voiceName: "Antoni",
-    elevenlabsVoiceId: "ErXwobaYiN019PkySvjV",
-    tonePresets: ["righteous", "grief-stricken", "loyal", "noble"],
-  },
-  {
-    name: "Vibhishan",
-    voiceName: "James",
-    elevenlabsVoiceId: "ZQe5CZNOzWyzPSCn5a3c",
-    tonePresets: ["righteous", "contemplative", "diplomatic", "firm"],
-  },
-  {
-    name: "Shatrughan",
-    voiceName: "Liam",
-    elevenlabsVoiceId: "TX3LPaxmHKxFdv7VOQHJ",
-    tonePresets: ["loyal", "warrior", "steadfast", "brotherly"],
-  },
-  {
-    name: "Vishwamitra",
-    voiceName: "Arnold",
-    elevenlabsVoiceId: "VR6AewLTigWG4xSOukaG",
-    tonePresets: ["stern", "wise", "commanding", "sage"],
-  },
-  {
-    name: "Sugriva",
-    voiceName: "Brian",
-    elevenlabsVoiceId: "nPczCjzI2devNBz1zQrb",
-    tonePresets: ["assertive", "strategic", "grateful", "kingly"],
-  },
-  {
-    name: "Jatayu",
-    voiceName: "Adam",
-    elevenlabsVoiceId: "pNInz6obpgDQGcFmaJgB",
-    tonePresets: ["noble", "heroic", "dying", "honourable"],
-  },
-  {
     name: "Shabari",
-    voiceName: "Dorothy",
-    elevenlabsVoiceId: "ThT5KcBeYPX3keUQqHPh",
+    voiceName: "Muskaan — Casual Hindi",
+    elevenlabsVoiceId: "xoV6iGVuOGYHLWjXhVC7",
     tonePresets: ["devoted", "elderly", "joyful", "humble"],
   },
   {
-    name: "Angad",
-    voiceName: "Sam",
-    elevenlabsVoiceId: "yoZ06aMxZJJ28mfd3POQ",
-    tonePresets: ["bold", "youthful", "warrior", "fearless"],
-  },
-  {
-    name: "Kumbhakarna",
-    voiceName: "Josh",
-    elevenlabsVoiceId: "TxGEqnHWrfWFTfGW9XjX",
-    tonePresets: ["booming", "groggy", "powerful", "resigned"],
-  },
-  {
-    name: "Indrajit",
-    voiceName: "Harry",
-    elevenlabsVoiceId: "SOYHLrjzK2X1ezoPC6cr",
-    tonePresets: ["dark", "proud", "cunning", "fierce"],
-  },
-  {
     name: "Mandodari",
-    voiceName: "Charlotte",
-    elevenlabsVoiceId: "XB0fDUnXU5powFXDhCwa",
+    voiceName: "Meera — Conversational Indian",
+    elevenlabsVoiceId: "gCr8TeSJgJaeaIoV4RWH",
     tonePresets: ["wise", "sorrowful", "dignified", "pleading"],
   },
   {
     name: "Manthara",
-    voiceName: "Jessie",
-    elevenlabsVoiceId: "t0jbNlBVZ17f02VDIeMI",
+    voiceName: "Kanika — Relatable Hindi",
+    elevenlabsVoiceId: "H6QPv2pQZDcGqLwDTIJQ",
     tonePresets: ["scheming", "rasping", "whispering", "manipulative"],
   },
   {
+    name: "Shurpanakha",
+    voiceName: "Ayesha — Energetic Hindi",
+    elevenlabsVoiceId: "hGb0Exk8cp4vQEnwolxa",
+    tonePresets: ["seductive", "wrathful", "cunning", "vengeful"],
+  },
+  {
+    name: "Sumitra",
+    voiceName: "DB — Indian Hindi",
+    elevenlabsVoiceId: "2F1KINpxsttim2WfMbVs",
+    tonePresets: ["gentle", "serene", "maternal", "composed"],
+  },
+  {
+    name: "Urmila",
+    voiceName: "Anika — Sweet Hindi Social Media",
+    elevenlabsVoiceId: "RABOvaPec1ymXz02oDQi",
+    tonePresets: ["devoted", "longing", "patient", "serene"],
+  },
+  {
+    name: "Tara",
+    voiceName: "Anika — Hindi Interactive",
+    elevenlabsVoiceId: "9FTUWXd0yHJL1ZiZ71RK",
+    tonePresets: ["grief-stricken", "wise", "queenly", "sorrowful"],
+  },
+
+  // ── MALE CHARACTERS ──────────────────────────────────────────────────────
+  {
+    name: "Ravan",
+    voiceName: "Malang — Strong & Confident Hindi",
+    elevenlabsVoiceId: "PbLyyOzcAbfd6xduq5vt",
+    tonePresets: ["commanding", "authoritative", "arrogant", "fierce"],
+  },
+  {
+    name: "Dasharath",
+    voiceName: "Ranbir M — Deep Engaging Hindi",
+    elevenlabsVoiceId: "yRis6UiS4dtT4Aqv72DC",
+    tonePresets: ["regal", "paternal", "grieving", "noble"],
+  },
+  {
+    name: "Bharat",
+    voiceName: "Ruhaan — Clean Hindi Narration",
+    elevenlabsVoiceId: "zs7UfyHqCCmny7uTxCYi",
+    tonePresets: ["righteous", "grief-stricken", "loyal", "noble"],
+  },
+  {
+    name: "Vibhishan",
+    voiceName: "Niraj — Hindi Narrator",
+    elevenlabsVoiceId: "zgqefOY5FPQ3bB7OZTVR",
+    tonePresets: ["righteous", "contemplative", "diplomatic", "firm"],
+  },
+  {
+    name: "Shatrughan",
+    voiceName: "Leo — Energetic Hindi",
+    elevenlabsVoiceId: "IvLWq57RKibBrqZGpQrC",
+    tonePresets: ["loyal", "warrior", "steadfast", "brotherly"],
+  },
+  {
+    name: "Vishwamitra",
+    voiceName: "Voice of God — Hindi Narration",
+    elevenlabsVoiceId: "PLFXYRTU74HpuNdj6oDl",
+    tonePresets: ["stern", "wise", "commanding", "sage"],
+  },
+  {
+    name: "Sugriva",
+    voiceName: "Raju — Relatable Hindi",
+    elevenlabsVoiceId: "zT03pEAEi0VHKciJODfn",
+    tonePresets: ["assertive", "strategic", "grateful", "kingly"],
+  },
+  {
+    name: "Jatayu",
+    voiceName: "P K Anil — Clear Hindi",
+    elevenlabsVoiceId: "JTPrASXyK62cF3L7w8hv",
+    tonePresets: ["noble", "heroic", "dying", "honourable"],
+  },
+  {
+    name: "Angad",
+    voiceName: "Bunty — Reel Perfect Hindi",
+    elevenlabsVoiceId: "FZkK3TvQ0pjyDmT8fzIW",
+    tonePresets: ["bold", "youthful", "warrior", "fearless"],
+  },
+  {
+    name: "Kumbhakarna",
+    voiceName: "Nipunn — Deep Hindi",
+    elevenlabsVoiceId: "BmblbsReuLUooZ4LL0Rq",
+    tonePresets: ["booming", "groggy", "powerful", "resigned"],
+  },
+  {
+    name: "Indrajit",
+    voiceName: "Jeet — Raw Unfiltered Hindi",
+    elevenlabsVoiceId: "3Th96YoTP1kEKxJroYo1",
+    tonePresets: ["dark", "proud", "cunning", "fierce"],
+  },
+  {
     name: "Vashishtha",
-    voiceName: "Callum",
-    elevenlabsVoiceId: "N2lVS1w4EtoT3dr4eOWO",
+    voiceName: "Viraj — Energetic Hindi Narrator",
+    elevenlabsVoiceId: "FmBhnvP58BK0vz65OOj7",
     tonePresets: ["sagely", "measured", "authoritative", "spiritual"],
   },
   {
     name: "Jambavan",
-    voiceName: "Patrick",
-    elevenlabsVoiceId: "ODq5zmih8GrVes37Dy39",
+    voiceName: "Prem — Connectable Hindi",
+    elevenlabsVoiceId: "sY2peC9GbHX8NCy5enOe",
     tonePresets: ["ancient", "wise", "gravelly", "warm"],
   },
   {
-    name: "Shurpanakha",
-    voiceName: "Freya",
-    elevenlabsVoiceId: "jsCqWAovK2LkecY7zXl4",
-    tonePresets: ["seductive", "wrathful", "cunning", "vengeful"],
-  },
-  {
     name: "Maricha",
-    voiceName: "Charlie",
-    elevenlabsVoiceId: "IKne3meq5aSn9XLyUdCD",
+    voiceName: "Aaditya K — Hindi Storyteller",
+    elevenlabsVoiceId: "MbS9nsh44HIwAcjGIOe2",
     tonePresets: ["deceptive", "fearful", "cunning", "reluctant"],
   },
   {
-    name: "Sumitra",
-    voiceName: "Matilda",
-    elevenlabsVoiceId: "XrExE9yKIg1WjnnlVkGX",
-    tonePresets: ["gentle", "serene", "maternal", "composed"],
-  },
-  {
     name: "Vali",
-    voiceName: "Eric",
-    elevenlabsVoiceId: "cjVigY5qzO86Huf0OWal",
+    voiceName: "Ahmed — Professional Hindi",
+    elevenlabsVoiceId: "k7nOSUCadIEwB6fdJmbw",
     tonePresets: ["powerful", "proud", "dying", "kingly"],
   },
   {
-    name: "Urmila",
-    voiceName: "Gigi",
-    elevenlabsVoiceId: "jBpfuIE2acCO8z3wKNLl",
-    tonePresets: ["devoted", "longing", "patient", "serene"],
-  },
-  {
     name: "Agastya",
-    voiceName: "Chris",
-    elevenlabsVoiceId: "iP05astWwhQ2gGYjsEVp",
+    voiceName: "Parveen — Hindi",
+    elevenlabsVoiceId: "v4ZRRmjvcrgAdi5qkWtZ",
     tonePresets: ["sage", "powerful", "ancient", "benevolent"],
   },
   {
     name: "Nala",
-    voiceName: "Fin",
-    elevenlabsVoiceId: "D38z5RcWu1voky8WS1ja",
+    voiceName: "Bunty — Funny Best Friend Hindi",
+    elevenlabsVoiceId: "7b9mYhmnp0y2qSH1FnBL",
     tonePresets: ["skilled", "energetic", "builder", "loyal"],
-  },
-  {
-    name: "Tara",
-    voiceName: "Elli",
-    elevenlabsVoiceId: "MF3mGyEYCl7XYWbV9V6O",
-    tonePresets: ["grief-stricken", "wise", "queenly", "sorrowful"],
   },
 ];
 
