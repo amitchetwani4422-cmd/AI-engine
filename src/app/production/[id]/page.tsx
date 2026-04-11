@@ -334,7 +334,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     return false;
   }, [id]);
 
-  const runScene = useCallback(async (sceneId: string, feedback?: string, promptOverride?: string) => {
+  const runScene = useCallback(async (sceneId: string, feedback?: string, promptOverride?: string, forceRetranslate?: boolean) => {
     if (generatingRef.current) return;
     generatingRef.current = true;
     setGeneratingScene(sceneId);
@@ -352,6 +352,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           modelOverride: sceneModels[sceneId] || undefined,
           feedback: feedback || undefined,
           promptOverride: promptOverride || undefined,
+          forceRetranslate: forceRetranslate || undefined,
         }),
       });
       const data = await res.json();
@@ -411,7 +412,10 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   }, [id, videoStyle, budgetMode, pollForClip, scheduleAutoRescue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function generateScene(sceneId: string, feedback?: string, promptOverride?: string) {
-    runScene(sceneId, feedback, promptOverride);
+    // If feedback/promptOverride is provided, force re-translate so the cached
+    // bad auto-translation doesn't get reused
+    const forceRetranslate = !!(feedback?.trim() || promptOverride?.trim());
+    runScene(sceneId, feedback, promptOverride, forceRetranslate);
   }
 
   function startQueue(sceneIds: string[]) {
@@ -886,7 +890,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                         <p className="text-xs text-zinc-600 italic mb-1.5">{scene.routingReason}</p>
                       )}
                       {/* Manual model override */}
-                      <div className="flex items-center gap-1.5 mb-2">
+                      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                         <span className="text-xs text-zinc-600">Override:</span>
                         <select
                           value={sceneModels[scene.id] ?? scene.modelAssigned}
@@ -897,6 +901,15 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                             <option key={m.value} value={m.value}>{m.label} ({m.badge})</option>
                           ))}
                         </select>
+                        {(sceneModels[scene.id] ?? scene.modelAssigned) !== "kling-3.0" && (
+                          <button
+                            className="text-xs text-blue-400 hover:text-blue-200 underline"
+                            onClick={() => setSceneModels((prev) => ({ ...prev, [scene.id]: "kling-3.0" }))}
+                            title="Kling produces the best quality for complex Ramayana divine scenes"
+                          >
+                            → Use Kling for best quality
+                          </button>
+                        )}
                       </div>
                       <p className="text-sm text-zinc-300 mb-2">{scene.description}</p>
 
@@ -1005,7 +1018,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                               variant="outline"
                               className="h-6 px-2 text-xs"
                               disabled={isGenerating || !!generatingScene}
-                              onClick={() => runScene(scene.id)}
+                              onClick={() => runScene(scene.id, undefined, undefined, true)}
                             >
                               <RefreshCw className="h-3 w-3 mr-1" />
                               {(() => {

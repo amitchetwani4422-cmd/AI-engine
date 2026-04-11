@@ -26,6 +26,7 @@ const GenerateSceneSchema = z.object({
   modelOverride: z.string().optional(),
   feedback: z.string().optional(),
   promptOverride: z.string().optional(),
+  forceRetranslate: z.boolean().optional(), // clear cached promptEn and re-translate from Hindi
 });
 
 export async function POST(
@@ -41,7 +42,7 @@ export async function POST(
       return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { sceneId, stylePrefix, forceKling, modelOverride, feedback, promptOverride } = parsed.data;
+    const { sceneId, stylePrefix, forceKling, modelOverride, feedback, promptOverride, forceRetranslate } = parsed.data;
 
     if (!process.env.FAL_KEY && !process.env.FAL_API_KEY) {
       return NextResponse.json(
@@ -91,18 +92,26 @@ export async function POST(
       let corePrompt: string;
       if (usesEnPrompt) {
         const promptEn = (scene as Record<string, unknown>).promptEn as string | undefined;
-        if (promptEn?.trim()) {
+        if (promptEn?.trim() && !forceRetranslate) {
           corePrompt = promptEn.trim();
         } else {
-          // Auto-translate Hindi prompt to English keywords for LTX2/Wan
+          // Auto-translate Hindi prompt to rich English for LTX2/Wan
           const hindiSource = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
           if (hindiSource) {
             try {
               const translated = await generateWithModel(
                 'gpt-4o-mini',
-                'You are a video prompt translator. Convert the given Hindi video scene description into concise English visual keywords for AI video generation. Format: subject+action, environment, lighting, camera movement. Max 2 sentences. No Hindi words.',
+                `You are an expert AI video prompt writer for ancient Indian mythological content (Ramayana, Mahabharata, Vedic epics).
+Translate the following Hindi scene description into a vivid, detailed English video prompt for AI video generation models.
+Your output MUST preserve ALL of the following details from the source:
+1. CHARACTER: Exact character name + divine appearance (skin tone/glow, clothing, ornaments, crown, weapons, expression, body pose)
+2. ACTION: The specific movement or action happening in the scene
+3. SETTING: Exact location type (forest, palace, battlefield, ocean, celestial realm, cave, riverside, etc.)
+4. ATMOSPHERE: Lighting quality (golden divine rays, moonlight, oil lamp glow, fire light, etc.) + mood + special effects (divine aura, sacred fire, mist, petals)
+5. STYLE: ancient Treta Yuga India, Ravi Varma divine oil painting aesthetic, no modern elements, no western clothing
+Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve every character and visual detail.`,
                 hindiSource,
-                200
+                500
               );
               corePrompt = translated.trim();
               // Save back so we don't re-translate next time
@@ -125,15 +134,18 @@ export async function POST(
         ? `${corePrompt} Camera: ${camDir}.`
         : corePrompt;
 
-      // Inject world setting as background context so every scene stays visually consistent
-      // Only add if the scene doesn't already reference the world in detail
-      const worldContext = worldSetting && withCamera.length < 600
+      // Inject world setting for Kling/Veo (long prompts) but skip for LTX/Wan —
+      // those models need concise prompts; worldSetting buries the scene-specific content
+      const worldContext = !usesEnPrompt && worldSetting && withCamera.length < 600
         ? ` Background world context: ${worldSetting}`
         : '';
 
-      // Style prefix: weave it in naturally rather than prepending a tag dump
+      // Style prefix: weave it in naturally rather than prepending a tag dump.
+      // For LTX/Wan the scene content must come first (model is sensitive to prompt order).
       const withStyle = stylePrefix?.trim()
-        ? `${stylePrefix.replace(/,$/, '').trim()}, ${withCamera}${worldContext}`
+        ? usesEnPrompt
+          ? `${withCamera}${worldContext}, ${stylePrefix.replace(/,$/, '').trim()}`
+          : `${stylePrefix.replace(/,$/, '').trim()}, ${withCamera}${worldContext}`
         : `${withCamera}${worldContext}`;
 
       // Feedback: rephrase as a natural instruction rather than a bracketed note
