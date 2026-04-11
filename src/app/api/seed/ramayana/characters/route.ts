@@ -335,6 +335,173 @@ const CHARACTERS = [
     preferredModel: "kling-3.0",
     universeId: "A",
   },
+
+  // ─── Batch 3 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Shatrughan",
+    speciesOrType: "Human",
+    worldRole: "Youngest prince of Ayodhya — Bharat's devoted companion, later conquers Madhura",
+    personality: "Fiercely loyal, mirrors Bharat as Lakshman mirrors Ram; speaks less but acts decisively; cheerful youngest brother",
+    visualReferences: [
+      "youngest brother in early 20s, fair warm complexion close to Lakshman's",
+      "bright alert eyes, eager youthful expression — the youngest, always energetic",
+      "always positioned beside or slightly behind Bharat",
+      "bow strung and quiver on back, simpler crown than Ram's",
+      "sacred janeu thread across bare chest",
+      "saffron-yellow silk dhoti with thin gold border",
+    ],
+    clothingRules:
+      "Saffron-yellow silk dhoti with thin gold border. Simple warrior crown — least ornate of the four brothers. Bow always present. Bare feet. Slightly less armour than Lakshman.",
+    colorPalette: ["saffron yellow", "warm gold", "ivory", "forest green"],
+    restrictedChanges: [
+      "always beside Bharat — their bond mirrors Ram-Lakshman",
+      "youngest face — no beard, smooth youthful features",
+      "simpler crown than all three elder brothers",
+      "fair skin — distinguishable from Ram's blue and slightly lighter than Lakshman",
+    ],
+    samplePoses: [
+      "standing loyally behind Bharat at Nandigram",
+      "in battle stance guarding Bharat's right flank",
+      "greeting returning Ram at Ayodhya — joyful youngest brother",
+      "marching with bow raised in coronation procession",
+    ],
+    referencePrompt: "Prince Shatrughan youngest brother of Ram full body portrait, eager loyal young warrior in his early 20s, smooth youthful face without beard — the youngest prince, fair warm golden-wheat complexion slightly lighter than Lakshman, bright alert eyes filled with youthful energy and fierce loyalty, wearing saffron-yellow silk dhoti with thin gold border, simple warrior crown — the least ornate of the four brothers, composite wooden bow gripped in left hand arrow nocked and ready, full quiver of feathered arrows over right shoulder, sacred janeu thread across bare muscular chest, small forehead tilak, thin gold armlets on upper arms, bare feet, standing alert guard position slightly behind and to the right in loyalty formation, Ayodhya palace courtyard background at golden hour with carved stone columns and marigold garland decorations, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, YOUNGEST BROTHER smooth youthful face, FAIR skin not blue, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Vishwamitra",
+    speciesOrType: "Divine Human — Brahmarishi",
+    worldRole: "Royal sage who trains Ram and Lakshman — teaches them Bala-Atibala mantras and divine astras",
+    personality: "Fierce spiritual power, former king turned supreme sage; intense, demanding, uncompromising — pushes Ram beyond limits; earned brahmarishi status through iron will",
+    visualReferences: [
+      "powerful sage in his 60s — lean muscular body from years of severe tapas",
+      "tall imposing frame, matted brown-grey hair piled high in jata mukut",
+      "sacred white ash vibhuti marks on forehead and arms",
+      "piercing eyes like burning coals — spiritual warrior energy",
+      "saffron orange cotton dhoti only, no upper garment",
+      "holding tall kamandal and kush grass; divine fire tapas aura in orange-gold",
+    ],
+    clothingRules:
+      "Single saffron dhoti — no upper garment. Sacred ash marks on forehead and arms. Matted jata hair. Holds kamandal (water pot) and kush grass. No ornaments — renounced all of that. Walks barefoot with commanding stride.",
+    colorPalette: ["saffron orange", "ash white", "forest brown", "fire gold"],
+    restrictedChanges: [
+      "always bare-chested — no upper garment like other sages",
+      "matted jata hair — never loose or neatly combed",
+      "expression always fierce and commanding — never gentle",
+      "ash marks always on forehead — his tapas mark",
+    ],
+    samplePoses: [
+      "striding forward with Ram and Lakshman flanking him — purpose-filled march",
+      "arms raised calling divine astra — teaching Ram celestial weapons",
+      "standing before Dasharath demanding Ram — uncompromising",
+      "seated in ashram — fire kund blazing during yajna",
+    ],
+    referencePrompt: "Sage Vishwamitra the brahmarishi royal-sage full body portrait standing tall, powerful commanding sage in his 60s with intense spiritual warrior energy, lean strong body with visible muscles from years of severe tapas penance, tall imposing frame, matted brown-grey hair piled high in elaborate jata mukut ascetic hair crown, three horizontal sacred white ash vibhuti marks on broad forehead and ash lines on arms, piercing eyes like burning spiritual coals radiating immense tapas power, wearing only a single saffron orange cotton dhoti around waist — bare chest and arms, holding tall brass kamandal water pot in right hand and bundle of sacred kush grass in left, divine saffron-orange tapas fire energy aura radiating from his body, striding forward with commanding purposeful posture, dense ancient forest ashram background with large banyan tree roots and small yajna fire kund glowing in background, warm fire-light on his face, expression of fierce uncompromising spiritual authority, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, POWERFUL SAGE bare chest, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Sugriva",
+    speciesOrType: "Divine Vanara",
+    worldRole: "King of Kishkindha — ally of Ram, commands the vanara sena that builds the bridge to Lanka",
+    personality: "Cunning, grateful, kingly — suffered exile and humiliation under Vali; restored to power by Ram; repays the debt with his entire army and kingdom",
+    visualReferences: [
+      "monkey face with simian features — protruding muzzle, flat primate nose",
+      "golden-tawny brown monkey fur, stocky powerful vanara king build",
+      "royal crown of Kishkindha — more ornate than ordinary vanaras",
+      "gold necklace and armlets — kingly vanara bearing",
+      "seated on stone throne or standing with royal authority",
+      "mace or sword — king's weapon, not just boulders like soldiers",
+    ],
+    clothingRules:
+      "Rich gold silk dhoti. Ornate Kishkindha crown. Gold necklace and armlets. Royal bearing very distinct from Hanuman's devotee posture — Sugriva is a king. Carries a sword or mace.",
+    colorPalette: ["golden tawny", "royal gold", "deep saffron", "forest green"],
+    restrictedChanges: [
+      "always monkey face — never human face",
+      "always crown — he is the king, always in royal attire",
+      "golden-tawny fur — different from Hanuman's saffron-orange",
+      "expression kingly and commanding — not devotional like Hanuman",
+    ],
+    samplePoses: [
+      "seated on Kishkindha stone throne — commanding vanara generals",
+      "standing with Ram on Rishyamukha mountain — alliance formed",
+      "leading vanara army — mace raised, thousands of vanaras behind",
+      "pointing toward Lanka across the ocean — giving orders",
+    ],
+    referencePrompt: "King Sugriva the vanara king of Kishkindha full body portrait, MONKEY face with clear simian features — protruding muzzle flat primate nose wide jaw round monkey skull, golden-tawny brown monkey fur covering stocky powerfully built royal body, wearing rich gold silk dhoti with heavy gold border, elaborate Kishkindha royal crown of hammered gold with gems — more ornate than common vanaras showing his kingship, thick gold necklace with large pendant across broad chest, heavy gold armlets on upper arms, holding a gleaming golden sword in right hand as a king's weapon, seated on ancient carved stone throne of Rishyamukha mountain or standing in commanding royal posture, expression of kingly authority confidence and gratitude — he owes Ram everything, dense Kishkindha forest background with tall trees and mountain stone, dappled forest golden light, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, MONKEY face NOT human, KINGLY bearing distinct from Hanuman, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Jatayu",
+    speciesOrType: "Divine Eagle — son of Aruna",
+    worldRole: "King of vultures — fights Ravan to protect Sita; mortally wounded; tells Ram about Sita's abduction before dying",
+    personality: "Fearlessly selfless — an old eagle who fought a god-king alone to protect dharma; dies in service of Ram; represents ultimate sacrifice and loyalty",
+    visualReferences: [
+      "massive magnificent eagle with huge wing span — golden-brown body",
+      "white feathered regal head of an elder eagle, sharp intelligent divine eyes",
+      "powerful curved beak and sharp talons gripping stone or earth",
+      "battle wounds on one wing from fighting Ravan — blood on wing tip",
+      "standing with supreme courage and dignity despite mortal wounds",
+      "divine golden light around him — sacred dying warrior",
+    ],
+    clothingRules:
+      "No clothing — pure eagle form. Show wounds on one wing as marks of sacrifice. Divine golden glow around body. Ancient dignified eagle posture even in death. Never shown flying — always grounded, mortally wounded.",
+    colorPalette: ["golden brown", "white", "dark mahogany", "blood crimson"],
+    restrictedChanges: [
+      "always eagle form — never human or hybrid",
+      "always showing battle wounds — that is his defining moment",
+      "large ancient eagle — not a small bird, massive divine creature",
+      "expression of sacrifice and dignity — never fear",
+    ],
+    samplePoses: [
+      "lying on forest ground — dying, neck raised to give Ram his last message",
+      "wings spread in battle — fighting Ravan's chariot mid-air",
+      "Ram cradling dying Jatayu — Ram weeping over his fallen friend",
+      "standing wounded but proud — refusing to fall until Ram arrives",
+    ],
+    referencePrompt: "Jatayu the divine eagle son of Aruna full body portrait, massive magnificent ancient eagle the size of a small hill, golden-brown eagle body with large powerful wings, noble white-feathered elder eagle head with sharp intelligent divine eyes filled with sacrifice and courage, heavy curved golden beak, powerful scaled talons gripping the Panchavati forest ground, battle wounds clearly visible on right wing — feathers torn and blood on wing tip from fighting Ravan single-handedly to protect Sita, lying with one wing spread and neck raised upright toward Ram with last remaining strength, body radiating divine golden light of a sacred dying warrior, dense ancient Panchavati forest background with large trees and dramatic shafts of golden afternoon light piercing through canopy, expression of supreme selfless sacrifice and dignity — no fear only devotion, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, GIANT EAGLE bird form NOT human, battle wounds visible, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Shabari",
+    speciesOrType: "Human — forest tribal bhakta",
+    worldRole: "Devoted forest ascetic woman — waits decades for Ram; offers him tasted berries; receives moksha from Ram's visit",
+    personality: "Purest unconditional devotion — an untouchable tribal woman whose bhakti transcends all caste and form; simple, selfless, childlike love for Ram",
+    visualReferences: [
+      "very old tribal woman with deeply wrinkled dark complexion and white hair",
+      "small hunched frail frame — decades of forest penance",
+      "simple rough earth-toned brown sari of coarse cloth, barefoot",
+      "glass bead necklace, red bangles — simple tribal ornaments",
+      "leaf plate of forest berries before her — each one tasted with pure love",
+      "tears of joy streaming down aged face — Ram has finally come",
+    ],
+    clothingRules:
+      "Rough coarse brown/dark cloth sari — no silk, no gold. Simple glass or wooden bead necklace. Bare feet. White hair, wrinkled face. Leaf-woven plate of berries always present in her scene.",
+    colorPalette: ["earth brown", "forest green", "deep ochre", "warm amber"],
+    restrictedChanges: [
+      "always very old — white hair, wrinkled face, frail body",
+      "always in rough tribal cloth — never silk or fine fabric",
+      "always with leaf plate of berries in hand or before her",
+      "expression of purest joy and childlike devotion — not sad",
+    ],
+    samplePoses: [
+      "offering berries to Ram with trembling outstretched hands — tears of joy",
+      "seated outside her ashram hut — eyes searching the forest path for Ram",
+      "tasting a berry carefully — making sure it is sweet enough for Ram",
+      "prostrating at Ram's feet — receiving his divine touch and moksha",
+    ],
+    referencePrompt: "Shabari the devoted old tribal forest woman full body portrait, very old woman with deeply wrinkled dark complexion, thin white hair pulled back simply, small frail hunched body from decades of forest penance, wearing simple rough coarse dark earth-brown cloth sari — NOT silk NOT fine fabric, string of simple wooden beads around neck, red glass bangles on thin wrists, bare feet with forest earth on soles, seated on simple forest ground outside a small thatched forest hermitage hut, holding out a large fresh green leaf woven into a bowl filled with ripe forest berries — she has lovingly tasted each one to select only the sweetest for Ram, tears of pure joy and decades of patient devotion streaming down her aged deeply wrinkled face, hands trembling slightly with age and emotion, ancient forest ashram background with large old banyan tree roots moss-covered stones and dappled golden forest light, divine golden beam of light descending from above touching her in blessing, expression of the purest most childlike selfless devotion and fulfilled joy, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, VERY OLD TRIBAL WOMAN not young, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
 ];
 
 export async function POST(request: NextRequest) {
