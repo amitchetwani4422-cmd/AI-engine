@@ -55,7 +55,9 @@ interface Scene {
   prompt?: string;
   promptEn?: string;
   narrationText?: string;
+  dialogues?: { character: string; text: string }[];
   sceneAudio?: string;
+  sceneAudioPublicId?: string;
   status: string;
   generatedClips: GeneratedClip[];
 }
@@ -128,6 +130,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [generatingVoices, setGeneratingVoices] = useState(false);
   const [generatingSceneVoice, setGeneratingSceneVoice] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceResult, setVoiceResult] = useState<{ generated: number; totalDialogues: number; narratorName: string } | null>(null);
   const generatingRef = useRef(false);
   const rescueTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const queueCancelledRef = useRef(false);
@@ -158,6 +161,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     if (!video) return;
     setGeneratingVoices(true);
     setVoiceError(null);
+    setVoiceResult(null);
     try {
       const res = await fetch(`/api/production/${id}/generate-voices`, {
         method: "POST",
@@ -166,6 +170,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       });
       const data = await res.json();
       if (!res.ok) { setVoiceError(data.error ?? "Voice generation failed"); return; }
+      setVoiceResult({ generated: data.generated, totalDialogues: data.totalDialogues, narratorName: data.narratorName });
       await fetchVideo();
     } catch (err) {
       setVoiceError(String(err));
@@ -659,16 +664,22 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <p className="text-sm font-medium text-zinc-200 flex items-center gap-2">
-                    <Mic className="h-4 w-4 text-purple-400" /> Voice Narration
+                    <Mic className="h-4 w-4 text-purple-400" /> Voice Narration + Character Dialogues
                   </p>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    Generate Hindi narration audio for each scene using ElevenLabs.
-                    {scenes.filter(s => s.sceneAudio).length > 0 && (
-                      <span className="text-purple-400 ml-1">
-                        {scenes.filter(s => s.sceneAudio).length}/{scenes.length} scenes voiced
-                      </span>
-                    )}
+                    Generates narrator audio + character-specific voices for dialogue lines.
+                    Background music auto-selected from script mood during assembly.
                   </p>
+                  {voiceResult && (
+                    <p className="text-xs text-green-400 mt-1">
+                      Done — {voiceResult.generated} scenes voiced · {voiceResult.totalDialogues} dialogue lines · narrator: {voiceResult.narratorName}
+                    </p>
+                  )}
+                  {scenes.filter(s => s.sceneAudio).length > 0 && !voiceResult && (
+                    <p className="text-xs text-purple-400 mt-1">
+                      {scenes.filter(s => s.sceneAudio).length}/{scenes.length} scenes voiced
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {voiceAssets.length > 1 && (
@@ -791,11 +802,25 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                         );
                       })()}
 
-                      {/* Narration text + audio */}
-                      {scene.narrationText && (
+                      {/* Narration text + dialogue + audio */}
+                      {(scene.narrationText || (scene.dialogues && scene.dialogues.length > 0)) && (
                         <div className="mb-2 bg-purple-950/20 border border-purple-800/30 rounded-lg p-2.5">
-                          <p className="text-xs text-purple-300 leading-relaxed mb-2">{scene.narrationText}</p>
+                          {scene.narrationText && (
+                            <p className="text-xs text-purple-300 leading-relaxed">{scene.narrationText}</p>
+                          )}
+                          {scene.dialogues && scene.dialogues.length > 0 && (
+                            <div className="mt-1.5 space-y-1">
+                              {scene.dialogues.map((dlg, di) => (
+                                <p key={di} className="text-xs">
+                                  <span className="text-yellow-400 font-medium">{dlg.character}:</span>
+                                  <span className="text-zinc-300 ml-1 italic">"{dlg.text}"</span>
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          <div className="mt-2">
                           {scene.sceneAudio ? (
+
                             <div className="flex items-center gap-2">
                               <audio controls className="h-7 flex-1" src={scene.sceneAudio} />
                               <button
@@ -820,6 +845,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                                 : <><Volume2 className="h-3 w-3" /> Generate voice</>}
                             </button>
                           )}
+                          </div>
                         </div>
                       )}
 

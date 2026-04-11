@@ -124,7 +124,9 @@ model Scene {
   locationTag      String?            // e.g. "Ayodhya", "Lanka", "Dandaka Forest"
   characterIds     String[]
   narrationText    String?  @db.Text  // Hindi narration spoken during this scene
-  sceneAudio       String?  @db.Text  // ElevenLabs audio data URL for this scene
+  dialogues        Json?              // [{character: string, text: string}] per-character dialogue lines
+  sceneAudio       String?  @db.Text  // Cloudinary CDN URL for mixed scene audio
+  sceneAudioPublicId String?          // Cloudinary public_id for assembly
   status           String   @default("Pending")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -257,6 +259,7 @@ model Video {
   veoCost           Float     @default(0)
   qualityScore      Float?
   qualityDetails    Json?
+  backgroundMusicCategory String?   // devotional_calm | epic_heroic | battle | sorrowful | celestial
   publishedAt       DateTime?
   youtubeVideoId    String?
   instagramPostId   String?

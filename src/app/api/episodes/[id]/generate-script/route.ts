@@ -107,7 +107,10 @@ RESPONSE FORMAT:
     {
       "sequenceNumber": 1,
       "description": "इस scene का कथात्मक उद्देश्य",
-      "narrationText": "इस scene में narrator जो बोलेगा — 1-2 वाक्य हिंदी में, भावपूर्ण",
+      "narrationText": "Narrator का Hindi text — 1-2 वाक्य, भावपूर्ण (character dialogue के बीच की narration)",
+      "dialogues": [
+        { "character": "Ram", "text": "हे सीते, मैं शीघ्र लौटूंगा।" }
+      ],
       "duration": 5,
       "modelAssigned": "ltx-video-2",
       "routingReason": "कारण",
@@ -128,7 +131,9 @@ RESPONSE FORMAT:
 - prompt और promptEn दोनों ENGLISH में लिखें
 - promptEn: short keyword style — "Ram, blue-skinned prince, golden dhoti, ancient temple, volumetric light, slow push-in"
 - modelAssigned: "ltx-video-2" default, hero shots के लिए "kling-3.0"
-- locationTag: scene की location — इनमें से एक चुनें: "Ayodhya", "Mithila", "Dandaka Forest", "Panchavati", "Lanka", "Ashoka Vatika", "Kishkindha", "Mahendra Mountain", "Ram Setu", "Battlefield Lanka", "Valmiki Ashram", "Sarayu River"`;
+- locationTag: scene की location — इनमें से एक चुनें: "Ayodhya", "Mithila", "Dandaka Forest", "Panchavati", "Lanka", "Ashoka Vatika", "Kishkindha", "Mahendra Mountain", "Ram Setu", "Battlefield Lanka", "Valmiki Ashram", "Sarayu River"
+- narrationText: वह Hindi text जो narrator इस scene के दौरान बोलेगा — character dialogue से अलग, सिर्फ narration
+- dialogues: केवल वही lines जो कोई character directly बोल रहा हो — खाली array [] अगर कोई direct speech नहीं। हर entry में exact character name (beat.characters में से) और exact Valmiki Ramayana के अनुसार dialog text।`;
 
     const raw = await generateWithModel(aiModel, systemPrompt, userPrompt, 8192);
 
@@ -136,7 +141,7 @@ RESPONSE FORMAT:
       hook: string; fullScript: string; narrationDraft: string;
       worldSetting?: string; titleOptions: string[]; thumbnailConcepts: string[];
       musicMood: string;
-      scenes: { sequenceNumber: number; description: string; narrationText?: string; duration: number; modelAssigned: string; routingReason: string; cameraDirection: string; visualGuidance: string; locationTag?: string; prompt?: string; promptEn?: string }[];
+      scenes: { sequenceNumber: number; description: string; narrationText?: string; dialogues?: { character: string; text: string }[]; duration: number; modelAssigned: string; routingReason: string; cameraDirection: string; visualGuidance: string; locationTag?: string; prompt?: string; promptEn?: string }[];
     };
 
     try {
@@ -184,6 +189,7 @@ RESPONSE FORMAT:
             sequenceNumber: s.sequenceNumber,
             description: s.description,
             narrationText: s.narrationText ?? null,
+            dialogues: s.dialogues ?? [],
             duration: s.duration,
             modelAssigned: s.modelAssigned,
             routingReason: s.routingReason,

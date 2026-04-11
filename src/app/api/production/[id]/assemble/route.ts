@@ -19,14 +19,15 @@ export async function POST(
       where: { id: videoId },
       include: {
         script: {
-          include: {
+          select: {
+            musicMood: true,
             sceneBreakdown: {
               orderBy: { sequenceNumber: "asc" },
               include: {
                 generatedClips: {
                   where: { status: "Generated" },
-                  orderBy: { createdAt: "desc" }, // latest first
-                  take: 1, // one clip per scene — handles regenerate/rescue
+                  orderBy: { createdAt: "desc" },
+                  take: 1,
                 },
               },
             },
@@ -47,6 +48,7 @@ export async function POST(
         url: s.generatedClips[0].clipUrl,
         sequenceNumber: s.sequenceNumber,
         duration: s.duration,
+        audioPublicId: (s as Record<string, unknown>).sceneAudioPublicId as string | undefined || undefined,
       }));
 
     if (clips.length === 0) {
@@ -74,7 +76,10 @@ export async function POST(
       duration: clip.duration,
     }));
 
-    const result = await assembleVideo(videoId, clipInputs);
+    // Get music mood from script
+    const musicMood = video.script?.musicMood ?? "";
+
+    const result = await assembleVideo(videoId, clipInputs, { musicMood });
 
     // ── 4. Save final video URL + update status ──────────────────────────────
     const updatedVideo = await prisma.video.update({
@@ -82,7 +87,7 @@ export async function POST(
       data: {
         finalVideoUrl: result.finalVideoUrl,
         status: "QualityCheck",
-        totalCost: { increment: 0 }, // assembly is free (server-side FFmpeg)
+        backgroundMusicCategory: result.musicCategory ?? null,
       },
       include: {
         channel: { select: { id: true, name: true } },
