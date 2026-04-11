@@ -144,10 +144,12 @@ model LocationAsset {
   nameHindi       String            // "अयोध्या", "लंका"
   description     String   @db.Text
   kandas          String[]          // which kandas this location appears in
-  referenceImages String[]          // uploaded reference image URLs
-  visualKeywords  String            // English keywords for prompts
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  referenceImages  String[]          // uploaded reference image URLs
+  visualKeywords   String            // English keywords for prompts
+  lockedVisualDesc String?  @db.Text // LOCKED: exact text injected verbatim into every scene prompt
+  isVisualLocked   Boolean  @default(false) // true = user has approved this description
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

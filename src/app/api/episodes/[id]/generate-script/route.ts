@@ -48,6 +48,14 @@ export async function POST(
       ? `विज़ुअल स्टाइल: ${channel.visualStyle}\nप्रकाश: ${channel.styleBible.lightingPreferences}\nकैमरा: ${channel.styleBible.cameraFeel}\nसंगीत: ${channel.styleBible.musicDirection}\nनरेशन: ${channel.styleBible.narrationTone}`
       : `विज़ुअल स्टाइल: ${channel.visualStyle}\nआवाज़: ${channel.voiceStyle}`;
 
+    // Fetch locked location visuals from DB — injected verbatim so GPT cannot deviate between episodes
+    const locationAssets = await prisma.locationAsset.findMany({
+      where: { isVisualLocked: true },
+    });
+    const lockedLocationSection = locationAssets.length > 0
+      ? locationAssets.map((l) => `- ${l.name}: "${l.lockedVisualDesc}"`).join("\n")
+      : null;
+
     const systemPrompt = `आप एक पेशेवर हिंदी स्क्रिप्ट लेखक और AI वीडियो डायरेक्टर हैं जो वाल्मीकि रामायण पर आधारित 1 मिनट के YouTube Shorts बनाते हैं।
 आप Kling 1.6 Pro, LTX-Video 2 और Wan 2.1 के लिए cinema-grade AI वीडियो प्रॉम्प्ट लिखते हैं।
 
@@ -101,7 +109,9 @@ CHARACTER DIVINE VISUALS — इन्हें हर scene में exact य
 - रावण: "imposing dark-gold magnificence, Lanka's supreme power, golden crown and armour, shown from behind or profile suggesting ten crowns"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-LOCATION COLOR PALETTES — locationTag के अनुसार हर scene में यही palette:
+${lockedLocationSection
+        ? `LOCATION VISUALS — LOCKED — इन्हें VERBATIM use करें, एक शब्द भी न बदलें, हर episode में यही exact description रहेगी:\n${lockedLocationSection}`
+        : `LOCATION COLOR PALETTES — locationTag के अनुसार हर scene में यही palette:
 - Ayodhya: "saffron, hammered gold, ivory marble, deep crimson silk"
 - Mithila: "marigold festival gold, white marble, celebration colors, lotus pink"
 - Dandaka Forest: "emerald green, blue-grey mist, warm amber god-ray shafts, dark earth"
@@ -113,7 +123,7 @@ LOCATION COLOR PALETTES — locationTag के अनुसार हर scene �
 - Ram Setu: "deep sapphire ocean, white bridge stones, golden tropical sunlight, sea spray"
 - Mahendra Mountain: "high-altitude grey rock, divine ocean horizon, celestial wind"
 - Valmiki Ashram: "forest green, simple earth tones, sage white, peaceful dusk gold"
-- Sarayu River: "Ayodhya gold reflecting in clear water, ghats, temple bells haze"
+- Sarayu River: "Ayodhya gold reflecting in clear water, ghats, temple bells haze"`}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 SCENE PROMPT STRUCTURE — हर prompt इस 5-part structure में लिखें:

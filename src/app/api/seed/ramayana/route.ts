@@ -79,18 +79,78 @@ const BEATS = [
 ];
 
 const LOCATIONS = [
-  { name: "Ayodhya", nameHindi: "अयोध्या", kandas: ["Bala", "Ayodhya", "Uttara"], visualKeywords: "grand golden palace city, towering spires, Sarayu river banks, warm saffron and gold tones, ancient Indian architecture, lush gardens, divine glow", description: "राम की जन्मभूमि — सरयू नदी के किनारे बसी स्वर्णिम नगरी। विशाल राजमहल, ऊँचे मीनार, हरे-भरे उद्यान।" },
-  { name: "Mithila", nameHindi: "मिथिला", kandas: ["Bala"], visualKeywords: "ancient royal city, decorated for swayamvar, colorful banners, flower garlands, festive atmosphere, stone courtyards, Himalayan backdrop", description: "जनक राजा की नगरी — सीता का घर। स्वयंवर के लिए सजी-धजी, रंग-बिरंगी पताकाओं से भरी।" },
-  { name: "Dandaka Forest", nameHindi: "दण्डकारण्य", kandas: ["Aranya"], visualKeywords: "dense ancient forest, massive trees, dappled sunlight, misty undergrowth, tribal huts, river streams, mysterious dark canopy", description: "वनवास का घना जंगल — विशाल वृक्ष, धुंध, नदियाँ। ऋषियों के आश्रम और राक्षसों का निवास।" },
-  { name: "Panchavati", nameHindi: "पञ्चवटी", kandas: ["Aranya"], visualKeywords: "peaceful forest clearing, five banyan trees, simple hermitage hut, Godavari river, golden hour light, flowers, serene atmosphere", description: "पाँच वट वृक्षों की शांत जगह — गोदावरी के किनारे। राम-सीता-लक्ष्मण का वन-निवास।" },
-  { name: "Lanka", nameHindi: "लंका", kandas: ["Sundara", "Yuddha"], visualKeywords: "golden fortress city on mountain, dark ominous clouds, bioluminescent demons, massive stone walls, fire torches, dramatic red sky, evil grandeur", description: "रावण की स्वर्ण लंका — समुद्र के बीच पर्वत पर। विशाल किले, सोने की दीवारें, राक्षसी वैभव।" },
-  { name: "Ashoka Vatika", nameHindi: "अशोक वाटिका", kandas: ["Sundara"], visualKeywords: "lush garden inside Lanka, ashoka trees in bloom, golden flowers, captive Sita alone, contrast of beauty and sadness, orange blossoms, morning mist", description: "लंका के अंदर रावण का बगीचा — अशोक वृक्षों से भरा। सुंदर मगर कैद में रखी सीता।" },
-  { name: "Kishkindha", nameHindi: "किष्किन्धा", kandas: ["Kishkindha"], visualKeywords: "monkey kingdom rocky mountain, Rishyamuka peak, jungle terrain, warm earthy tones, cave entrances, waterfalls, ancient monkey city", description: "वानरों की किष्किंधा — ऋष्यमूक पर्वत। सुग्रीव का राज्य, गुफाएं, झरने।" },
-  { name: "Mahendra Mountain", nameHindi: "महेंद्र पर्वत", kandas: ["Kishkindha", "Sundara"], visualKeywords: "massive ocean-side cliff, stormy sea below, dawn breaking, Hanuman poised to leap, epic scale, dramatic lighting, crashing waves", description: "समुद्र किनारे विशाल पर्वत — जहाँ से हनुमान ने लंका के लिए छलांग लगाई।" },
-  { name: "Ram Setu", nameHindi: "राम सेतु", kandas: ["Yuddha"], visualKeywords: "stone bridge over ocean, Ram written on floating rocks, vast army crossing, golden sunset, divine miracle, sea spray, monkey soldiers", description: "समुद्र पर बना पत्थरों का पुल — राम नाम लिखे पत्थर पानी पर तैरते। वानर सेना का लंका की ओर प्रस्थान।" },
-  { name: "Battlefield Lanka", nameHindi: "युद्धभूमि", kandas: ["Yuddha"], visualKeywords: "massive war scene, fire and smoke, demon warriors vs monkey army, dramatic battle lighting, epic scale destruction, blood red sky, chaos", description: "लंका का रणक्षेत्र — वानर सेना और राक्षसों का महायुद्ध। आग, धुआँ, लाल आकाश।" },
-  { name: "Valmiki Ashram", nameHindi: "वाल्मीकि आश्रम", kandas: ["Uttara"], visualKeywords: "peaceful forest hermitage, simple huts, sacred fire, forest clearings, children playing, ancient sage, spiritual calm, dappled light", description: "वाल्मीकि ऋषि का शांत आश्रम — जहाँ सीता ने शरण ली और लव-कुश का जन्म हुआ।" },
-  { name: "Sarayu River", nameHindi: "सरयू नदी", kandas: ["Bala", "Uttara"], visualKeywords: "wide holy river, golden banks, lotus flowers, evening lamps floating, devotees, ancient ghats, misty dawn, sacred atmosphere", description: "अयोध्या की पवित्र सरयू नदी — राम जन्म और महाप्रयाण दोनों इसी के किनारे।" },
+  {
+    name: "Ayodhya", nameHindi: "अयोध्या", kandas: ["Bala", "Ayodhya", "Uttara"],
+    visualKeywords: "grand golden palace city, towering spires, Sarayu river banks, warm saffron and gold tones, ancient Indian architecture, lush gardens, divine glow",
+    description: "राम की जन्मभूमि — सरयू नदी के किनारे बसी स्वर्णिम नगरी। विशाल राजमहल, ऊँचे मीनार, हरे-भरे उद्यान।",
+    lockedVisualDesc: "Treta Yuga Ayodhya — soaring Nagara-style sandstone palace with ornate carved spires in hammered gold and ivory-white marble, grand stone gateways draped with saffron and crimson silk banners, lotus ponds with stepped stone ghats reflecting golden sky, sacred oil diyas lining every stone step, warm saffron-amber divine light with celestial haze, carved stone balconies with flowering jasmine vines",
+  },
+  {
+    name: "Mithila", nameHindi: "मिथिला", kandas: ["Bala"],
+    visualKeywords: "ancient royal city, decorated for swayamvar, colorful banners, flower garlands, festive atmosphere, stone courtyards, Himalayan backdrop",
+    description: "जनक राजा की नगरी — सीता का घर। स्वयंवर के लिए सजी-धजी, रंग-बिरंगी पताकाओं से भरी।",
+    lockedVisualDesc: "King Janaka's royal Mithila — stone palace decorated for swayamvar ceremony, marigold-gold and white marble courtyard floors with rangoli patterns, colorful silk banners in pink/saffron/white streaming from every carved tower, archways draped with fresh flower garlands, Himalayan foothills in distant background, festive golden afternoon light, crowd of silk-clad nobles and princesses",
+  },
+  {
+    name: "Dandaka Forest", nameHindi: "दण्डकारण्य", kandas: ["Aranya"],
+    visualKeywords: "dense ancient forest, massive trees, dappled sunlight, misty undergrowth, tribal huts, river streams, mysterious dark canopy",
+    description: "वनवास का घना जंगल — विशाल वृक्ष, धुंध, नदियाँ। ऋषियों के आश्रम और राक्षसों का निवास।",
+    lockedVisualDesc: "Primeval Dandaka Forest — impossibly massive ancient banyan and peepal trees with aerial roots descending to dark earth, amber-warm shafts of god-ray light breaking through dense dark canopy, blue-grey morning mist at ground level, moss-covered ancient stone ruins, dark undergrowth with sudden clearings of golden dappled light, emerald-green and deep shadow palette",
+  },
+  {
+    name: "Panchavati", nameHindi: "पञ्चवटी", kandas: ["Aranya"],
+    visualKeywords: "peaceful forest clearing, five banyan trees, simple hermitage hut, Godavari river, golden hour light, flowers, serene atmosphere",
+    description: "पाँच वट वृक्षों की शांत जगह — गोदावरी के किनारे। राम-सीता-लक्ष्मण का वन-निवास।",
+    lockedVisualDesc: "Serene Panchavati hermitage — five ancient banyan trees forming a natural sacred sanctum, simple golden-thatched hut with sacred dhuni fire, Godavari river bank with white water-worn stones and lotus flowers in still pools, soft amber-golden dappled light filtering through leaves, morning mist rising from the river, absolute peace and spiritual calm",
+  },
+  {
+    name: "Lanka", nameHindi: "लंका", kandas: ["Sundara", "Yuddha"],
+    visualKeywords: "golden fortress city on mountain, dark ominous clouds, bioluminescent demons, massive stone walls, fire torches, dramatic red sky, evil grandeur",
+    description: "रावण की स्वर्ण लंका — समुद्र के बीच पर्वत पर। विशाल किले, सोने की दीवारें, राक्षसी वैभव।",
+    lockedVisualDesc: "Ravana's golden Lanka fortress city — soaring golden palace spires piercing dark storm-purple clouds, massive black-granite outer walls with blazing fire torch brackets, golden architecture of inhuman grandeur covering the entire mountain, ominous purple-black storm sky with red undertones, a thousand fire torches casting crimson-gold light, dark crimson and molten gold dominant palette, menacing power in every structure",
+  },
+  {
+    name: "Ashoka Vatika", nameHindi: "अशोक वाटिका", kandas: ["Sundara"],
+    visualKeywords: "lush garden inside Lanka, ashoka trees in bloom, golden flowers, captive Sita alone, contrast of beauty and sadness, orange blossoms, morning mist",
+    description: "लंका के अंदर रावण का बगीचा — अशोक वृक्षों से भरा। सुंदर मगर कैद में रखी सीता।",
+    lockedVisualDesc: "Ashoka Vatika — lush garden paradise inside Lanka's walls, ashoka trees blazing with dense orange-gold blossoms, white jasmine flowers carpeting the ground, carved white marble pavilions with decorative stone screens, Sita in simple white-silk clothing seated under an ashoka tree, aching contrast of lush beauty and captive sorrow, soft silver-green moonlight filtering through leaves, emerald and orange-gold palette",
+  },
+  {
+    name: "Kishkindha", nameHindi: "किष्किन्धा", kandas: ["Kishkindha"],
+    visualKeywords: "monkey kingdom rocky mountain, Rishyamuka peak, jungle terrain, warm earthy tones, cave entrances, waterfalls, ancient monkey city",
+    description: "वानरों की किष्किंधा — ऋष्यमूक पर्वत। सुग्रीव का राज्य, गुफाएं, झरने।",
+    lockedVisualDesc: "Kishkindha vanara kingdom — Rishyamuka mountain's warm rust-red granite rock face with large cave entrances, ancient stone-carved vanara city built organically into the cliff, dense forest green jungle below, cascading waterfalls catching sunlight, open blue sky visible above the rocky peaks, saffron-orange and forest-green dominant palette, earthy primal energy",
+  },
+  {
+    name: "Mahendra Mountain", nameHindi: "महेंद्र पर्वत", kandas: ["Kishkindha", "Sundara"],
+    visualKeywords: "massive ocean-side cliff, stormy sea below, dawn breaking, Hanuman poised to leap, epic scale, dramatic lighting, crashing waves",
+    description: "समुद्र किनारे विशाल पर्वत — जहाँ से हनुमान ने लंका के लिए छलांग लगाई।",
+    lockedVisualDesc: "Mahendra Mountain at world's edge — sheer titan-scale granite cliff face dropping into churning sapphire ocean far below, golden-orange dawn breaking on the eastern horizon, clouds at eye-level around the peak, figures made tiny against the cosmic scale, crashing waves and sea spray visible far below, dramatic rim-lighting in dawn gold, grey granite and sapphire ocean palette",
+  },
+  {
+    name: "Ram Setu", nameHindi: "राम सेतु", kandas: ["Yuddha"],
+    visualKeywords: "stone bridge over ocean, Ram written on floating rocks, vast army crossing, golden sunset, divine miracle, sea spray, monkey soldiers",
+    description: "समुद्र पर बना पत्थरों का पुल — राम नाम लिखे पत्थर पानी पर तैरते। वानर सेना का लंका की ओर प्रस्थान।",
+    lockedVisualDesc: "Divine Ram Setu bridge — white and grey stones floating miraculously on deep sapphire-green tropical ocean, Ram's name visibly inscribed on each stone, massive vanara army crossing under golden tropical sun, sea spray and tropical light, distant Lanka silhouette on the horizon, golden-amber sunlight catching the ocean waves, blue-green tropical ocean and warm gold sky palette",
+  },
+  {
+    name: "Battlefield Lanka", nameHindi: "युद्धभूमि", kandas: ["Yuddha"],
+    visualKeywords: "massive war scene, fire and smoke, demon warriors vs monkey army, dramatic battle lighting, epic scale destruction, blood red sky, chaos",
+    description: "लंका का रणक्षेत्र — वानर सेना और राक्षसों का महायुद्ध। आग, धुआँ, लाल आकाश।",
+    lockedVisualDesc: "Epic Battlefield Lanka — vast armies locked in cosmic war under blood-crimson smoke-filled sky, thick grey-black smoke billowing from burning Lanka structures, demon warriors in dark gold armor versus saffron-brown vanara warriors, divine astras leaving trails of celestial fire across the sky, fire-orange glow reflecting on armor and weapons, rubble and destruction at epic scale, smoke-grey and fire-orange and blood-crimson palette",
+  },
+  {
+    name: "Valmiki Ashram", nameHindi: "वाल्मीकि आश्रम", kandas: ["Uttara"],
+    visualKeywords: "peaceful forest hermitage, simple huts, sacred fire, forest clearings, children playing, ancient sage, spiritual calm, dappled light",
+    description: "वाल्मीकि ऋषि का शांत आश्रम — जहाँ सीता ने शरण ली और लव-कुश का जन्म हुआ।",
+    lockedVisualDesc: "Valmiki's peaceful forest ashram — simple thatched meditation huts in a sun-dappled forest clearing, sacred dhuni fire burning steadily, ancient peepal and banyan trees overhead, clay pots and sacred manuscripts on simple wooden shelves, extreme spiritual peace after war's chaos, children's presence felt in the space, soft sage-green and warm earth-tone palette, gentle golden dappled light",
+  },
+  {
+    name: "Sarayu River", nameHindi: "सरयू नदी", kandas: ["Bala", "Uttara"],
+    visualKeywords: "wide holy river, golden banks, lotus flowers, evening lamps floating, devotees, ancient ghats, misty dawn, sacred atmosphere",
+    description: "अयोध्या की पवित्र सरयू नदी — राम जन्म और महाप्रयाण दोनों इसी के किनारे।",
+    lockedVisualDesc: "Holy Sarayu river at Ayodhya — wide sacred river with golden sandy banks, ancient stone ghats with carved stone steps descending to clear water, floating oil lamp diyas drifting on the river at dusk, white lotus flowers in still riverside pools, Ayodhya's golden palace spires and temple towers visible above the ghats, golden-amber evening light reflecting in the water, sacred mist rising from the surface",
+  },
 ];
 
 export async function POST() {
@@ -101,13 +161,20 @@ export async function POST() {
     await prisma.ramayanaStoryBeat.create({ data: beat });
     seeded++;
   }
-  // Seed locations
-  let locSeeded = 0, locSkipped = 0;
+  // Seed locations — upsert so lockedVisualDesc is applied to existing records too
+  let locSeeded = 0, locUpdated = 0;
   for (const loc of LOCATIONS) {
-    const exists = await prisma.locationAsset.findUnique({ where: { name: loc.name } });
-    if (exists) { locSkipped++; continue; }
-    await prisma.locationAsset.create({ data: { ...loc, referenceImages: [] } });
-    locSeeded++;
+    const existing = await prisma.locationAsset.findUnique({ where: { name: loc.name } });
+    if (existing) {
+      await prisma.locationAsset.update({
+        where: { name: loc.name },
+        data: { lockedVisualDesc: loc.lockedVisualDesc, isVisualLocked: loc.isVisualLocked ?? false },
+      });
+      locUpdated++;
+    } else {
+      await prisma.locationAsset.create({ data: { ...loc, referenceImages: [] } });
+      locSeeded++;
+    }
   }
-  return NextResponse.json({ ok: true, seeded, skipped, locSeeded, locSkipped });
+  return NextResponse.json({ ok: true, seeded, skipped, locSeeded, locUpdated });
 }
