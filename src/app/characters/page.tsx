@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, Plus, Loader2, User } from "lucide-react";
+import { Users, Plus, Loader2, User, Mic } from "lucide-react";
 
 interface Character {
   id: string;
@@ -50,6 +50,8 @@ export default function CharactersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [filter, setFilter] = useState<string>("all");
   const [creating, setCreating] = useState(false);
+  const [seedingVoices, setSeedingVoices] = useState(false);
+  const [seedVoiceResult, setSeedVoiceResult] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     speciesOrType: "",
@@ -74,6 +76,24 @@ export default function CharactersPage() {
       setCharacters([]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function seedRamayanaVoices() {
+    setSeedingVoices(true);
+    setSeedVoiceResult(null);
+    try {
+      const res = await fetch("/api/seed/ramayana/voices", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setSeedVoiceResult(`Voices done — ${data.summary.created} created, ${data.summary.skipped} skipped`);
+      } else {
+        setSeedVoiceResult(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      setSeedVoiceResult(`Error: ${String(e)}`);
+    } finally {
+      setSeedingVoices(false);
     }
   }
 
@@ -113,12 +133,24 @@ export default function CharactersPage() {
         title="Character Studio"
         description="Manage recurring characters across all channels"
         actions={
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-2" /> New Character
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={seedRamayanaVoices} disabled={seedingVoices}>
+              {seedingVoices
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Seeding Voices...</>
+                : <><Mic className="h-4 w-4 mr-2" /> Seed Voices</>}
+            </Button>
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4 mr-2" /> New Character
+            </Button>
+          </div>
         }
       />
       <div className="flex-1 overflow-auto p-6">
+        {seedVoiceResult && (
+          <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm border ${seedVoiceResult.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-purple-500/10 border-purple-500/20 text-purple-400"}`}>
+            {seedVoiceResult}
+          </div>
+        )}
         {/* Filters */}
         <div className="flex gap-2 mb-6">
           {["all", "kling-3.0", "veo-3.1", "A", "B", "C"].map((f) => (
