@@ -836,6 +836,173 @@ const CHARACTERS = [
     preferredModel: "kling-3.0",
     universeId: "A",
   },
+
+  // ─── Batch 6 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Vali",
+    speciesOrType: "Divine Vanara",
+    worldRole: "Former king of Kishkindha — Sugriva's elder brother; possessor of divine boon that halves every opponent's strength; killed by Ram from behind a tree",
+    personality: "Supreme arrogance matched by supreme power — not purely evil but corrupted by pride; has the moral clarity to question Ram's method even while dying; a complex tragic figure",
+    visualReferences: [
+      "massive powerfully built vanara with jet-black fur — darker than all other vanaras",
+      "MONKEY face with dominant fierce primate features — larger jaw, stronger brow",
+      "golden divine boon necklace glowing around his neck — his source of power",
+      "ornate Kishkindha gold crown — he is always the king",
+      "enormous muscular arms, commanding intimidating stance",
+      "dark golden aura of the divine boon surrounding his body",
+    ],
+    clothingRules:
+      "Rich gold dhoti. Kishkindha crown — more elaborate than Sugriva's. The golden boon necklace always glowing at his throat. Enormous build, darker fur than Sugriva. Commanding, never hunched or submissive.",
+    colorPalette: ["jet black", "dark gold", "deep crimson", "shadow bronze"],
+    restrictedChanges: [
+      "always monkey face — never human",
+      "jet-black fur — much darker than Sugriva's golden-tawny",
+      "golden necklace always glowing — it is the source of his power",
+      "always the most physically imposing vanara in any scene",
+    ],
+    samplePoses: [
+      "standing on Kishkindha mountain — arms spread, absolute ruler",
+      "in battle with Sugriva — overpowering him effortlessly",
+      "struck by Ram's arrow — questioning Ram with dying dignity",
+      "seated on throne — every inch the unquestionable king",
+    ],
+    referencePrompt: "Vali the vanara king of Kishkindha full body portrait, supremely powerful massive vanara with jet-black fur covering an enormous muscular body — the most physically imposing vanara alive, MONKEY face with dominant fierce primate features — larger jaw stronger brow ridge deeper set eyes than other vanaras, wearing ornate Kishkindha royal gold crown more elaborate and heavy than Sugriva's, glowing divine golden necklace at throat radiating supernatural power — this is the source of his boon that halves all opponents' strength, rich deep gold silk dhoti with heavy border, thick gold armlets, massive clenched fists the size of boulders, standing in commanding stance atop Kishkindha mountain with the forest kingdom visible below him, dark storm clouds gathering behind him adding to his menacing power, dark golden aura of divine boon surrounding his entire body, expression of absolute supreme power and pride — this is a king who has never known defeat, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, JET BLACK FUR most imposing vanara, GLOWING NECKLACE visible, MONKEY face dominant, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Urmila",
+    speciesOrType: "Human",
+    worldRole: "Lakshman's devoted wife — sister of Sita; accepts 14 years of separation; legend says she took on Lakshman's sleep so he could guard Ram",
+    personality: "Silent sacrifice personified — her devotion is invisible yet immeasurable; while Sita's suffering is sung, Urmila waits alone in Ayodhya; her love expressed through acceptance not words",
+    visualReferences: [
+      "beautiful young princess in her early 20s — luminous complexion",
+      "large dark eyes carrying deep longing and quiet sacrifice — haunted but dignified",
+      "dark hair in simple braid with minimal adornment — partially in penance",
+      "pale moonlight-silver or soft white silk sari with thin gold border",
+      "minimal gold ornaments — small earrings, thin bangles of a woman in partial vow",
+      "seated by palace window looking out — the eternal wait",
+    ],
+    clothingRules:
+      "Pale silver-white or soft ivory silk sari — never vibrant colours during the wait. Minimal ornaments showing she has reduced comforts in solidarity with Lakshman's forest hardships. Small jasmine flowers in braid. Moonlit interior setting.",
+    colorPalette: ["moonlight silver", "ivory white", "pale lotus pink", "soft gold"],
+    restrictedChanges: [
+      "always soft pale colours — she is in a state of penance-lite",
+      "always an expression of dignified longing — not crying, not joyful",
+      "minimal ornaments — she has given up luxury in solidarity",
+      "always near a window or lamp — waiting in the dark",
+    ],
+    samplePoses: [
+      "seated at palace window — moonlight on face, eyes on the horizon",
+      "lighting a single lamp each evening — waiting vigil",
+      "asleep in Lakshman's bed — legend says she sleeps his 14-year sleep",
+      "reunion with Lakshman at return — tender tears and joy",
+    ],
+    referencePrompt: "Princess Urmila devoted wife of Lakshman full body portrait, beautiful young princess in her early 20s, luminous warm golden complexion, large dark expressive eyes filled with deep dignified longing and quiet sacrifice — beautiful but haunted by 14 years of solitary waiting, dark hair in a simple neat braid with small white jasmine flowers — minimal adornment, wearing pale moonlight-silver pure silk sari with only a thin delicate gold border — soft quiet colours not vibrant, small pearl drop earrings and very thin gold bangles — she has reduced her ornaments in solidarity with her husband's forest penance, seated on the wide stone sill of a tall carved palace window, one arm resting on the sill and face turned toward the moonlit horizon of Ayodhya — waiting, single small brass diya oil lamp flickering beside her casting warm intimate light on her face, pale moonlight washing the rest of her in silver, expression of profound dignified sacrifice and patient love — she chose this, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, PALE SILVER SARI minimal ornaments, DIGNIFIED LONGING not weeping, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Agastya",
+    speciesOrType: "Human — Brahmarishi",
+    worldRole: "Greatest sage of south India — gave Ram the Aditya Hridayam hymn and divine weapons; his ashram is a sacred stop on Ram's forest journey",
+    personality: "Short in stature, vast in power — his tapas burned down mountains; direct, no-nonsense, fierce spiritual energy packed into a compact form; the sage who civilised the south",
+    visualReferences: [
+      "short stout powerfully built sage — compact body from intense tapas",
+      "dark warm complexion, round face with bushy thick eyebrows",
+      "eyes like burning coals — fierce concentrated divine fire",
+      "matted dark-brown jata hair piled high despite short stature",
+      "saffron dhoti, sacred ash marks on forehead and arms",
+      "holding a golden bow or sacred text — giving Ram divine weapons",
+    ],
+    clothingRules:
+      "Single saffron dhoti — bare chest like Vishwamitra. Sacred ash marks on forehead. Matted jata. Short compact build — never drawn tall. Intense fire energy. Holding a golden bow (Aditya Hridayam gift) or brass kamandal.",
+    colorPalette: ["saffron", "ash white", "fire gold", "dark forest brown"],
+    restrictedChanges: [
+      "always short and stout — never tall like Vishwamitra",
+      "dark complexion — south Indian sage",
+      "bushy thick eyebrows — his distinguishing facial feature",
+      "always fierce expression — intense tapas energy",
+    ],
+    samplePoses: [
+      "presenting golden bow to Ram — both hands extended, sacred transfer",
+      "teaching Aditya Hridayam — finger raised in teaching mudra",
+      "seated in deep tapas — fire blazing around his still form",
+      "striding through Vindhya forest — short powerful steps, total authority",
+    ],
+    referencePrompt: "Sage Agastya the brahmarishi of south India full body portrait, SHORT and stocky powerfully compact sage with immense spiritual authority packed into a small frame — NOT tall, dark warm complexion of a south Indian rishi, round face with very thick bushy eyebrows and sharp eyes burning like concentrated coals of divine tapas fire, matted dark-brown jata hair piled high on his head in elaborate ascetic crown adding height, three horizontal sacred white ash marks on forehead and ash marks on arms, wearing only a single saffron orange dhoti — bare chest and arms showing compact muscular body from years of tapas penance, holding a gleaming gold divine bow in both outstretched hands presenting it to Ram — the sacred transfer of Aditya Hridayam divine weapon, divine saffron-gold tapas fire energy aura blazing around his compact body, deep tropical south Indian forest ashram background with large dense tropical trees waterfall visible and sacred fire kund glowing, expression of fierce concentrated spiritual power and no-nonsense divine authority, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, SHORT STOUT SAGE not tall, DARK COMPLEXION, BUSHY EYEBROWS, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Nala",
+    speciesOrType: "Divine Vanara",
+    worldRole: "Son of Vishwakarma the divine architect — built the Ram Setu bridge across the ocean to Lanka; rocks float at his touch",
+    personality: "Focused, creative, quietly proud of his divine gift; the engineer of the impossible — his bridge is the miracle that makes the rescue of Sita possible",
+    visualReferences: [
+      "MONKEY face with focused intelligent craftsman expression",
+      "brown-golden fur, medium build — more wiry than warrior vanaras",
+      "carrying measuring rope in one hand and a flat rock in other",
+      "simple work dhoti — practical not royal",
+      "ocean behind him with rocks visibly floating on water — Ram Setu",
+      "thousands of vanaras working in background",
+    ],
+    clothingRules:
+      "Simple plain work dhoti — not royal silk. Carrying tools: measuring rope, rocks. No crown, no ornaments — he is a craftsman at work. Ocean setting always. Rocks floating on water behind him as proof of his divine gift.",
+    colorPalette: ["golden brown", "ocean blue", "granite grey", "saffron work cloth"],
+    restrictedChanges: [
+      "always monkey face — never human",
+      "always shown at the ocean with Ram Setu under construction",
+      "carrying construction tools — not weapons",
+      "focused practical expression — a craftsman not a warrior",
+    ],
+    samplePoses: [
+      "placing rock on ocean — it floats, workers cheering around him",
+      "surveying the bridge line — rope held taut, squinting with precision",
+      "presenting completed bridge to Ram — proud humble craftsman",
+      "directing vanara workers — arm pointing, others lifting boulders",
+    ],
+    referencePrompt: "Nala the vanara architect son of Vishwakarma full body portrait, skilled vanara craftsman with divine gift for construction, MONKEY face with sharp intelligent focused craftsman expression — protruding muzzle flat nose, medium wiry build rather than warrior bulk, brown-golden monkey fur, wearing simple plain work saffron dhoti — NOT royal silk NOT decorated, holding a thick measuring rope coiled in right hand and a flat grey granite rock in left hand, standing at the shoreline of the vast ocean with the miraculous Ram Setu bridge visible stretching out behind him — large rocks floating impossibly on the water surface, hundreds of vanaras working in background carrying boulders and placing them, bright midday ocean light with waves crashing and salty spray, slight proud smile of a craftsman who has just made the impossible happen, expression of focused divine craftsmanship and quiet humble pride, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, MONKEY face CRAFTSMAN build not warrior, ROCKS FLOATING on ocean behind him, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Tara",
+    speciesOrType: "Divine Vanara",
+    worldRole: "Vali's queen, later Sugriva's queen — one of the five divine women (Panchakanya); her grief over Vali's death is one of Ramayana's most moving moments",
+    personality: "Dignified in grief, perceptive, wise — she alone among the vanaras understood Ram's deeper purpose; accepted dharma even in personal loss; her composure in widowhood is her greatness",
+    visualReferences: [
+      "graceful female vanara with golden-tawny fur — lighter than Vali's black",
+      "female MONKEY face with sorrowful dignified features and large expressive eyes",
+      "white silk mourning dhoti with thin gold border — the colour of vanara widowhood",
+      "simple gold bangles and necklace of a widowed queen",
+      "one hand resting on Vali's memorial stone or chest",
+      "expression of profound grief and quiet dignified acceptance",
+    ],
+    clothingRules:
+      "White silk dhoti of mourning with thin gold border. Simple restrained gold ornaments — not the full royal jewellery of a reigning queen. Golden-tawny fur. Always in grief posture — never joyful in the Vali death scene.",
+    colorPalette: ["white mourning", "golden tawny", "pale gold", "soft ochre"],
+    restrictedChanges: [
+      "always female monkey face — never human",
+      "golden-tawny fur — lighter than Vali's jet-black",
+      "white mourning clothing in all Vali death scenes",
+      "expression always grief and dignity — never anger or joy",
+    ],
+    samplePoses: [
+      "kneeling over fallen Vali — head bowed, tears on fur",
+      "confronting Ram after Vali's death — dignified accusation",
+      "seated beside Sugriva — reluctant new queen, still grieving",
+      "blessing Angad as he departs for Lanka — motherly despite grief",
+    ],
+    referencePrompt: "Queen Tara wife of Vali the vanara queen full body portrait, graceful dignified female vanara with golden-tawny lighter fur — distinctly lighter than Vali's jet-black, female MONKEY face with sorrowful but composed and dignified features, large expressive dark eyes filled with profound grief and quiet wisdom, wearing pure white silk mourning dhoti with only a very thin gold border — the white of vanara widowhood, simple restrained gold bangles on both wrists and a plain thin gold necklace — not the full royal ornamentation of a reigning queen, kneeling beside the fallen massive body of Vali on the Kishkindha forest ground, one gentle paw-hand resting with infinite tenderness on Vali's broad chest, head bowed in grief but spine still upright — she has dignity even in her worst moment, dappled forest light filtering through Kishkindha canopy above, expression of profound grief and dignified acceptance of dharma's painful workings, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, FEMALE MONKEY face golden-tawny fur, WHITE MOURNING cloth, GRIEF AND DIGNITY, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
 ];
 
 export async function POST(request: NextRequest) {
