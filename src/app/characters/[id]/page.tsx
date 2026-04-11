@@ -23,6 +23,8 @@ import {
   User,
   Wand2,
   Sparkles,
+  X,
+  ZoomIn,
 } from "lucide-react";
 import { ModelSelector } from "@/components/ui/model-selector";
 import type { AIModel } from "@/lib/ai-provider";
@@ -70,6 +72,7 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   const [generatingImage, setGeneratingImage] = useState(false);
   const [aiModel, setAiModel] = useState<AIModel>(DEFAULT_SCRIPT_MODEL);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/characters/${id}`)
@@ -295,7 +298,17 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                 {character.approvedImages.length > 0 ? (
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     {character.approvedImages.map((url, i) => (
-                      <img key={i} src={url} alt={`Ref ${i + 1}`} className="w-full aspect-square object-cover rounded border border-zinc-700" />
+                      <button
+                        key={i}
+                        onClick={() => setLightboxUrl(url)}
+                        className="relative group w-full aspect-square rounded border border-zinc-700 overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`Ref ${i + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                          <ZoomIn className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </button>
                     ))}
                   </div>
                 ) : (
@@ -435,6 +448,37 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/70 hover:text-white bg-zinc-800/80 rounded-full p-2 transition-colors"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt="Full size reference"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <a
+            href={lightboxUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute bottom-4 text-xs text-zinc-400 hover:text-zinc-200 underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Open original ↗
+          </a>
+        </div>
+      )}
     </div>
   );
 }
