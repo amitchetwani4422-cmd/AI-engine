@@ -502,6 +502,173 @@ const CHARACTERS = [
     preferredModel: "kling-3.0",
     universeId: "A",
   },
+
+  // ─── Batch 4 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Angad",
+    speciesOrType: "Divine Vanara",
+    worldRole: "Son of Vali, vanara prince — Ram's ambassador to Ravan's court, deputy commander of vanara sena",
+    personality: "Fiercely proud, fierce warrior energy barely held in check; grieves for his father Vali yet serves Ram with honour; bold enough to plant his foot in Ravan's court and dare all Lanka to lift it",
+    visualReferences: [
+      "young powerful vanara in prime — MONKEY face with fierce proud simian features",
+      "reddish-gold fur covering athletic muscular body — younger and leaner than Sugriva",
+      "wearing his father Vali's golden armlets on both upper arms — tribute to Vali",
+      "saffron-orange silk dhoti, no royal crown — a prince not yet a king",
+      "expression of fierce young warrior pride — daring anyone to challenge him",
+      "foot planted firmly on ground — the famous Sabha scene in Lanka",
+    ],
+    clothingRules:
+      "Saffron-orange dhoti. Vali's golden armlets always on upper arms — his most defining accessory. No crown. Lean athletic vanara build. Barefoot. Carries a heavy stone or tree trunk as weapon.",
+    colorPalette: ["reddish gold", "saffron orange", "burnished gold", "forest brown"],
+    restrictedChanges: [
+      "always monkey face — never human",
+      "Vali's golden armlets always on upper arms — never removed",
+      "no crown — he is a prince not a king",
+      "younger and leaner than Sugriva — distinct body type",
+    ],
+    samplePoses: [
+      "foot planted in Ravan's sabha — daring all of Lanka to move it",
+      "leaping across the ocean with the vanara sena",
+      "kneeling before Ram accepting his role as ambassador",
+      "fighting in Lanka with boulder raised above his head",
+    ],
+    referencePrompt: "Prince Angad son of Vali vanara warrior-prince full body portrait, young powerfully built vanara in his prime, MONKEY face with fierce proud simian features — protruding muzzle strong jaw primate brow, reddish-gold fur covering lean athletic muscular body, younger and leaner than Sugriva, wearing simple saffron-orange silk dhoti, his father Vali's thick golden armlets on both upper arms — these are his most important accessories showing filial tribute, no crown — a prince not yet a king, holding a massive boulder raised in one hand as weapon, right foot planted firmly and defiantly on the stone floor of Lanka's royal court, expression of fierce burning young warrior pride — daring all of Lanka to challenge him, grand Lanka palace court background with dark obsidian columns gold torches and Ravan's throne visible in background, dramatic torchlighting casting his shadow long across the floor, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, MONKEY face YOUNG LEAN warrior, Vali's golden armlets clearly visible, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Kumbhakarna",
+    speciesOrType: "Rakshasa",
+    worldRole: "Ravan's giant brother — sleeps for six months, wakes to eat; reluctantly fights for Ravan despite knowing it is adharma",
+    personality: "Enormous, gluttonous, but not without honour — knows Ravan is wrong, says so directly, then fights anyway out of family loyalty; a tragic giant with integrity",
+    visualReferences: [
+      "absolutely massive giant demon — dwarfs everything around him",
+      "dark mahogany-brown rocky rough skin texture, enormous bald head",
+      "small heavy-lidded eyes just waking from long sleep — still groggy",
+      "massive arms like tree trunks, barrel chest wide as a house",
+      "simple enormous dark red rough cloth around giant waist",
+      "colossal spiked iron club or uprooted tree as weapon",
+    ],
+    clothingRules:
+      "Only a massive rough dark-red cloth wrapped around the giant waist. No crown, no armour — he is too massive for ornaments. Always shown at enormous scale with tiny soldiers at his feet to convey size. Half-awake expression.",
+    colorPalette: ["dark mahogany", "deep crimson", "iron grey", "storm black"],
+    restrictedChanges: [
+      "always enormous — soldiers and buildings must look tiny beside him",
+      "always half-awake — heavy-lidded sleepy eyes even in battle",
+      "no crown, no armour — the giant needs none",
+      "dark rough rocky skin — not smooth, textured like stone",
+    ],
+    samplePoses: [
+      "rising from sleep — enormous body filling the frame, vanaras fleeing below",
+      "striding into battle — foot crushing the ground, army parting before him",
+      "swatting vanaras like flies — horrifying scale difference",
+      "mortally wounded but still standing — the tragic giant refuses to fall",
+    ],
+    referencePrompt: "Kumbhakarna the giant rakshasa brother of Ravan full body portrait, absolutely massive giant demon body that fills the entire frame, show enormous inhuman scale — tiny vanara soldiers visible at his feet and ankles to show terrifying size, dark mahogany-brown rough rocky skin texture like weathered stone, enormous bald round head with small heavy-lidded eyes still drowsy from being forcibly awakened, massive wide flat nose, enormous mouth, barrel chest wider than a palace wall, arms like the trunks of ancient trees, wearing only a single massive rough dark crimson cloth wrapped around giant waist, carrying a colossal spiked iron club the size of a ship's mast, smoke and dust rising from ground as he walks, Lanka fortress background with walls and towers looking small beside him, dramatic battle smoke and fire in background, expression of reluctant dangerous power — knows he is going to his death but goes anyway with grim dignity, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, MASSIVE GIANT scale everything else tiny, HALF-AWAKE heavy eyes, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Indrajit",
+    speciesOrType: "Rakshasa",
+    worldRole: "Ravan's son, greatest warrior of Lanka — defeated Indra himself; uses maya and dark astras; killed by Lakshman",
+    personality: "Supreme arrogance backed by genuine power — the most dangerous warrior in Lanka; fights with dark magic and illusion; proud son who truly believes in Lanka's invincibility",
+    visualReferences: [
+      "dark indigo-black complexion with supernatural glow — young demon prince",
+      "fierce intense eyes radiating dark demonic power and supreme confidence",
+      "magnificent black and gold Lanka battle armour with supernatural engravings",
+      "large ornate black crown with gold trim — Lanka's crown prince",
+      "crackling dark Brahmastra energy weapon in one hand — black-purple lightning",
+      "dark purple-black invincibility aura surrounding entire body",
+    ],
+    clothingRules:
+      "Full black and gold battle armour — always armoured, always in war mode. Black crown with gold. Dark crimson silk dhoti beneath armour. Always holding or conjuring a dark supernatural weapon. Dark energy aura mandatory.",
+    colorPalette: ["midnight black", "dark gold", "storm purple", "blood crimson"],
+    restrictedChanges: [
+      "always in full battle armour — never shown unarmed or unarmoured",
+      "always young — not middle-aged like Ravan, he is the son",
+      "dark indigo-black skin — darker than Ravan",
+      "always dark energy aura — his supernatural power is his defining trait",
+    ],
+    samplePoses: [
+      "firing Nagastra serpent weapon — coils of dark energy from drawn bow",
+      "invisible attack — dark form barely seen through supernatural concealment",
+      "standing over unconscious Lakshman — moment of apparent victory",
+      "final battle with Lakshman — both unleashing divine weapons",
+    ],
+    referencePrompt: "Indrajit the son of Ravan crown prince of Lanka full body portrait, supremely powerful young demon warrior, dark indigo-black complexion with supernatural sheen of invincibility, fierce intense eyes blazing with dark demonic confidence and pride, wearing magnificent full black battle armour with ornate gold engravings and supernatural protective runes across chest plate, large ornate black crown with heavy gold trim and single large dark ruby at centre, thick black-gold armlets and gold rings on fingers, dark crimson silk dhoti visible beneath armour hem, right hand holding crackling dark energy weapon — a black serpentine astra with purple-black electricity arcing from it, left hand raised in commanding dark mudra, entire body surrounded by supernatural dark purple-black invincibility aura like black fire, Lanka palace rooftop battle background with dark storm clouds rolling in from ocean, dramatic contrast of gold torchlight and darkness, expression of supreme arrogance and lethal power — the most dangerous warrior alive, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, YOUNG DARK WARRIOR full armour, dark energy aura always present, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Mandodari",
+    speciesOrType: "Human — queen of Lanka",
+    worldRole: "Ravan's devoted queen — daughter of Maya; most beautiful woman of her age; repeatedly pleads with Ravan to return Sita",
+    personality: "Noble, tragic, deeply wise — she sees Ravan's destruction coming and begs him to stop; loves him despite his flaw; a devoted wife to a flawed great man",
+    visualReferences: [
+      "extraordinarily beautiful queen with luminous warm complexion",
+      "large sorrowful compassionate eyes — she knows tragedy is coming",
+      "elaborate crown of gold and deep rubies in dark hair",
+      "rich deep purple-crimson Banarasi silk sari with very wide gold border",
+      "heavy layered gold necklaces with rubies — Lanka's queen wears its wealth",
+      "one hand on heart — her grief and love expressed in gesture",
+    ],
+    clothingRules:
+      "Rich deep purple-crimson silk sari with wide gold border — Lanka's regal colours. Heavy gold-and-ruby ornaments. Elaborate crown. Always dignified and regal. Expression of grief and nobility, never demonic.",
+    colorPalette: ["deep purple-crimson", "molten gold", "dark ruby red", "midnight blue"],
+    restrictedChanges: [
+      "always beautiful and dignified — NOT a demon-faced woman",
+      "always in grief — she knows what is coming",
+      "purple-crimson sari — her distinct colour from Sita's red",
+      "heavy ruby-gold ornaments — Lanka's queen wears its wealth",
+    ],
+    samplePoses: [
+      "pleading with Ravan — hands clasped, tears in eyes",
+      "standing alone on Lanka's highest tower — watching the battle",
+      "weeping over Ravan's body after his fall",
+      "seated on Lanka throne beside Ravan — regal but sorrowful",
+    ],
+    referencePrompt: "Queen Mandodari the devoted queen of Lanka full body portrait, extraordinarily beautiful regal woman with luminous warm golden complexion, large dark sorrowful compassionate eyes carrying the weight of knowing tragedy is inevitable, thick lustrous dark black hair adorned with large ornate crown of heavy gold and deep red rubies, wearing rich deep purple-crimson pure silk Banarasi sari — the colour distinct from Sita's red, with very wide heavy gold zari woven border and gold pallu draped elegantly, multiple heavy layered gold necklaces with large ruby pendants and emerald accents, thick gold bangles, large gold drop earrings with rubies, one hand pressed gently on her heart in a gesture of grief and devotion, standing on a high terrace of Lanka palace with dark obsidian stone walls and golden torches, vast ocean visible behind, expression of profound noble grief — beautiful but heartbroken, NOT demonic NOT monstrous but regal and tragic, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, BEAUTIFUL DIGNIFIED QUEEN not demon, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Manthara",
+    speciesOrType: "Human",
+    worldRole: "Kaikeyi's hunchbacked maidservant — poisons Kaikeyi's mind against Ram; catalyst of the entire Ramayana exile",
+    personality: "Cunning, bitter, jealous — her twisted form mirrors her twisted mind; driven by fear of losing status when Ram becomes king; destroys Ayodhya's happiness with whispers",
+    visualReferences: [
+      "elderly dark-complexioned woman with pronounced hunchback clearly visible",
+      "narrow calculating eyes with scheming bitter expression and cunning smile",
+      "wrinkled face, wiry grey hair pulled tightly back",
+      "simple dark indigo-blue servant sari — minimal border",
+      "walking stick in one hand, other hand gesturing conspiratorially",
+      "dramatic shadow cast across her hunched form",
+    ],
+    clothingRules:
+      "Dark indigo or dark grey servant sari — simple, minimal. No gold, only basic nose ring and bangles. Walking stick always present. Hunched posture must always be visible — never shown standing straight.",
+    colorPalette: ["dark indigo", "iron grey", "shadow black", "tarnished bronze"],
+    restrictedChanges: [
+      "hunchback always clearly visible — it defines her silhouette",
+      "always dark servant clothing — never royal",
+      "expression always scheming or bitter — never kind",
+      "walking stick always in hand",
+    ],
+    samplePoses: [
+      "whispering in Kaikeyi's ear — the moment of corruption",
+      "gesturing dramatically in Kaikeyi's chamber — spinning her scheme",
+      "watching Ram's exile procession with dark satisfaction",
+      "alone in shadows — the architect of tragedy",
+    ],
+    referencePrompt: "Manthara the scheming hunchbacked maidservant of Kaikeyi full body portrait, elderly dark-complexioned woman with clearly pronounced visible hunchback deformity — her silhouette is unmistakably bent, narrow calculating eyes with bitter cunning expression and slight scheming smile showing crooked teeth, deeply wrinkled face, wiry grey hair pulled tightly back in a severe bun, wearing a simple dark indigo-blue cotton servant sari with almost no border ornamentation, plain small gold nose ring, thin basic bangles, hobbling with a gnarled wooden walking stick gripped in right hand, left hand raised with one finger pointing gesturing dramatically as she whispers her scheme, walking through a dark royal Ayodhya corridor with stone arch columns and oil lamps casting long dramatic shadows, her hunched shadow looming large and sinister on the wall behind her, expression of scheming bitter triumph — the catalyst of Lanka's destruction in miniature form, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, HUNCHBACK clearly visible, DARK SERVANT clothing, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
 ];
 
 export async function POST(request: NextRequest) {
