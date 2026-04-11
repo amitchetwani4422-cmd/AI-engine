@@ -37,6 +37,7 @@ model Channel {
   watchHoursTotal      Float    @default(0)
   shortsViewsTotal     Int      @default(0)
   uploadCadence        String   @default("on-track")
+  narratorVoiceId      String?  // default narrator VoiceAsset id for this channel
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -122,6 +123,8 @@ model Scene {
   promptEn         String?  @db.Text  // English prompt for LTX2/Wan2.1
   locationTag      String?            // e.g. "Ayodhya", "Lanka", "Dandaka Forest"
   characterIds     String[]
+  narrationText    String?  @db.Text  // Hindi narration spoken during this scene
+  sceneAudio       String?  @db.Text  // ElevenLabs audio data URL for this scene
   status           String   @default("Pending")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -371,7 +374,27 @@ model VoiceAsset {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  characters Character[]
+  characters        Character[]
+  voiceGenerations  VoiceGeneration[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VOICE GENERATION — log of ElevenLabs TTS calls per scene
+// ─────────────────────────────────────────────────────────────────────────────
+model VoiceGeneration {
+  id              String   @id @default(cuid())
+  voiceAssetId    String
+  sceneId         String?
+  videoId         String?
+  text            String   @db.Text
+  emotion         String   @default("neutral")
+  audioUrl        String   @db.Text  // data URL or CDN URL
+  durationSeconds Float?
+  cost            Float?
+  status          String   @default("Generated")
+  createdAt       DateTime @default(now())
+
+  voiceAsset VoiceAsset @relation(fields: [voiceAssetId], references: [id], onDelete: Cascade)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

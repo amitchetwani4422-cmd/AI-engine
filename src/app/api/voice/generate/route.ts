@@ -1,75 +1,40 @@
 export const dynamic = "force-dynamic";
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import prisma from '@/lib/prisma';
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
-const GenerateVoiceSchema = z.object({
-  text: z.string().min(1).max(5000),
-  voiceAssetId: z.string().min(1),
-  emotion: z.string().optional().default('neutral'),
-  stability: z.number().min(0).max(1).optional().default(0.5),
-  similarityBoost: z.number().min(0).max(1).optional().default(0.75),
-  style: z.number().min(0).max(1).optional().default(0),
-});
-
-const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
+const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const parsed = GenerateVoiceSchema.safeParse(body);
+    const { text, voiceAssetId, emotion = "neutral", stability = 0.5, similarityBoost = 0.75, style = 0, sceneId, videoId } = body as Record<string, unknown>;
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: parsed.error.flatten() },
-        { status: 400 }
-      );
+    if (!text || !voiceAssetId) {
+      return NextResponse.json({ error: "text and voiceAssetId are required" }, { status: 400 });
     }
 
-    const { text, voiceAssetId, emotion, stability, similarityBoost, style } =
-      parsed.data;
-
-    const voiceAsset = await prisma.voiceAsset.findUnique({
-      where: { id: voiceAssetId },
-    });
-
-    if (!voiceAsset) {
-      return NextResponse.json(
-        { error: 'Voice asset not found' },
-        { status: 404 }
-      );
-    }
+    const voiceAsset = await prisma.voiceAsset.findUnique({ where: { id: voiceAssetId as string } });
+    if (!voiceAsset) return NextResponse.json({ error: "Voice asset not found" }, { status: 404 });
 
     const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'ElevenLabs API key not configured' },
-        { status: 500 }
-      );
-    }
-
-    // Build the text with emotion emphasis if provided
-    const processedText =
-      emotion !== 'neutral'
-        ? `<speak><prosody rate="medium">${text}</prosody></speak>`
-        : text;
+    if (!apiKey) return NextResponse.json({ error: "ELEVENLABS_API_KEY not configured" }, { status: 500 });
 
     const elevenLabsResponse = await fetch(
-      `${ELEVENLABS_API_URL}/text-to-speech/${voiceAsset.externalVoiceId}`,
+      `${ELEVENLABS_API_URL}/text-to-speech/${voiceAsset.elevenlabsVoiceId}`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json',
-          Accept: 'audio/mpeg',
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+          Accept: "audio/mpeg",
         },
         body: JSON.stringify({
-          text: processedText,
-          model_id: 'eleven_multilingual_v2',
+          text: text as string,
+          model_id: "eleven_multilingual_v2",
           voice_settings: {
-            stability: stability,
-            similarity_boost: similarityBoost,
-            style: style,
+            stability: stability as number,
+            similarity_boost: similarityBoost as number,
+            style: style as number,
             use_speaker_boost: true,
           },
         }),
@@ -78,45 +43,28 @@ export async function POST(request: NextRequest) {
 
     if (!elevenLabsResponse.ok) {
       const errorText = await elevenLabsResponse.text();
-      return NextResponse.json(
-        { error: 'ElevenLabs generation failed', details: errorText },
-        { status: elevenLabsResponse.status }
-      );
+      return NextResponse.json({ error: "ElevenLabs generation failed", details: errorText }, { status: elevenLabsResponse.status });
     }
 
     const audioBuffer = await elevenLabsResponse.arrayBuffer();
-    const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+    const audioBase64 = Buffer.from(audioBuffer).toString("base64");
     const audioDataUrl = `data:audio/mpeg;base64,${audioBase64}`;
 
-    // Save voice generation record
-    const voiceGeneration = await prisma.voiceGeneration.create({
+    const record = await prisma.voiceGeneration.create({
       data: {
-        voiceAssetId,
-        text,
-        emotion: emotion ?? 'neutral',
+        voiceAssetId: voiceAssetId as string,
+        sceneId: (sceneId as string) ?? null,
+        videoId: (videoId as string) ?? null,
+        text: text as string,
+        emotion: (emotion as string) ?? "neutral",
         audioUrl: audioDataUrl,
-        durationSeconds: null,
-        cost: null,
-        status: 'Generated',
+        status: "Generated",
       },
     });
 
-    return NextResponse.json(
-      {
-        id: voiceGeneration.id,
-        audioUrl: audioDataUrl,
-        voiceAssetId,
-        emotion,
-        status: 'Generated',
-        createdAt: voiceGeneration.createdAt,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({ id: record.id, audioUrl: audioDataUrl, voiceAssetId, emotion, status: "Generated" }, { status: 201 });
   } catch (error) {
-    console.error('POST /api/voice/generate error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate voice audio' },
-      { status: 500 }
-    );
+    console.error("POST /api/voice/generate error:", error);
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }

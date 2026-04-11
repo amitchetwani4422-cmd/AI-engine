@@ -17,6 +17,8 @@ import {
   Clock,
   DollarSign,
   Zap,
+  Mic,
+  Volume2,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -52,8 +54,16 @@ interface Scene {
   visualGuidance?: string;
   prompt?: string;
   promptEn?: string;
+  narrationText?: string;
+  sceneAudio?: string;
   status: string;
   generatedClips: GeneratedClip[];
+}
+
+interface VoiceAsset {
+  id: string;
+  name: string;
+  language: string;
 }
 
 interface ProductionVideo {
@@ -113,6 +123,11 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [movingToQC, setMovingToQC] = useState(false);
   const [assembling, setAssembling] = useState(false);
   const [assembleError, setAssembleError] = useState<string | null>(null);
+  const [voiceAssets, setVoiceAssets] = useState<VoiceAsset[]>([]);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>("");
+  const [generatingVoices, setGeneratingVoices] = useState(false);
+  const [generatingSceneVoice, setGeneratingSceneVoice] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const generatingRef = useRef(false);
   const rescueTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const queueCancelledRef = useRef(false);
@@ -126,6 +141,56 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       setLoading(false);
     }
     return null;
+  }
+
+  async function fetchVoiceAssets(channelId: string) {
+    try {
+      const res = await fetch(`/api/voice?channelId=${channelId}`);
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setVoiceAssets(data);
+        setSelectedVoiceId(data[0].id);
+      }
+    } catch { /* ignore */ }
+  }
+
+  async function generateAllVoices() {
+    if (!video) return;
+    setGeneratingVoices(true);
+    setVoiceError(null);
+    try {
+      const res = await fetch(`/api/production/${id}/generate-voices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voiceAssetId: selectedVoiceId || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setVoiceError(data.error ?? "Voice generation failed"); return; }
+      await fetchVideo();
+    } catch (err) {
+      setVoiceError(String(err));
+    } finally {
+      setGeneratingVoices(false);
+    }
+  }
+
+  async function generateSceneVoice(sceneId: string) {
+    setGeneratingSceneVoice(sceneId);
+    setVoiceError(null);
+    try {
+      const res = await fetch(`/api/production/${id}/generate-voices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voiceAssetId: selectedVoiceId || undefined, sceneIds: [sceneId] }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setVoiceError(data.error ?? "Voice generation failed"); return; }
+      await fetchVideo();
+    } catch (err) {
+      setVoiceError(String(err));
+    } finally {
+      setGeneratingSceneVoice(null);
+    }
   }
 
   // Auto-rescue a stuck scene: check FAL status, recover clip if done, retry every 2 min if still processing
@@ -161,6 +226,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   useEffect(() => {
     fetchVideo().then((data) => {
       if (!data) return;
+      if (data.channelId) fetchVoiceAssets(data.channelId);
       type SceneRow = { id: string; status: string; generatedClips: unknown[] };
       const inProgress: SceneRow[] = (data.script?.sceneBreakdown ?? []).filter(
         (s: SceneRow) => s.status === "Generating" && s.generatedClips.length === 0
@@ -457,6 +523,12 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
             Assembly failed: {assembleError}
           </div>
         )}
+        {voiceError && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+            <XCircle className="h-4 w-4 flex-shrink-0" />
+            <span>Voice: {voiceError}</span>
+          </div>
+        )}
         {video.finalVideoUrl && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm flex items-center gap-2">
             <CheckCircle className="h-4 w-4" />
@@ -580,6 +652,57 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           </CardContent>
         </Card>
 
+        {/* Voice Generation Panel */}
+        {voiceAssets.length > 0 && (
+          <Card className="bg-zinc-900 border-zinc-800 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <p className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                    <Mic className="h-4 w-4 text-purple-400" /> Voice Narration
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Generate Hindi narration audio for each scene using ElevenLabs.
+                    {scenes.filter(s => s.sceneAudio).length > 0 && (
+                      <span className="text-purple-400 ml-1">
+                        {scenes.filter(s => s.sceneAudio).length}/{scenes.length} scenes voiced
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {voiceAssets.length > 1 && (
+                    <select
+                      value={selectedVoiceId}
+                      onChange={(e) => setSelectedVoiceId(e.target.value)}
+                      className="text-xs px-2 py-1.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-200"
+                    >
+                      {voiceAssets.map((v) => (
+                        <option key={v.id} value={v.id}>{v.name} ({v.language})</option>
+                      ))}
+                    </select>
+                  )}
+                  {voiceAssets.length === 1 && (
+                    <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1.5 rounded border border-zinc-700">
+                      {voiceAssets[0].name}
+                    </span>
+                  )}
+                  <Button
+                    size="sm"
+                    className="bg-purple-600 hover:bg-purple-700"
+                    onClick={generateAllVoices}
+                    disabled={generatingVoices}
+                  >
+                    {generatingVoices
+                      ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating voices...</>
+                      : <><Mic className="h-3 w-3 mr-1" /> Generate All Voices</>}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Scenes */}
         <div className="space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -667,6 +790,38 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                           </details>
                         );
                       })()}
+
+                      {/* Narration text + audio */}
+                      {scene.narrationText && (
+                        <div className="mb-2 bg-purple-950/20 border border-purple-800/30 rounded-lg p-2.5">
+                          <p className="text-xs text-purple-300 leading-relaxed mb-2">{scene.narrationText}</p>
+                          {scene.sceneAudio ? (
+                            <div className="flex items-center gap-2">
+                              <audio controls className="h-7 flex-1" src={scene.sceneAudio} />
+                              <button
+                                onClick={() => generateSceneVoice(scene.id)}
+                                disabled={generatingSceneVoice === scene.id || generatingVoices}
+                                className="text-xs text-purple-400 hover:text-purple-200 flex items-center gap-1 shrink-0"
+                                title="Re-generate voice"
+                              >
+                                {generatingSceneVoice === scene.id
+                                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                                  : <RefreshCw className="h-3 w-3" />}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => generateSceneVoice(scene.id)}
+                              disabled={generatingSceneVoice === scene.id || generatingVoices || voiceAssets.length === 0}
+                              className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-200 disabled:opacity-40"
+                            >
+                              {generatingSceneVoice === scene.id
+                                ? <><Loader2 className="h-3 w-3 animate-spin" /> Generating...</>
+                                : <><Volume2 className="h-3 w-3" /> Generate voice</>}
+                            </button>
+                          )}
+                        </div>
+                      )}
 
                       {/* Clip preview */}
                       {clip && !isGenerating && (

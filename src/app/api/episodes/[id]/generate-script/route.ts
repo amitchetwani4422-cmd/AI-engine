@@ -107,6 +107,7 @@ RESPONSE FORMAT:
     {
       "sequenceNumber": 1,
       "description": "इस scene का कथात्मक उद्देश्य",
+      "narrationText": "इस scene में narrator जो बोलेगा — 1-2 वाक्य हिंदी में, भावपूर्ण",
       "duration": 5,
       "modelAssigned": "ltx-video-2",
       "routingReason": "कारण",
@@ -135,7 +136,7 @@ RESPONSE FORMAT:
       hook: string; fullScript: string; narrationDraft: string;
       worldSetting?: string; titleOptions: string[]; thumbnailConcepts: string[];
       musicMood: string;
-      scenes: { sequenceNumber: number; description: string; duration: number; modelAssigned: string; routingReason: string; cameraDirection: string; visualGuidance: string; locationTag?: string; prompt?: string; promptEn?: string }[];
+      scenes: { sequenceNumber: number; description: string; narrationText?: string; duration: number; modelAssigned: string; routingReason: string; cameraDirection: string; visualGuidance: string; locationTag?: string; prompt?: string; promptEn?: string }[];
     };
 
     try {
@@ -182,6 +183,7 @@ RESPONSE FORMAT:
             scriptId: newScript.id,
             sequenceNumber: s.sequenceNumber,
             description: s.description,
+            narrationText: s.narrationText ?? null,
             duration: s.duration,
             modelAssigned: s.modelAssigned,
             routingReason: s.routingReason,
