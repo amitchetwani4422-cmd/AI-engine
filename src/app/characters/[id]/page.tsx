@@ -70,6 +70,8 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [imagePromptDraft, setImagePromptDraft] = useState<string>("");
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
   const [aiModel, setAiModel] = useState<AIModel>(DEFAULT_SCRIPT_MODEL);
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -77,7 +79,12 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     fetch(`/api/characters/${id}`)
       .then((r) => r.json())
-      .then((data) => { if (data && !data.error) setCharacter(data); })
+      .then((data) => {
+        if (data && !data.error) {
+          setCharacter(data);
+          if (data.referencePrompt) setImagePromptDraft(data.referencePrompt);
+        }
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -128,17 +135,20 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   async function generateImage() {
     setGeneratingImage(true);
     try {
-      const res = await fetch(`/api/characters/${id}/generate-image`, {
+      // Use generate-reference-image which applies referencePrompt + negative prompt + better settings
+      const res = await fetch(`/api/characters/${id}/generate-reference-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ addToApproved: true }),
+        body: JSON.stringify(imagePromptDraft.trim() ? { prompt: imagePromptDraft.trim() } : {}),
       });
       const data = await res.json();
       if (data.imageUrl && character) {
         setCharacter({ ...character, approvedImages: [...character.approvedImages, data.imageUrl] });
+        if (data.prompt) setImagePromptDraft(data.prompt); // sync saved prompt back
       }
     } finally {
       setGeneratingImage(false);
+      setShowPromptEditor(false);
     }
   }
 
@@ -287,13 +297,35 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm">Approved Images</CardTitle>
-                <Button size="sm" variant="outline" onClick={generateImage} disabled={generatingImage}>
-                  {generatingImage
-                    ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                    : <Sparkles className="h-3 w-3 mr-1.5" />}
-                  Generate with FLUX
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs text-zinc-500 hover:text-zinc-200"
+                    onClick={() => setShowPromptEditor(!showPromptEditor)}
+                  >
+                    {showPromptEditor ? "Hide Prompt" : "Edit Prompt"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={generateImage} disabled={generatingImage}>
+                    {generatingImage
+                      ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Generating...</>
+                      : <><Sparkles className="h-3 w-3 mr-1.5" /> Generate with FLUX</>}
+                  </Button>
+                </div>
               </CardHeader>
+              {showPromptEditor && (
+                <div className="px-4 pb-3 border-b border-zinc-800">
+                  <p className="text-xs text-zinc-500 mb-1.5">Flux prompt — edit and tweak before generating:</p>
+                  <textarea
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-xs text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-zinc-500 leading-relaxed"
+                    rows={5}
+                    value={imagePromptDraft}
+                    onChange={(e) => setImagePromptDraft(e.target.value)}
+                    placeholder="Describe the character in detail for Flux image generation..."
+                  />
+                  <p className="text-xs text-zinc-600 mt-1">Tip: be very explicit about species (monkey face, simian snout), clothing, weapon, background. More detail = better result.</p>
+                </div>
+              )}
               <CardContent>
                 {character.approvedImages.length > 0 ? (
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
