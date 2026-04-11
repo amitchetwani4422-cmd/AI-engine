@@ -13,14 +13,23 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const customPrompt = (body as Record<string, unknown>).prompt as string | undefined;
-    // referenceImageUrl = use img2img mode (Flux Kontext) to edit an existing image
-    const referenceImageUrl = (body as Record<string, unknown>).referenceImageUrl as string | undefined;
+    const b = body as Record<string, unknown>;
+
+    const customPrompt   = b.prompt as string | undefined;
+    const referenceImageUrl = b.referenceImageUrl as string | undefined;
+    // faceOnly = true → wrap prompt so Kontext preserves body and only edits face/weapon
+    const faceOnly       = b.faceOnly === true;
+    // guidanceScale: 3-8; higher = follow prompt more, lower = preserve reference more
+    const guidanceScale  = typeof b.guidanceScale === "number"
+      ? Math.min(10, Math.max(1, b.guidanceScale))
+      : (faceOnly ? 7 : 3.5);
+    // textModel: "recraft" uses Recraft V3 instead of Flux Dev for text-to-image
+    const textModel      = b.textModel as string | undefined;
 
     const character = await prisma.character.findUnique({ where: { id } });
     if (!character) return NextResponse.json({ error: "Character not found" }, { status: 404 });
 
-    // Step 1: Build or reuse prompt
+    // ── Build base prompt ──
     let imagePrompt = customPrompt?.trim() || character.referencePrompt?.trim() || "";
 
     if (!imagePrompt) {
@@ -56,24 +65,42 @@ Rules:
     const negativePrompt = "modern clothing, western outfit, suit, jeans, t-shirt, sneakers, sunglasses, cartoon style, anime, 3D CGI, plastic look, ugly, deformed, extra limbs, blurry, watermark, text, logo, multiple heads shown literally, european face, chinese style, japanese style, low quality, bad anatomy, human face on animal body";
 
     let imageUrl: string | undefined;
+    let modeUsed: string;
 
     if (referenceImageUrl?.trim()) {
-      // ── IMG2IMG MODE — Flux Kontext: edit specific parts while preserving the rest ──
-      // Ideal for "keep the body, fix only the face and weapon"
-      const result = await fal.subscribe("fal-ai/flux-pro/kontext", {
+      // ── IMG2IMG — Flux Kontext Max (better instruction following than base Kontext) ──
+      // faceOnly mode: prepend preservation instruction so Kontext keeps body intact
+      const editPrompt = faceOnly
+        ? `Keep the body, pose, clothing, jewelry, dhoti, background and lighting completely identical to the reference image. Only change the face and weapon: ${imagePrompt}`
+        : imagePrompt;
+
+      const result = await fal.subscribe("fal-ai/flux-pro/kontext/max", {
         input: {
-          prompt: imagePrompt,
+          prompt: editPrompt,
           image_url: referenceImageUrl.trim(),
-          guidance_scale: 3.5,
-          num_inference_steps: 28,
+          guidance_scale: guidanceScale,
+          num_inference_steps: 32,
           num_images: 1,
           output_format: "jpeg",
         },
       });
       const output = result.data as { images?: Array<{ url: string }> };
       imageUrl = output?.images?.[0]?.url;
+      modeUsed = faceOnly ? "kontext-max-face" : "kontext-max";
+    } else if (textModel === "recraft") {
+      // ── TEXT-TO-IMAGE — Recraft V3 (stronger at painterly art styles) ──
+      const result = await fal.subscribe("fal-ai/recraft-v3", {
+        input: {
+          prompt: imagePrompt,
+          style: "digital_illustration",
+          image_size: "portrait_4_3",
+        },
+      });
+      const output = result.data as { images?: Array<{ url: string }> };
+      imageUrl = output?.images?.[0]?.url;
+      modeUsed = "recraft-v3";
     } else {
-      // ── TEXT-TO-IMAGE MODE — Flux Dev ──
+      // ── TEXT-TO-IMAGE — Flux Dev (default) ──
       const result = await fal.subscribe("fal-ai/flux/dev", {
         input: {
           prompt: imagePrompt,
@@ -87,6 +114,7 @@ Rules:
       });
       const output = result.data as { images?: Array<{ url: string }> };
       imageUrl = output?.images?.[0]?.url;
+      modeUsed = "flux-dev";
     }
 
     if (!imageUrl) return NextResponse.json({ error: "No image returned from FAL" }, { status: 500 });
@@ -104,7 +132,7 @@ Rules:
       ok: true,
       imageUrl,
       prompt: imagePrompt,
-      mode: referenceImageUrl ? "img2img" : "text2img",
+      mode: modeUsed,
       character: { id: updated.id, name: updated.name, activeImage: updated.activeImage },
     });
   } catch (error) {
@@ -112,6 +140,21 @@ Rules:
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
+
+// PATCH — set activeImage from existing approvedImages
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const { activeImage } = await request.json();
+  const updated = await prisma.character.update({
+    where: { id },
+    data: { activeImage },
+  });
+  return NextResponse.json({ ok: true, activeImage: updated.activeImage });
+}
+
 
 // PATCH — set activeImage from existing approvedImages
 export async function PATCH(

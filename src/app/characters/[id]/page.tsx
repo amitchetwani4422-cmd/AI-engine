@@ -83,6 +83,9 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [baseImageUrl, setBaseImageUrl] = useState<string | null>(null);
+  const [faceOnly, setFaceOnly] = useState(false);
+  const [guidanceScale, setGuidanceScale] = useState(6);
+  const [textModel, setTextModel] = useState<"flux" | "recraft">("flux");
 
   useEffect(() => {
     fetch(`/api/characters/${id}`)
@@ -143,9 +146,16 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   async function generateImage() {
     setGeneratingImage(true);
     try {
-      const body: Record<string, string> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const body: Record<string, any> = {};
       if (imagePromptDraft.trim()) body.prompt = imagePromptDraft.trim();
-      if (baseImageUrl) body.referenceImageUrl = baseImageUrl;
+      if (baseImageUrl) {
+        body.referenceImageUrl = baseImageUrl;
+        body.faceOnly = faceOnly;
+        body.guidanceScale = guidanceScale;
+      } else {
+        if (textModel === "recraft") body.textModel = "recraft";
+      }
 
       const res = await fetch(`/api/characters/${id}/generate-reference-image`, {
         method: "POST",
@@ -155,12 +165,11 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
       const data = await res.json();
       if (data.imageUrl && character) {
         setCharacter({ ...character, approvedImages: [...character.approvedImages, data.imageUrl] });
-        if (data.prompt) setImagePromptDraft(data.prompt); // sync saved prompt back
-        setBaseImageUrl(null); // clear base after generation
+        if (data.prompt) setImagePromptDraft(data.prompt);
+        setBaseImageUrl(null);
       }
     } finally {
       setGeneratingImage(false);
-      setShowPromptEditor(false);
     }
   }
 
@@ -353,16 +362,73 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               </CardHeader>
               {showPromptEditor && (
-                <div className="px-4 pb-3 border-b border-zinc-800">
-                  <p className="text-xs text-zinc-500 mb-1.5">Flux prompt — edit and tweak before generating:</p>
-                  <textarea
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-xs text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-zinc-500 leading-relaxed"
-                    rows={5}
-                    value={imagePromptDraft}
-                    onChange={(e) => setImagePromptDraft(e.target.value)}
-                    placeholder="Describe the character in detail for Flux image generation..."
-                  />
-                  <p className="text-xs text-zinc-600 mt-1">Tip: be very explicit about species (monkey face, simian snout), clothing, weapon, background. More detail = better result.</p>
+                <div className="px-4 pb-3 border-b border-zinc-800 space-y-3">
+                  {baseImageUrl ? (
+                    /* ── IMG2IMG CONTROLS ── */
+                    <>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-zinc-400 font-medium">Kontext Max — describe what to change:</p>
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={faceOnly}
+                            onChange={(e) => setFaceOnly(e.target.checked)}
+                            className="w-3.5 h-3.5 accent-amber-500"
+                          />
+                          <span className="text-xs text-amber-400">Face & weapon only</span>
+                        </label>
+                      </div>
+                      {faceOnly && (
+                        <div className="px-2 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-300 leading-relaxed">
+                          Auto-prefix added: <em>"Keep body, clothing, background identical. Only change face and weapon:"</em><br />
+                          → Just write what the corrected face/weapon should look like below.
+                        </div>
+                      )}
+                      <textarea
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-xs text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-zinc-500 leading-relaxed"
+                        rows={4}
+                        value={imagePromptDraft}
+                        onChange={(e) => setImagePromptDraft(e.target.value)}
+                        placeholder={faceOnly
+                          ? "e.g. protruding simian muzzle, flat primate nose, wide monkey jaw, primate brow ridge — NOT human face. Right hand holds golden cylindrical gada mace, NOT a bow."
+                          : "Describe the full desired output — what to keep and what to change..."}
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs text-zinc-500">
+                          <span>Prompt strength: {guidanceScale} {guidanceScale <= 4 ? "(preserve more)" : guidanceScale >= 7 ? "(follow prompt strictly)" : "(balanced)"}</span>
+                          <span className="text-zinc-600">3 ← → 10</span>
+                        </div>
+                        <input
+                          type="range" min={3} max={10} step={0.5}
+                          value={guidanceScale}
+                          onChange={(e) => setGuidanceScale(Number(e.target.value))}
+                          className="w-full accent-amber-500"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    /* ── TEXT-TO-IMAGE CONTROLS ── */
+                    <>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-zinc-400 font-medium">Text-to-image prompt:</p>
+                        <div className="flex items-center gap-1 bg-zinc-800 rounded p-0.5 text-xs">
+                          <button onClick={() => setTextModel("flux")} className={`px-2 py-0.5 rounded transition-colors ${textModel === "flux" ? "bg-blue-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>Flux Dev</button>
+                          <button onClick={() => setTextModel("recraft")} className={`px-2 py-0.5 rounded transition-colors ${textModel === "recraft" ? "bg-purple-600 text-white" : "text-zinc-400 hover:text-zinc-200"}`}>Recraft V3</button>
+                        </div>
+                      </div>
+                      {textModel === "recraft" && (
+                        <p className="text-xs text-purple-400/80">Recraft V3 is better at painterly art styles — good for getting the Raja Ravi Varma look right on the first try.</p>
+                      )}
+                      <textarea
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-xs text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-zinc-500 leading-relaxed"
+                        rows={5}
+                        value={imagePromptDraft}
+                        onChange={(e) => setImagePromptDraft(e.target.value)}
+                        placeholder="Describe the character in full detail — species features, clothing, weapon, background, art style..."
+                      />
+                      <p className="text-xs text-zinc-600">Once you have a good body, use <strong className="text-amber-500/70">Use as base</strong> + <strong className="text-amber-500/70">Face & weapon only</strong> to fix just the face without regenerating the whole image.</p>
+                    </>
+                  )}
                 </div>
               )}
               <CardContent>
