@@ -168,6 +168,173 @@ const CHARACTERS = [
     preferredModel: "kling-3.0",
     universeId: "A",
   },
+
+  // ─── Batch 2 ───────────────────────────────────────────────────────────────
+
+  {
+    name: "Dasharath",
+    speciesOrType: "Human",
+    worldRole: "King of Ayodhya — father of Ram, Bharat, Lakshman and Shatrughan",
+    personality: "Noble, loving, tragic — a great emperor broken by his own boon to Kaikeyi; dies of grief after Ram's exile",
+    visualReferences: [
+      "elderly yet majestic king in his 60s — white mustache and beard, noble aged face",
+      "deep sorrowful wise eyes filled with royal dignity and hidden grief",
+      "bare chest with sacred janeu thread, strong aged Kshatriya body",
+      "heavy jewelled Kosala royal crown with large central ruby",
+      "multiple layers of thick gold necklaces and heavy gold armlets",
+      "golden sceptre-staff held in right hand",
+    ],
+    clothingRules:
+      "Magnificent deep burgundy-red silk royal dhoti with heavy gold zari border. Royal crown always worn. Heavy gold ornaments befitting emperor of Ayodhya. Bare feet.",
+    colorPalette: ["deep burgundy", "hammered gold", "ivory white", "royal crimson"],
+    restrictedChanges: [
+      "always elderly — white beard and mustache, never shown young",
+      "expression always carries weight of sorrow or regal burden",
+      "crown always present — he is always the king",
+      "never shown without royal attire",
+    ],
+    samplePoses: [
+      "seated on Ayodhya throne — majestic but with sadness in eyes",
+      "embracing Ram before exile — overcome with grief",
+      "lying on royal bed dying of grief — torch-lit chamber",
+      "conducting Ram's coronation yagna — fire and priests around",
+    ],
+    referencePrompt: "King Dasharath the great emperor of Ayodhya full body portrait, elderly yet majestic Kshatriya king in his 60s, noble aged face with full white mustache and white beard, deep sorrowful wise eyes filled with royal dignity, wearing magnificent deep burgundy-red silk royal dhoti with heavy gold zari border, elaborate jewelled Kosala royal crown with large central ruby and peacock feather, multiple layers of thick gold necklaces with large gems and heavy gold armlets on both arms, bare chest with sacred janeu thread, holding golden sceptre-staff in right hand, seated on ornate Ayodhya throne of carved sandstone, royal throne room background with tall stone pillars golden lamps and red silk curtains, warm amber royal court lighting, expression of majestic sorrow and regal burden, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, no modern elements, no western clothing, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Kaushalya",
+    speciesOrType: "Human",
+    worldRole: "First queen of Ayodhya — Ram's devoted mother, embodiment of maternal grace",
+    personality: "Serene, deeply spiritual, accepts dharma even when it breaks her heart; strong inner faith sustains her through Ram's exile",
+    visualReferences: [
+      "dignified regal queen in her 50s — luminous warm golden complexion",
+      "large gentle lotus-shaped eyes with serene maternal compassion",
+      "dark hair with silver streaks in braided crown adorned with jasmine",
+      "maang tikka, pearl necklace, delicate gold bangles",
+      "hands often in namaskara mudra or holding oil lamp in puja",
+      "cream-ivory silk sari with wide gold zari border",
+    ],
+    clothingRules:
+      "Cream or ivory silk sari with wide gold zari border. Simple but rich queen's ornaments — pearl necklace, gold maang tikka, thin bangles. Red alta on bare feet. Always shown in prayer or blessing pose.",
+    colorPalette: ["ivory cream", "lotus gold", "pearl white", "soft saffron"],
+    restrictedChanges: [
+      "complexion always warm golden — never too fair or too dark",
+      "expression always serene and maternal — even in grief",
+      "always wearing cream or ivory sari — her signature",
+      "hair always neatly braided — never loose",
+    ],
+    samplePoses: [
+      "morning puja — hands in namaskara before oil lamp and flowers",
+      "blessing Ram before exile — hand on his head, tears on face",
+      "seated in prayer chamber — deep meditation in grief",
+      "welcoming Ram's return — joyful tears, open arms",
+    ],
+    referencePrompt: "Queen Kaushalya mother of Lord Ram full body portrait, dignified regal queen in her 50s, luminous warm golden complexion with serene maternal grace, large gentle lotus-shaped dark eyes, thick dark hair with silver streaks in elegant braided crown adorned with fresh white jasmine flowers, wearing beautiful cream-ivory pure silk Banarasi sari with very wide heavy gold zari woven border and gold pallu draped over left shoulder, rich red alta painted on bare feet, thin gold bangles on both wrists, pearl necklace with gold pendant, gold maang tikka in forehead parting, seated in morning puja prayer position with hands folded in namaskara mudra, small brass diya oil lamp and fresh marigold flowers placed before her on a carved stone floor, royal Ayodhya palace puja chamber background with carved sandstone arched windows soft golden morning light and sacred tulsi plant, expression of deep serene maternal devotion and quiet spiritual strength, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, no modern elements, no western clothing, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Kaikeyi",
+    speciesOrType: "Human",
+    worldRole: "Second queen of Ayodhya — Bharat's mother; her two boons cause Ram's exile; tragic figure consumed by pride",
+    personality: "Beautiful, proud, once a great queen and warrior; manipulated by Manthara into betraying love with ambition — a tragic antagonist",
+    visualReferences: [
+      "beautiful proud queen in her 40s — warm golden complexion, sharp intelligent eyes",
+      "expression of fierce royal resolve — determined, not soft",
+      "ornate gold crown, heavy gold necklaces with large rubies",
+      "rich deep saffron-orange Banarasi silk sari with wide gold border",
+      "gold bangles on both arms, large gold earrings",
+      "standing upright with posture of royal command",
+    ],
+    clothingRules:
+      "Rich saffron-orange Banarasi silk sari — her signature colour of fire and determination. Heavy ornate gold crown. Heavy gold and ruby ornaments. Standing or seated with upright proud posture. Never in white (that is mourning).",
+    colorPalette: ["saffron orange", "molten gold", "deep ruby red", "burnished copper"],
+    restrictedChanges: [
+      "always saffron or orange sari — never red (that is Sita's) or white (mourning)",
+      "expression always determined and proud — rarely soft",
+      "crown always present — she asserts her queenly status",
+      "shown with Manthara nearby in political scenes",
+    ],
+    samplePoses: [
+      "in kopa bhavan — seated on floor in proud grief demanding her boons",
+      "confronting Dasharath — standing firm, eyes cold with resolve",
+      "in regret — alone, realising the destruction she caused",
+      "as warrior queen in flashback — on chariot helping Dasharath in battle",
+    ],
+    referencePrompt: "Queen Kaikeyi second queen of Ayodhya full body portrait, beautiful proud queen in her 40s, sharp intelligent eyes filled with fierce royal determination and pride, warm golden complexion, wearing rich deep saffron-orange Banarasi silk sari with very wide heavy gold border — the saffron is vibrant and saturated, elaborate gold crown with rubies, heavy layered gold necklaces with large ruby pendants, thick gold bangles on both wrists, large ornate gold earrings, standing in kopa bhavan the chamber of sorrow with arms crossed and upright proud posture, dark dramatic interior of royal chamber with single oil lamp casting long shadows, expression of fierce uncompromising royal resolve — not a villain smirking but a proud queen making a terrible choice, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, no modern elements, no western clothing, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Bharat",
+    speciesOrType: "Human",
+    worldRole: "Third prince of Ayodhya — Ram's devoted brother who refuses the throne and rules as regent wearing Ram's padukas",
+    personality: "Pure, grief-stricken, utterly devoted to Ram — renounces all royal comfort and lives as an ascetic until Ram's return; the ideal of selfless brotherhood",
+    visualReferences: [
+      "young man in mid-20s, fair golden complexion similar to Lakshman",
+      "face etched with deep grief and devotion, haunted eyes",
+      "wearing rough bark-cloth or simple white ascetic dhoti — no royal robes",
+      "no crown, no ornaments — only sacred janeu thread",
+      "carrying Ram's golden padukas sandals reverently in both palms",
+      "thin body from fasting and penance during 14-year wait",
+    ],
+    clothingRules:
+      "Simple rough bark-cloth dhoti or plain white cotton — never royal silk. No crown, no gold ornaments except sacred janeu. Carries Ram's padukas at all times. Bare feet. Thin ascetic bearing.",
+    colorPalette: ["bark brown", "plain white", "ash grey", "pale gold of Ram's padukas"],
+    restrictedChanges: [
+      "never in royal robes or crown — he renounced them",
+      "always carrying or near Ram's golden padukas",
+      "expression always grief and devotion — never joy until Ram returns",
+      "thin ascetic body — shows 14 years of self-imposed penance",
+    ],
+    samplePoses: [
+      "kneeling at Nandigram — holding Ram's padukas above his head",
+      "seated in hermitage hut — ruling in Ram's name as regent",
+      "pleading with Ram at Chitrakoot — begging him to return",
+      "overjoyed reunion with Ram at Ayodhya — tears streaming down face",
+    ],
+    referencePrompt: "Prince Bharat the devoted brother of Ram full body portrait in ascetic renunciation, young man in mid-20s, fair warm golden complexion similar to Lakshman, deeply sorrowful eyes etched with guilt devotion and grief, lean body from 14 years of fasting and penance, wearing rough simple bark-cloth brown dhoti like an ascetic forest hermit — NOT royal silk, bare chest with only sacred janeu thread — no gold necklaces no crown no ornaments, carrying Lord Ram's sacred golden padukas sandals reverently held aloft in both palms with utmost care and devotion, kneeling on bare forest ground of Nandigram outside Ayodhya, simple forest hermitage hut background with small sacred fire and forest trees, expression of profound grief self-punishment and unwavering devotion — he believes himself responsible for Ram's exile, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, ASCETIC APPEARANCE no royal clothing, no modern elements, no western clothing, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
+
+  {
+    name: "Vibhishan",
+    speciesOrType: "Rakshasa",
+    worldRole: "Ravan's righteous younger brother — defects to Ram's side, crowned king of Lanka after Ravan's defeat",
+    personality: "Principled, dharmic, courageous in speaking truth to power; chose righteousness over family loyalty — the voice of dharma in Ravan's court",
+    visualReferences: [
+      "lean dark-complexioned rakshasa with noble dignified features unlike other demons",
+      "Vishnu tilak on forehead — white vertical lines with red dot (his divine allegiance)",
+      "rudraksha mala around neck, simple sacred thread",
+      "wearing white cotton dhoti and saffron uttariya shawl — NOT gold armour",
+      "holding small brass kamandal and lotus flower",
+      "half standing in divine light, half in Lanka's shadow — the inner conflict resolved",
+    ],
+    clothingRules:
+      "Simple white dhoti and saffron shawl — righteously renounced Lanka's opulence. Vishnu tilak always on forehead. Rudraksha mala. No battle armour, no golden Lankan jewels. Carries kamandal.",
+    colorPalette: ["pure white", "saffron", "deep brown skin", "gold of tilak"],
+    restrictedChanges: [
+      "always Vishnu tilak on forehead — his defining mark of allegiance",
+      "always simple white/saffron clothing — never Lanka gold armour",
+      "dark skin but with dignified noble expression — not demonic face",
+      "expression always calm and righteous — never menacing",
+    ],
+    samplePoses: [
+      "standing before Ram's army — surrendering and seeking refuge",
+      "arguing dharma in Ravan's court — brave and alone",
+      "being crowned king of Lanka — after Ravan's fall",
+      "beside Ram in battle — guiding strategy with folded hands",
+    ],
+    referencePrompt: "Vibhishan the righteous rakshasa brother of Ravan full body portrait, lean dark-complexioned rakshasa with noble dignified features unlike typical demons, wearing simple pure white cotton dhoti and saffron uttariya shawl draped over left shoulder — NOT gold armour NOT Lanka royal clothing, sacred Vishnu tilak on forehead — white vertical lines with central red dot mark of Vaishnavism, rudraksha mala beads around neck, holding small brass kamandal water pot in one hand and single pink lotus flower in other hand, gentle but firm expression of righteous dharmic resolve and inner peace, standing at the boundary of Lanka where dark palace shadows give way to divine golden light streaming from Ram's direction — half lit by divine gold half still in Lanka shadow, slight dark rakshasa skin tone but face radiating noble spiritual peace, Raja Ravi Varma divine Indian oil painting style, ancient Treta Yuga, cinematic 8K ultra-detailed, NOBLE DIGNIFIED face not monstrous, Vishnu tilak clearly visible, no modern elements, no anime, no cartoon",
+    preferredModel: "kling-3.0",
+    universeId: "A",
+  },
 ];
 
 export async function POST(request: NextRequest) {
