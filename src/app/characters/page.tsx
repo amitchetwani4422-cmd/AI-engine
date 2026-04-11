@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, Plus, Loader2, User, Wand2, CheckCircle, RefreshCw } from "lucide-react";
+import { Users, Plus, Loader2, User, Wand2, CheckCircle, RefreshCw, Sparkles } from "lucide-react";
 
 interface Character {
   id: string;
@@ -54,6 +54,8 @@ export default function CharactersPage() {
   const [creating, setCreating] = useState(false);
   const [generatingImage, setGeneratingImage] = useState<string | null>(null);
   const [imageError, setImageError] = useState<Record<string, string>>({});
+  const [seedingChars, setSeedingChars] = useState(false);
+  const [seedCharResult, setSeedCharResult] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     speciesOrType: "",
@@ -78,6 +80,25 @@ export default function CharactersPage() {
       setCharacters([]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function seedRamayanaCharacters() {
+    setSeedingChars(true);
+    setSeedCharResult(null);
+    try {
+      const res = await fetch("/api/seed/ramayana/characters", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      const data = await res.json();
+      if (res.ok) {
+        setSeedCharResult(`Done — ${data.created} created, ${data.updated} updated on channel "${data.channelName}"`);
+        fetchCharacters();
+      } else {
+        setSeedCharResult(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      setSeedCharResult(`Error: ${String(e)}`);
+    } finally {
+      setSeedingChars(false);
     }
   }
 
@@ -138,12 +159,24 @@ export default function CharactersPage() {
         title="Character Studio"
         description="Manage recurring characters across all channels"
         actions={
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-2" /> New Character
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={seedRamayanaCharacters} disabled={seedingChars}>
+              {seedingChars
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Seeding...</>
+                : <><Sparkles className="h-4 w-4 mr-2" /> Seed Ramayana Characters</>}
+            </Button>
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4 mr-2" /> New Character
+            </Button>
+          </div>
         }
       />
       <div className="flex-1 overflow-auto p-6">
+        {seedCharResult && (
+          <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm border ${seedCharResult.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-green-500/10 border-green-500/20 text-green-400"}`}>
+            {seedCharResult}
+          </div>
+        )}
         {/* Filters */}
         <div className="flex gap-2 mb-6">
           {["all", "kling-3.0", "veo-3.1", "A", "B", "C"].map((f) => (
