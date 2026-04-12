@@ -134,18 +134,15 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
         ? `${corePrompt} Camera: ${camDir}.`
         : corePrompt;
 
-      // Inject world setting for Kling/Veo (long prompts) but skip for LTX/Wan —
-      // those models need concise prompts; worldSetting buries the scene-specific content
-      const worldContext = !usesEnPrompt && worldSetting && withCamera.length < 600
+      // Inject world setting for visual consistency — same for all models
+      // Only add if the scene doesn't already reference the world in detail
+      const worldContext = worldSetting && withCamera.length < 600
         ? ` Background world context: ${worldSetting}`
         : '';
 
-      // Style prefix: weave it in naturally rather than prepending a tag dump.
-      // For LTX/Wan the scene content must come first (model is sensitive to prompt order).
+      // Style prefix: weave it in naturally rather than prepending a tag dump
       const withStyle = stylePrefix?.trim()
-        ? usesEnPrompt
-          ? `${withCamera}${worldContext}, ${stylePrefix.replace(/,$/, '').trim()}`
-          : `${stylePrefix.replace(/,$/, '').trim()}, ${withCamera}${worldContext}`
+        ? `${stylePrefix.replace(/,$/, '').trim()}, ${withCamera}${worldContext}`
         : `${withCamera}${worldContext}`;
 
       // Feedback: rephrase as a natural instruction rather than a bracketed note

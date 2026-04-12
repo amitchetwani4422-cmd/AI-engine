@@ -412,9 +412,9 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   }, [id, videoStyle, budgetMode, pollForClip, scheduleAutoRescue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function generateScene(sceneId: string, feedback?: string, promptOverride?: string) {
-    // If feedback/promptOverride is provided, force re-translate so the cached
-    // bad auto-translation doesn't get reused
-    const forceRetranslate = !!(feedback?.trim() || promptOverride?.trim());
+    // forceRetranslate only when user provides feedback — keeps the original
+    // promptEn intact for plain regenerations so results stay consistent
+    const forceRetranslate = !!(feedback?.trim());
     runScene(sceneId, feedback, promptOverride, forceRetranslate);
   }
 
@@ -1018,7 +1018,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                               variant="outline"
                               className="h-6 px-2 text-xs"
                               disabled={isGenerating || !!generatingScene}
-                              onClick={() => runScene(scene.id, undefined, undefined, true)}
+                              onClick={() => runScene(scene.id)}
                             >
                               <RefreshCw className="h-3 w-3 mr-1" />
                               {(() => {
