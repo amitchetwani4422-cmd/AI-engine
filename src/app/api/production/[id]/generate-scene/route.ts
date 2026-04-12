@@ -169,9 +169,6 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
         corePrompt = sanitisePrompt(rawCore);
       }
 
-      // Prepend character visual guide so it's included in all modes (As-Is, styled, feedback)
-      if (characterGuide) corePrompt = characterGuide + corePrompt;
-
       // Append cameraDirection if it adds info not already in the core prompt
       const camDir = scene.cameraDirection?.trim();
       const coreHasCamera = corePrompt.toLowerCase().includes('camera') || corePrompt.toLowerCase().includes('shot');
@@ -181,6 +178,8 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
 
       // Inject world setting for visual consistency — same for all models
       // Only add if the scene doesn't already reference the world in detail
+      // NOTE: worldContext length check is done on withCamera (scene content only),
+      // NOT including the character guide, so the palace/background is never displaced.
       const worldContext = worldSetting && withCamera.length < 600
         ? ` Background world context: ${worldSetting}`
         : '';
@@ -190,12 +189,16 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
         ? `${stylePrefix.replace(/,$/, '').trim()}, ${withCamera}${worldContext}`
         : `${withCamera}${worldContext}`;
 
+      // Append character guide AFTER world context so the 600-char threshold
+      // for worldContext is unaffected — background/palace stays consistent.
+      const characterSuffix = characterGuide ? ` ${characterGuide.trim()}` : '';
+
       // Feedback: rephrase as a natural instruction rather than a bracketed note
       const feedbackSuffix = feedback?.trim()
         ? ` Adjust the scene so that: ${feedback.trim()}.`
         : '';
 
-      basePrompt = withStyle + feedbackSuffix;
+      basePrompt = withStyle + characterSuffix + feedbackSuffix;
     }
     const prompt = basePrompt + QUALITY_SUFFIX;
 
