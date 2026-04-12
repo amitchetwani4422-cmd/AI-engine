@@ -27,17 +27,17 @@ const VIDEO_STYLES = [
   {
     value: "ramayana-divine",
     label: "🔱 Ramayana Divine (recommended)",
-    prefix: "Ravi Varma divine Indian oil painting brought to life, ancient Treta Yuga India, Nagara temple architecture, silk dhoti with zari embroidery, divine celestial aura halos, volumetric saffron god rays, sacred geometry, jewelled ornaments, no modern elements,",
+    prefix: "Cinematic ancient Treta Yuga India, Ravi Varma-inspired divine composition with fluid motion, Nagara temple architecture, silk dhoti with zari embroidery, divine celestial aura halos, volumetric saffron god rays, sacred geometry, jewelled ornaments, full cinematic movement, no modern elements,",
   },
   {
     value: "ramayana-battle",
     label: "⚔️ Ramayana Battle / Epic",
-    prefix: "Epic Treta Yuga warfare, ancient Indian battlefield, divine astras with cosmic fire trails, crimson battle sky, smoke and fire, warrior dharma, Ravi Varma epic style, no modern elements,",
+    prefix: "Epic Treta Yuga cinematic warfare, ancient Indian battlefield in motion, divine astras with cosmic fire trails, crimson battle sky, smoke and fire, warrior dharma, Ravi Varma-inspired epic composition, full motion cinematic, no modern elements,",
   },
   {
     value: "ramayana-devotional",
     label: "🪔 Ramayana Devotional / Soft",
-    prefix: "Serene Treta Yuga devotional scene, soft golden temple light, oil lamp glow, lotus flowers, divine peace, Ravi Varma painting style, gentle volumetric rays, no modern elements,",
+    prefix: "Serene Treta Yuga cinematic devotional scene, soft golden temple light in motion, oil lamp glow, lotus flowers, divine peace, Ravi Varma-inspired gentle composition, gentle volumetric rays, cinematic camera movement, no modern elements,",
   },
   { value: "cinematic-vfx", label: "🎬 Cinematic VFX", prefix: "Photorealistic cinematic, Hollywood VFX, 8K ultra-detailed, dramatic lighting," },
   { value: "none", label: "✏️ Use Prompt As-Is", prefix: "" },

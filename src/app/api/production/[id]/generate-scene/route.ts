@@ -17,7 +17,7 @@ const FAL_MODEL_IDS: Record<string, string> = {
   'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
 };
 
-const QUALITY_SUFFIX = ', Ravi Varma divine Indian painting brought to life, ancient Treta Yuga aesthetic, volumetric celestial god rays, divine aura glow, cinematic 8K ultra-HD, razor-sharp focus, professional cinematic color grading, smooth motion, no watermark, no text overlays, no artifacts, no compression noise, no modern elements, no western clothing, no anachronistic objects, no generic AI art look';
+const QUALITY_SUFFIX = ', ancient Treta Yuga India cinematic aesthetic, Ravi Varma-inspired divine composition, volumetric celestial god rays, divine aura glow, cinematic motion, fluid camera movement, 8K ultra-HD, razor-sharp focus, professional cinematic color grading, no watermark, no text overlays, no artifacts, no modern elements, no western clothing, no anachronistic objects, no static image look, no painting texture, full motion video';
 
 const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
@@ -105,10 +105,10 @@ export async function POST(
 Translate the following Hindi scene description into a vivid, detailed English video prompt for AI video generation models.
 Your output MUST preserve ALL of the following details from the source:
 1. CHARACTER: Exact character name + divine appearance (skin tone/glow, clothing, ornaments, crown, weapons, expression, body pose)
-2. ACTION: The specific movement or action happening in the scene
+2. ACTION: The specific movement or action happening in the scene — emphasise motion and animation
 3. SETTING: Exact location type (forest, palace, battlefield, ocean, celestial realm, cave, riverside, etc.)
 4. ATMOSPHERE: Lighting quality (golden divine rays, moonlight, oil lamp glow, fire light, etc.) + mood + special effects (divine aura, sacred fire, mist, petals)
-5. STYLE: ancient Treta Yuga India, Ravi Varma divine oil painting aesthetic, no modern elements, no western clothing
+5. STYLE: ancient Treta Yuga India, Ravi Varma-inspired divine cinematic aesthetic, full motion video, no modern elements, no western clothing, NOT a painting or still image
 Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve every character and visual detail.`,
                 hindiSource,
                 500
