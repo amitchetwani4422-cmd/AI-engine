@@ -79,7 +79,7 @@ export default function ScriptsPage() {
             </Button>
             <Button asChild>
               <Link href="/scripts/new">
-                <Plus className="h-4 w-4 mr-2" /> New Script
+                <Plus className="h-4 w-4 mr-2" /> Write Your Script
               </Link>
             </Button>
           </div>
