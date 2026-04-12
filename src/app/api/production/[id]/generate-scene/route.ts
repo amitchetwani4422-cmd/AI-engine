@@ -77,7 +77,7 @@ export async function POST(
         where: { id: videoId },
         include: { script: { select: { description: true } } }, // description = worldSetting
       }),
-      prisma.scene.findUnique({ where: { id: sceneId }, select: { id: true, duration: true, modelAssigned: true, prompt: true, promptEn: true, visualGuidance: true, description: true, cameraDirection: true, locationTag: true } }),
+      prisma.scene.findUnique({ where: { id: sceneId }, select: { id: true, duration: true, modelAssigned: true, prompt: true, promptEn: true, visualGuidance: true, description: true, cameraDirection: true, locationTag: true, characterIds: true } }),
     ]);
 
     if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
@@ -86,6 +86,29 @@ export async function POST(
     const model: VideoModel = forceKling ? 'kling-3.0' : ((modelOverride ?? scene.modelAssigned ?? 'ltx-video-2') as VideoModel);
     const usesEnPrompt = model === 'ltx-video-2' || model === 'wan-2.1';
     const durationSeconds = scene.duration ?? 5;
+
+    // Fetch character visual descriptions so they are injected into every prompt (including As-Is)
+    const sceneCharacterIds = (scene as Record<string, unknown>).characterIds as string[] | undefined;
+    const characters = sceneCharacterIds?.length
+      ? await prisma.character.findMany({
+          where: { id: { in: sceneCharacterIds } },
+          select: { name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true },
+        })
+      : [];
+
+    // Build a compact character guide string — prepended to every prompt
+    let characterGuide = '';
+    if (characters.length > 0) {
+      const parts = characters.map((c: { name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string }) => {
+        const pieces: string[] = [c.name];
+        if (c.referencePrompt?.trim()) pieces.push(c.referencePrompt.trim());
+        if (c.personality?.trim()) pieces.push(`personality: ${c.personality.trim()}`);
+        if (c.colorPalette?.length) pieces.push(`colors: ${c.colorPalette.join(', ')}`);
+        if (c.clothingRules?.trim()) pieces.push(`attire: ${c.clothingRules.trim()}`);
+        return pieces.join(', ');
+      });
+      characterGuide = `Characters in this scene — ${parts.join(' | ')}. `;
+    }
 
     // Look up location reference image for img2video
     const locationTag = (scene as Record<string, unknown>).locationTag as string | undefined;
@@ -145,6 +168,9 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
         const rawCore = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
         corePrompt = sanitisePrompt(rawCore);
       }
+
+      // Prepend character visual guide so it's included in all modes (As-Is, styled, feedback)
+      if (characterGuide) corePrompt = characterGuide + corePrompt;
 
       // Append cameraDirection if it adds info not already in the core prompt
       const camDir = scene.cameraDirection?.trim();

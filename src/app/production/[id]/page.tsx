@@ -474,6 +474,21 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   }
 
   async function assembleVideo() {
+    // Warn if scenes have narration text but no audio has been generated
+    const scenesWithText = (video?.script?.sceneBreakdown ?? []).filter(
+      (s) => s.narrationText?.trim() || (s.dialogues && s.dialogues.length > 0)
+    );
+    const scenesWithAudio = scenesWithText.filter((s) => s.sceneAudio);
+    if (scenesWithText.length > 0 && scenesWithAudio.length === 0) {
+      const proceed = window.confirm(
+        `No voice audio has been generated yet.\n\n` +
+        `${scenesWithText.length} scene(s) have narration/dialogue text but no audio.\n\n` +
+        `The assembled video will be SILENT.\n\n` +
+        `Click OK to assemble without audio, or Cancel to generate voices first (use the Voice panel above).`
+      );
+      if (!proceed) return;
+    }
+
     setAssembling(true);
     setAssembleError(null);
     try {
@@ -726,47 +741,52 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           </CardContent>
         </Card>
 
-        {/* Voice Generation Panel */}
-        {voiceAssets.length > 0 && (
-          <Card className="bg-zinc-900 border-zinc-800 mb-6">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <p className="text-sm font-medium text-zinc-200 flex items-center gap-2">
-                    <Mic className="h-4 w-4 text-purple-400" /> Voice Narration + Character Dialogues
+        {/* Voice Generation Panel — always visible so user knows audio step exists */}
+        <Card className="bg-zinc-900 border-zinc-800 mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <p className="text-sm font-medium text-zinc-200 flex items-center gap-2">
+                  <Mic className="h-4 w-4 text-purple-400" /> Voice Narration + Character Dialogues
+                </p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Generate narrator audio + character-specific voices before assembly — otherwise the final video will be <span className="text-yellow-400 font-medium">silent</span>.
+                  Background music is auto-selected from the script mood.
+                </p>
+                {voiceResult && (
+                  <p className="text-xs text-green-400 mt-1">
+                    Done — {voiceResult.generated} scenes voiced · {voiceResult.totalDialogues} dialogue lines · narrator: {voiceResult.narratorName}
                   </p>
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    Generates narrator audio + character-specific voices for dialogue lines.
-                    Background music auto-selected from script mood during assembly.
+                )}
+                {scenes.filter(s => s.sceneAudio).length > 0 && !voiceResult && (
+                  <p className="text-xs text-purple-400 mt-1">
+                    {scenes.filter(s => s.sceneAudio).length}/{scenes.length} scenes voiced
                   </p>
-                  {voiceResult && (
-                    <p className="text-xs text-green-400 mt-1">
-                      Done — {voiceResult.generated} scenes voiced · {voiceResult.totalDialogues} dialogue lines · narrator: {voiceResult.narratorName}
-                    </p>
-                  )}
-                  {scenes.filter(s => s.sceneAudio).length > 0 && !voiceResult && (
-                    <p className="text-xs text-purple-400 mt-1">
-                      {scenes.filter(s => s.sceneAudio).length}/{scenes.length} scenes voiced
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {voiceAssets.length > 1 && (
-                    <select
-                      value={selectedVoiceId}
-                      onChange={(e) => setSelectedVoiceId(e.target.value)}
-                      className="text-xs px-2 py-1.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-200"
-                    >
-                      {voiceAssets.map((v) => (
-                        <option key={v.id} value={v.id}>{v.name} ({v.language})</option>
-                      ))}
-                    </select>
-                  )}
-                  {voiceAssets.length === 1 && (
-                    <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1.5 rounded border border-zinc-700">
-                      {voiceAssets[0].name}
-                    </span>
-                  )}
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {voiceAssets.length === 0 && (
+                  <span className="text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1.5 rounded">
+                    No voice asset — <a href="/voice" className="underline hover:text-yellow-200">create one in Voice &amp; Audio</a>
+                  </span>
+                )}
+                {voiceAssets.length > 1 && (
+                  <select
+                    value={selectedVoiceId}
+                    onChange={(e) => setSelectedVoiceId(e.target.value)}
+                    className="text-xs px-2 py-1.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-200"
+                  >
+                    {voiceAssets.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name} ({v.language})</option>
+                    ))}
+                  </select>
+                )}
+                {voiceAssets.length === 1 && (
+                  <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1.5 rounded border border-zinc-700">
+                    {voiceAssets[0].name}
+                  </span>
+                )}
+                {voiceAssets.length > 0 && (
                   <Button
                     size="sm"
                     className="bg-purple-600 hover:bg-purple-700"
@@ -777,11 +797,11 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                       ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Generating voices...</>
                       : <><Mic className="h-3 w-3 mr-1" /> Generate All Voices</>}
                   </Button>
-                </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Scenes */}
         <div className="space-y-3">
