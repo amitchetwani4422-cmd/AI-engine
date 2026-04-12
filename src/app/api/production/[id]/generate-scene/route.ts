@@ -17,7 +17,24 @@ const FAL_MODEL_IDS: Record<string, string> = {
   'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
 };
 
-const QUALITY_SUFFIX = ', ancient Treta Yuga India cinematic aesthetic, Ravi Varma-inspired divine composition, volumetric celestial god rays, divine aura glow, cinematic motion, fluid camera movement, 8K ultra-HD, razor-sharp focus, professional cinematic color grading, no watermark, no text overlays, no artifacts, no modern elements, no western clothing, no anachronistic objects, no static image look, no painting texture, full motion video';
+const QUALITY_SUFFIX = ', photorealistic hyperrealistic ancient Indian epic, Baahubali-level cinematic quality, ultra-realistic 3D human characters with authentic skin texture and fabric simulation, volumetric divine golden light rays, cinematic depth of field, smooth 8K camera motion, no cartoon, no 2D animation, no flat illustration, no cel-shaded characters, no painted characters, no oil painting look, no Amar Chitra Katha style, no paper cutout effect, no modern elements, no western clothing';
+
+// Painting phrases to strip from stored scene prompts — these cause Kling to generate 2D illustrated art
+const PAINTING_PHRASES = [
+  /ravi varma divine indian oil painting brought to life,?\s*/gi,
+  /ravi varma[- ]inspired divine composition,?\s*/gi,
+  /ravi varma[- ]inspired [a-z]+ composition,?\s*/gi,
+  /divine indian oil painting brought to life,?\s*/gi,
+  /oil painting brought to life,?\s*/gi,
+  /painting brought to life,?\s*/gi,
+  /ravi varma style,?\s*/gi,
+];
+
+function sanitisePrompt(raw: string): string {
+  let out = raw;
+  for (const re of PAINTING_PHRASES) out = out.replace(re, '');
+  return out.replace(/\s{2,}/g, ' ').trim();
+}
 
 const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
@@ -93,7 +110,7 @@ export async function POST(
       if (usesEnPrompt) {
         const promptEn = (scene as Record<string, unknown>).promptEn as string | undefined;
         if (promptEn?.trim() && !forceRetranslate) {
-          corePrompt = promptEn.trim();
+          corePrompt = sanitisePrompt(promptEn.trim());
         } else {
           // Auto-translate Hindi prompt to rich English for LTX2/Wan
           const hindiSource = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
@@ -124,7 +141,9 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
           }
         }
       } else {
-        corePrompt = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
+        // Sanitise any stored "oil painting" language from older scripts before sending to FAL
+        const rawCore = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
+        corePrompt = sanitisePrompt(rawCore);
       }
 
       // Append cameraDirection if it adds info not already in the core prompt
@@ -159,7 +178,9 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
 
     // Build FAL input — use img2video if location reference image exists
     const klingDuration = durationSeconds >= 8 ? '10' : '5';
-    const negPrompt = 'watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, floating objects, camera shake, overexposed, underexposed, washed out colors, ugly, worst quality, bad anatomy, mutation, duplicate subjects, stock footage look, modern clothing, western outfit, suit, jeans, t-shirt, contemporary architecture, cars, phones, electricity poles, anachronistic props, cartoon style, anime, 3D CGI plastic look, generic fantasy, european medieval, chinese dragon style';
+    const negPrompt = 'watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, duplicate subjects, modern clothing, western outfit, suit, jeans, contemporary architecture, cars, phones, anachronistic props, ' +
+      'cartoon, cartoon character, 2D animation, flat 2D character, cel-shaded, Amar Chitra Katha style, illustrated character, flat illustration, paper cutout effect, animated movie style, vector art, comic book, hand-drawn, oil painting look, painting texture, static painted image, digital painting, flat lighting on character, ' +
+      'anime, 3D CGI plastic look, generic fantasy, european medieval, chinese dragon style';
 
     let falModelId = FAL_MODEL_IDS[model];
     let input: Record<string, unknown>;

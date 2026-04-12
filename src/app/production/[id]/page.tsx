@@ -27,17 +27,17 @@ const VIDEO_STYLES = [
   {
     value: "ramayana-divine",
     label: "🔱 Ramayana Divine (recommended)",
-    prefix: "Cinematic ancient Treta Yuga India, Ravi Varma-inspired divine composition with fluid motion, Nagara temple architecture, silk dhoti with zari embroidery, divine celestial aura halos, volumetric saffron god rays, sacred geometry, jewelled ornaments, full cinematic movement, no modern elements,",
+    prefix: "Photorealistic ancient Indian historical epic, Baahubali-level production quality, ultra-realistic 3D human characters with authentic ancient Indian attire and realistic skin texture, Treta Yuga divine palace with deep 3D architectural depth, rich volumetric golden divine light, intricate gold jewelry with realistic metallic sheen, cinematic depth of field,",
   },
   {
     value: "ramayana-battle",
     label: "⚔️ Ramayana Battle / Epic",
-    prefix: "Epic Treta Yuga cinematic warfare, ancient Indian battlefield in motion, divine astras with cosmic fire trails, crimson battle sky, smoke and fire, warrior dharma, Ravi Varma-inspired epic composition, full motion cinematic, no modern elements,",
+    prefix: "Photorealistic ancient Indian epic battle, Baahubali-level war cinematography, ultra-realistic warriors in authentic ancient Indian armour, divine astras with cinematic fire and light trails, dramatic battle sky with smoke and fire, realistic cloth and weapon physics,",
   },
   {
     value: "ramayana-devotional",
     label: "🪔 Ramayana Devotional / Soft",
-    prefix: "Serene Treta Yuga cinematic devotional scene, soft golden temple light in motion, oil lamp glow, lotus flowers, divine peace, Ravi Varma-inspired gentle composition, gentle volumetric rays, cinematic camera movement, no modern elements,",
+    prefix: "Photorealistic ancient Indian devotional scene, Baahubali-quality soft cinematography, ultra-realistic characters in silk attire, warm oil lamp and sacred fire lighting, realistic lotus and flower petals, divine golden volumetric rays, cinematic shallow depth of field,",
   },
   { value: "cinematic-vfx", label: "🎬 Cinematic VFX", prefix: "Photorealistic cinematic, Hollywood VFX, 8K ultra-detailed, dramatic lighting," },
   { value: "none", label: "✏️ Use Prompt As-Is", prefix: "" },

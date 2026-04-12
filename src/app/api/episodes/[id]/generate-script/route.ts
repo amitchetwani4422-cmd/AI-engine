@@ -60,8 +60,8 @@ export async function POST(
 आप Kling 1.6 Pro, LTX-Video 2 और Wan 2.1 के लिए cinema-grade AI वीडियो प्रॉम्प्ट लिखते हैं।
 
 VISUAL IDENTITY — हर scene में यही style lock रहेगा:
-राजा रवि वर्मा की divine oil painting — animated, cinematic। Treta Yuga ancient India।
-कोई modern element नहीं। कोई generic fantasy नहीं। Pure Bharatiya Sanatana Dharma aesthetic।
+Photorealistic ancient Indian epic — Baahubali-quality cinematic, ultra-realistic characters। Treta Yuga ancient India।
+कोई 2D illustration नहीं। कोई cartoon नहीं। कोई painting style नहीं। Pure photorealistic cinematic।
 
 सभी संवाद, मंत्र और कथा वाल्मीकि रामायण के अनुसार बिल्कुल सही होने चाहिए।
 केवल valid JSON में उत्तर दें — कोई markdown नहीं।`;
@@ -154,7 +154,7 @@ Options:
 • "Extreme close-up on divine hand gesture, pull back to reveal full character"
 
 PART 5 — STYLE LOCK (हर single prompt के end में यह EXACTLY लिखें):
-"Ravi Varma divine Indian oil painting brought to life, ancient Treta Yuga, cinematic 8K, no modern elements, no western style"
+"photorealistic hyperrealistic ancient Indian epic, Baahubali-level cinematic quality, ultra-realistic 3D human characters, ancient Treta Yuga, 8K cinematic, no modern elements, no western style, not a painting, not a cartoon"
 
 RESPONSE FORMAT:
 {
@@ -180,7 +180,7 @@ RESPONSE FORMAT:
       "visualGuidance": "रंग, मूड, 3-layer background",
       "locationTag": "Ayodhya",
       "prompt": "Full 5-part structured prompt using the SCENE PROMPT STRUCTURE above — 4-6 sentences in English. Must include: character with divine description, 3-layer environment with location color palette, specific lighting, camera movement, style lock.",
-      "promptEn": "Structured keyword prompt for LTX2/Wan: '[CHARACTER]: {divine desc}, {clothing} | [SETTING]: {location}, {3 colors}, {architecture} | [FX]: {lighting}, {divine effect} | [CAMERA]: {shot+movement} | Ravi Varma style, Treta Yuga, 8K'"
+      "promptEn": "Structured keyword prompt for LTX2/Wan: '[CHARACTER]: {divine desc}, {clothing} | [SETTING]: {location}, {3 colors}, {architecture} | [FX]: {lighting}, {divine effect} | [CAMERA]: {shot+movement} | photorealistic ancient Indian epic, Treta Yuga, 8K, not a painting'"
     }
   ]
 }
@@ -193,7 +193,7 @@ RESPONSE FORMAT:
 - prompt और promptEn दोनों ENGLISH में लिखें
 - prompt: 5-part structure MANDATORY — character + 3-layer env + lighting + camera + style lock
 - promptEn: pipe-separated structured format — "[CHARACTER]: | [SETTING]: | [FX]: | [CAMERA]: | style"
-- हर prompt में "Ravi Varma divine Indian oil painting brought to life, ancient Treta Yuga, cinematic 8K, no modern elements" EXACTLY लिखें
+- हर prompt में "photorealistic hyperrealistic ancient Indian epic, Baahubali-level cinematic quality, ultra-realistic 3D human characters, ancient Treta Yuga, 8K cinematic, no modern elements, not a painting, not a cartoon" EXACTLY लिखें
 - Character visuals: ऊपर दिए character guide से exact description copy करें — हर scene में consistent
 - Location palette: locationTag के अनुसार ऊपर दिए color palette use करें
 - modelAssigned routing:
