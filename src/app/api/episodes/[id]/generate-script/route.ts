@@ -154,7 +154,7 @@ Options:
 • "Extreme close-up on divine hand gesture, pull back to reveal full character"
 
 PART 5 — STYLE LOCK (हर single prompt के end में यह EXACTLY लिखें):
-"photorealistic hyperrealistic ancient Indian epic, Baahubali-level cinematic quality, ultra-realistic 3D human characters, ancient Treta Yuga, 8K cinematic, no modern elements, no western style, not a painting, not a cartoon"
+"cinematic live-action film, photorealistic ancient India, authentic costumes and sets, 8K cinematography, no cartoon, no CGI game graphics, no animation, no modern elements"
 
 RESPONSE FORMAT:
 {
@@ -193,7 +193,7 @@ RESPONSE FORMAT:
 - prompt और promptEn दोनों ENGLISH में लिखें
 - prompt: 5-part structure MANDATORY — character + 3-layer env + lighting + camera + style lock
 - promptEn: pipe-separated structured format — "[CHARACTER]: | [SETTING]: | [FX]: | [CAMERA]: | style"
-- हर prompt में "photorealistic hyperrealistic ancient Indian epic, Baahubali-level cinematic quality, ultra-realistic 3D human characters, ancient Treta Yuga, 8K cinematic, no modern elements, not a painting, not a cartoon" EXACTLY लिखें
+- हर prompt में "cinematic live-action film, photorealistic ancient India, authentic costumes and sets, 8K cinematography, no cartoon, no CGI game graphics, no animation, no modern elements" EXACTLY लिखें
 - Character visuals: ऊपर दिए character guide से exact description copy करें — हर scene में consistent
 - Location palette: locationTag के अनुसार ऊपर दिए color palette use करें
 - modelAssigned routing:

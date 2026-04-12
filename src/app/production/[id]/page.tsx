@@ -27,17 +27,17 @@ const VIDEO_STYLES = [
   {
     value: "ramayana-divine",
     label: "🔱 Ramayana Divine (recommended)",
-    prefix: "Photorealistic ancient Indian historical epic, Baahubali-level production quality, ultra-realistic 3D human characters with authentic ancient Indian attire and realistic skin texture, Treta Yuga divine palace with deep 3D architectural depth, rich volumetric golden divine light, intricate gold jewelry with realistic metallic sheen, cinematic depth of field,",
+    prefix: "Cinematic live-action ancient India, photorealistic actors in authentic silk and gold attire, volumetric divine golden light, ornate Nagara temple architecture,",
   },
   {
     value: "ramayana-battle",
     label: "⚔️ Ramayana Battle / Epic",
-    prefix: "Photorealistic ancient Indian epic battle, Baahubali-level war cinematography, ultra-realistic warriors in authentic ancient Indian armour, divine astras with cinematic fire and light trails, dramatic battle sky with smoke and fire, realistic cloth and weapon physics,",
+    prefix: "Cinematic live-action ancient Indian battle, photorealistic warriors in authentic armour, dramatic fire and smoke, crimson battle sky,",
   },
   {
     value: "ramayana-devotional",
     label: "🪔 Ramayana Devotional / Soft",
-    prefix: "Photorealistic ancient Indian devotional scene, Baahubali-quality soft cinematography, ultra-realistic characters in silk attire, warm oil lamp and sacred fire lighting, realistic lotus and flower petals, divine golden volumetric rays, cinematic shallow depth of field,",
+    prefix: "Cinematic live-action ancient India, photorealistic devotional scene, warm oil lamp glow, soft divine golden light, lotus petals,",
   },
   { value: "cinematic-vfx", label: "🎬 Cinematic VFX", prefix: "Photorealistic cinematic, Hollywood VFX, 8K ultra-detailed, dramatic lighting," },
   { value: "none", label: "✏️ Use Prompt As-Is", prefix: "" },

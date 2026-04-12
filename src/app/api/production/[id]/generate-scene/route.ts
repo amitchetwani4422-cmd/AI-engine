@@ -17,7 +17,7 @@ const FAL_MODEL_IDS: Record<string, string> = {
   'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
 };
 
-const QUALITY_SUFFIX = ', photorealistic hyperrealistic ancient Indian epic, Baahubali-level cinematic quality, ultra-realistic 3D human characters with authentic skin texture and fabric simulation, volumetric divine golden light rays, cinematic depth of field, smooth 8K camera motion, no cartoon, no 2D animation, no flat illustration, no cel-shaded characters, no painted characters, no oil painting look, no Amar Chitra Katha style, no paper cutout effect, no modern elements, no western clothing';
+const QUALITY_SUFFIX = ', cinematic live-action film quality, hyperrealistic human skin and fabric textures, professional cinematography lighting, 8K resolution, ancient Treta Yuga India, no cartoon, no CGI video game graphics, no animation, no 2D illustration, no Amar Chitra Katha style, no paper cutout, no modern elements, no western clothing';
 
 // Painting phrases to strip from stored scene prompts — these cause Kling to generate 2D illustrated art
 const PAINTING_PHRASES = [
@@ -178,9 +178,9 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
 
     // Build FAL input — use img2video if location reference image exists
     const klingDuration = durationSeconds >= 8 ? '10' : '5';
-    const negPrompt = 'watermark, logo, text overlay, subtitles, blurry, out of focus, low quality, compression artifacts, distorted faces, deformed hands, extra limbs, duplicate subjects, modern clothing, western outfit, suit, jeans, contemporary architecture, cars, phones, anachronistic props, ' +
-      'cartoon, cartoon character, 2D animation, flat 2D character, cel-shaded, Amar Chitra Katha style, illustrated character, flat illustration, paper cutout effect, animated movie style, vector art, comic book, hand-drawn, oil painting look, painting texture, static painted image, digital painting, flat lighting on character, ' +
-      'anime, 3D CGI plastic look, generic fantasy, european medieval, chinese dragon style';
+    const negPrompt = 'watermark, text overlay, subtitles, blurry, low quality, distorted faces, deformed hands, extra limbs, duplicate subjects, modern clothing, western outfit, contemporary architecture, cars, phones, ' +
+      'cartoon, 2D animation, flat 2D illustration, cel-shaded, Amar Chitra Katha style, paper cutout, animated movie, vector art, comic book, hand-drawn, oil painting, painting texture, digital painting, ' +
+      'CGI video game graphics, video game render, Unreal Engine look, plastic sheen, anime, 3D game character, generic fantasy, european medieval, chinese style, glowing gold plastic, floating objects';
 
     let falModelId = FAL_MODEL_IDS[model];
     let input: Record<string, unknown>;
