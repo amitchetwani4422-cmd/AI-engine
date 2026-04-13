@@ -42,10 +42,11 @@ export default function LocationsPage() {
     setSeeding(true);
     setSeedResult(null);
     try {
-      const res = await fetch("/api/seed/ramayana", { method: "POST" });
+      const res = await fetch("/api/locations/seed-ramayana", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        setSeedResult(`Done — ${data.locSeeded ?? 0} new, ${data.locUpdated ?? 0} updated with locked visuals`);
+        const withImages = (data.locations as { hasReferenceImage: boolean }[]).filter(l => l.hasReferenceImage).length;
+        setSeedResult(`✓ ${data.seeded} locations seeded with locked visual descriptions. ${withImages} have reference images.`);
         await fetchLocations();
       } else {
         setSeedResult(`Error: ${data.error ?? "Seed failed"}`);
@@ -113,11 +114,14 @@ export default function LocationsPage() {
           <div className="text-center py-16">
             <MapPin className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
             <p className="text-zinc-400 mb-2">No locations seeded yet</p>
-            <p className="text-zinc-600 text-sm mb-4">Click "Seed / Refresh Locations" in the top-right to create all 12 Ramayana locations.</p>
+            <p className="text-zinc-600 text-sm mb-4 max-w-md mx-auto">
+              Click below to create all 12 Ramayana locations with locked visual descriptions.
+              Each location will have a detailed cinematic description injected into every scene prompt — ensuring consistent backgrounds without reference images.
+            </p>
             <Button onClick={seedLocations} disabled={seeding}>
               {seeding
                 ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Seeding...</>
-                : <><RefreshCw className="h-4 w-4 mr-2" /> Seed Locations Now</>}
+                : <><RefreshCw className="h-4 w-4 mr-2" /> Create All 12 Ramayana Locations</>}
             </Button>
           </div>
         ) : (
