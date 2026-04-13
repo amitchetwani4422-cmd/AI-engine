@@ -17,7 +17,7 @@ const FAL_MODEL_IDS: Record<string, string> = {
   'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
 };
 
-const QUALITY_SUFFIX = ', cinematic live-action film quality, hyperrealistic human skin and fabric textures, professional cinematography lighting, 8K resolution, ancient Treta Yuga India, no cartoon, no CGI video game graphics, no animation, no 2D illustration, no Amar Chitra Katha style, no paper cutout, no modern elements, no western clothing';
+const QUALITY_SUFFIX = ', photorealistic live-action film matching Baahubali and RRR production quality, authentic ancient Indian actors with period-accurate hand-embroidered silk costumes and real gold ornaments, volumetric divine light rays with visible floating sacred dust motes, professional anamorphic cinematography with natural depth-of-field bokeh on background, ultra-sharp 8K detail capturing fabric weave and ornament engraving, sacred devotional atmosphere of Treta Yuga ancient India, NOT cartoon, NOT CGI video game render, NOT 2D illustration, NOT Amar Chitra Katha, NOT animated, NOT painted, NOT modern, NOT western';
 
 // Painting phrases to strip from stored scene prompts — these cause Kling to generate 2D illustrated art
 const PAINTING_PHRASES = [
@@ -110,18 +110,25 @@ export async function POST(
       characterGuide = `Characters in this scene — ${parts.join(' | ')}. `;
     }
 
-    // Look up location reference image for img2video
+    // Look up location reference image AND locked visual description for img2video + prompt lock
     const locationTag = (scene as Record<string, unknown>).locationTag as string | undefined;
     let locationRefImage: string | undefined;
+    let lockedLocationDesc = '';
     if (locationTag) {
       const locAsset = await prisma.locationAsset.findUnique({ where: { name: locationTag } });
-      if (locAsset && locAsset.referenceImages.length > 0) {
-        locationRefImage = locAsset.referenceImages[0];
+      if (locAsset) {
+        if (locAsset.referenceImages.length > 0) locationRefImage = locAsset.referenceImages[0];
+        // Use the locked visual description — this is the VERBATIM background lock for this location.
+        // It overrides the generic worldSetting for all scenes tagged with this location.
+        if (locAsset.isVisualLocked && locAsset.lockedVisualDesc?.trim()) {
+          lockedLocationDesc = locAsset.lockedVisualDesc.trim();
+        }
       }
     }
 
-    // World setting: shared background/environment description for visual consistency across all scenes
-    const worldSetting = video.script?.description?.trim() ?? '';
+    // World setting: use locked location description if available, otherwise fall back to script worldSetting
+    // The locked description is hand-crafted and far more specific than the AI-generated worldSetting
+    const worldSetting = lockedLocationDesc || video.script?.description?.trim() || '';
 
     // Build prompt — combine all scene data for the richest possible input
     let basePrompt: string;
@@ -148,8 +155,8 @@ Your output MUST preserve ALL of the following details from the source:
 2. ACTION: The specific movement or action happening in the scene — emphasise motion and animation
 3. SETTING: Exact location type (forest, palace, battlefield, ocean, celestial realm, cave, riverside, etc.)
 4. ATMOSPHERE: Lighting quality (golden divine rays, moonlight, oil lamp glow, fire light, etc.) + mood + special effects (divine aura, sacred fire, mist, petals)
-5. STYLE: ancient Treta Yuga India, Ravi Varma-inspired divine cinematic aesthetic, full motion video, no modern elements, no western clothing, NOT a painting or still image
-Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve every character and visual detail.`,
+5. STYLE: ancient Treta Yuga India, photorealistic live-action cinematic aesthetic (NOT a painting, NOT illustrated, NOT Ravi Varma style), full motion video with character movement, no modern elements, no western elements
+Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve every character, action, and visual detail. Write as a cinematographer's shot description, not an art description.`,
                 hindiSource,
                 500
               );
@@ -176,29 +183,36 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
         ? `${corePrompt} Camera: ${camDir}.`
         : corePrompt;
 
-      // Inject world setting for visual consistency — same for all models
-      // Only add if the scene doesn't already reference the world in detail
-      // NOTE: worldContext length check is done on withCamera (scene content only),
-      // NOT including the character guide, so the palace/background is never displaced.
-      const worldContext = worldSetting && withCamera.length < 600
-        ? ` Background world context: ${worldSetting}`
+      // World context — locked location description takes priority over script worldSetting.
+      // Length limit raised to 700 since locked descriptions are more valuable than saving tokens.
+      const worldContext = worldSetting && withCamera.length < 700
+        ? ` Setting: ${worldSetting}`
         : '';
 
-      // Style prefix: weave it in naturally rather than prepending a tag dump
-      const withStyle = stylePrefix?.trim()
-        ? `${stylePrefix.replace(/,$/, '').trim()}, ${withCamera}${worldContext}`
-        : `${withCamera}${worldContext}`;
+      // ── Optimal prompt structure for maximum quality on Kling/Veo/LTX ──────
+      // Video models weight earlier tokens more heavily. Order matters:
+      //   1. CHARACTER visual description (who — most important, highest weight)
+      //   2. Scene content + action (what is happening)
+      //   3. Camera direction
+      //   4. Location/world context (where — locked description)
+      //   5. Style prefix (visual register: cinematic, photorealistic, ancient India)
+      //   6. Feedback adjustment
+      //   7. QUALITY_SUFFIX (appended after)
 
-      // Append character guide AFTER world context so the 600-char threshold
-      // for worldContext is unaffected — background/palace stays consistent.
-      const characterSuffix = characterGuide ? ` ${characterGuide.trim()}` : '';
+      // Character description FIRST — gives video model maximum weight on appearance
+      const characterPrefix = characterGuide ? `${characterGuide.trim()} ` : '';
 
-      // Feedback: rephrase as a natural instruction rather than a bracketed note
+      // Style prefix at the end of the main body (after character and scene content)
+      const styleClause = stylePrefix?.trim()
+        ? ` ${stylePrefix.replace(/,$/, '').trim()}.`
+        : '';
+
+      // Feedback: rephrase as a natural instruction
       const feedbackSuffix = feedback?.trim()
-        ? ` Adjust the scene so that: ${feedback.trim()}.`
+        ? ` Adjust: ${feedback.trim()}.`
         : '';
 
-      basePrompt = withStyle + characterSuffix + feedbackSuffix;
+      basePrompt = `${characterPrefix}${withCamera}${worldContext}${styleClause}${feedbackSuffix}`;
     }
     const prompt = basePrompt + QUALITY_SUFFIX;
 
@@ -207,20 +221,37 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
 
     // Build FAL input — use img2video if location reference image exists
     const klingDuration = durationSeconds >= 8 ? '10' : '5';
-    const negPrompt = 'watermark, text overlay, subtitles, blurry, low quality, distorted faces, deformed hands, extra limbs, duplicate subjects, modern clothing, western outfit, contemporary architecture, cars, phones, ' +
-      'cartoon, 2D animation, flat 2D illustration, cel-shaded, Amar Chitra Katha style, paper cutout, animated movie, vector art, comic book, hand-drawn, oil painting, painting texture, digital painting, ' +
-      'CGI video game graphics, video game render, Unreal Engine look, plastic sheen, anime, 3D game character, generic fantasy, european medieval, chinese style, glowing gold plastic, floating objects';
+    // Comprehensive negative prompt — covers all known failure modes for Ramayana divine content
+    const negPrompt =
+      // Technical artifacts
+      'text, watermark, subtitle, caption, logo, blurry, out of focus, low resolution, grainy, noisy, ' +
+      // Face / body defects
+      'distorted face, deformed face, ugly face, plastic face, mannequin face, uncanny valley, wax figure, ' +
+      'smooth artificial skin, missing facial features, deformed hands, extra fingers, missing fingers, extra limbs, duplicate persons, cloned face, ' +
+      // Wrong era / elements
+      'modern clothing, western suit, jeans, t-shirt, sneakers, contemporary fashion, sunglasses, car, motorcycle, phone, electricity wires, modern architecture, concrete, ' +
+      // Wrong art styles (must explicitly exclude all known 2D/illustrated styles)
+      'cartoon, 2D animation, flat illustration, cel-shaded, Amar Chitra Katha, paper cutout, animated movie, Disney, Pixar, DreamWorks, vector art, comic book, manga, anime, chibi, hand-drawn sketch, storyboard, ' +
+      // Wrong visual rendering
+      'oil painting, watercolor painting, digital painting, painted look, painting texture, illustration, concept art, book cover art, ' +
+      // Wrong 3D / CGI styles
+      'CGI render, Unreal Engine render, video game graphics, 3D game character, plastic sheen, Unity render, generic fantasy RPG, European medieval castle, Chinese temple architecture, Japanese pagoda, ' +
+      // Generic / non-Indian fantasy
+      'Hollywood superhero, generic fantasy warrior, western knight, viking, arabic palace, middle eastern';
+
+    // cfg_scale 0.7 — strong prompt adherence critical for specific divine character/location visuals
+    const klingCfg = 0.7;
 
     let falModelId = FAL_MODEL_IDS[model];
     let input: Record<string, unknown>;
 
     if (locationRefImage && model === 'kling-3.0') {
       falModelId = 'fal-ai/kling-video/v1.6/pro/image-to-video';
-      input = { prompt, image_url: locationRefImage, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: 0.5 };
+      input = { prompt, image_url: locationRefImage, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
     } else if (locationRefImage && model === 'wan-2.1') {
       input = { prompt, image_url: locationRefImage, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 81, aspect_ratio: '16:9' };
     } else if (model === 'kling-3.0') {
-      input = { prompt, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: 0.5 };
+      input = { prompt, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
     } else if (model === 'ltx-video-2') {
       input = { prompt, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 97, aspect_ratio: '16:9' };
     } else if (model === 'wan-2.1') {
