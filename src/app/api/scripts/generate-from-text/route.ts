@@ -42,14 +42,17 @@ export async function POST(request: NextRequest) {
     const { rawScript, channelId, title, formatVariant, aiModel } = parsed.data;
     const model = (aiModel ?? DEFAULT_SCRIPT_MODEL) as AIModel;
 
-    const channel = await prisma.channel.findUnique({
-      where: { id: channelId },
-      include: { styleBible: true },
-    });
+    const [channel, channelCharacters] = await Promise.all([
+      prisma.channel.findUnique({ where: { id: channelId }, include: { styleBible: true } }),
+      prisma.character.findMany({ where: { channelId }, select: { id: true, name: true } }),
+    ]);
 
     if (!channel) {
       return NextResponse.json({ error: "Channel not found" }, { status: 404 });
     }
+
+    // name (lowercase) → id for per-scene character matching
+    const charLookup = new Map(channelCharacters.map((c) => [c.name.toLowerCase(), c.id]));
 
     const styleGuide = channel.styleBible
       ? `Visual Style: ${channel.visualStyle}
@@ -195,21 +198,34 @@ RESPONSE FORMAT (valid JSON only)
 
       if (scriptData.scenes?.length > 0) {
         await tx.scene.createMany({
-          data: scriptData.scenes.map((scene) => ({
-            scriptId: newScript.id,
-            sequenceNumber: scene.sequenceNumber,
-            description: scene.description,
-            duration: scene.duration,
-            modelAssigned: scene.modelAssigned ?? "kling-3.0",
-            routingReason: scene.routingReason ?? "",
-            cameraDirection: scene.cameraDirection ?? "",
-            visualGuidance: scene.visualGuidance ?? "",
-            prompt: scene.prompt ?? null,
-            promptEn: scene.promptEn ?? null,
-            narrationText: scene.narrationText ?? null,
-            dialogues: scene.dialogues ?? [],
-            characterIds: [],
-          })),
+          data: scriptData.scenes.map((scene) => {
+            const sceneText = [
+              scene.description,
+              scene.prompt,
+              scene.narrationText,
+              ...(scene.dialogues?.map((d) => d.character) ?? []),
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            const sceneCharIds = [...charLookup.entries()]
+              .filter(([name]) => sceneText.includes(name))
+              .map(([, id]) => id);
+
+            return {
+              scriptId: newScript.id,
+              sequenceNumber: scene.sequenceNumber,
+              description: scene.description,
+              duration: scene.duration,
+              modelAssigned: scene.modelAssigned ?? "kling-3.0",
+              routingReason: scene.routingReason ?? "",
+              cameraDirection: scene.cameraDirection ?? "",
+              visualGuidance: scene.visualGuidance ?? "",
+              prompt: scene.prompt ?? null,
+              promptEn: scene.promptEn ?? null,
+              narrationText: scene.narrationText ?? null,
+              dialogues: scene.dialogues ?? [],
+              characterIds: sceneCharIds,
+            };
+          }),
         });
       }
 

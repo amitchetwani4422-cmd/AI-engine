@@ -252,23 +252,44 @@ RESPONSE FORMAT:
       });
 
       if (scriptData.scenes?.length > 0) {
+        // Build a lookup: character name (lowercase) → DB id
+        const charLookup = new Map(
+          relevantChars
+            .filter(Boolean)
+            .map((c) => [c!.name.toLowerCase(), c!.id])
+        );
+
         await tx.scene.createMany({
-          data: scriptData.scenes.map((s) => ({
-            scriptId: newScript.id,
-            sequenceNumber: s.sequenceNumber,
-            description: s.description,
-            narrationText: s.narrationText ?? null,
-            dialogues: s.dialogues ?? [],
-            duration: s.duration,
-            modelAssigned: s.modelAssigned,
-            routingReason: s.routingReason,
-            cameraDirection: s.cameraDirection,
-            visualGuidance: s.visualGuidance,
-            prompt: s.prompt ?? null,
-            promptEn: s.promptEn ?? null,
-            locationTag: s.locationTag ?? null,
-            characterIds: [],
-          })),
+          data: scriptData.scenes.map((s) => {
+            // Match character names that appear in this scene's text
+            const sceneText = [
+              s.description,
+              s.prompt,
+              s.narrationText,
+              ...(s.dialogues?.map((d) => d.character) ?? []),
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            const sceneCharIds = [...charLookup.entries()]
+              .filter(([name]) => sceneText.includes(name))
+              .map(([, id]) => id);
+
+            return {
+              scriptId: newScript.id,
+              sequenceNumber: s.sequenceNumber,
+              description: s.description,
+              narrationText: s.narrationText ?? null,
+              dialogues: s.dialogues ?? [],
+              duration: s.duration,
+              modelAssigned: s.modelAssigned,
+              routingReason: s.routingReason,
+              cameraDirection: s.cameraDirection,
+              visualGuidance: s.visualGuidance,
+              prompt: s.prompt ?? null,
+              promptEn: s.promptEn ?? null,
+              locationTag: s.locationTag ?? null,
+              characterIds: sceneCharIds,
+            };
+          }),
         });
       }
 

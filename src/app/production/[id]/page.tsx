@@ -70,6 +70,7 @@ interface Scene {
   dialogues?: { character: string; text: string }[];
   sceneAudio?: string;
   sceneAudioPublicId?: string;
+  locationTag?: string;
   status: string;
   generatedClips: GeneratedClip[];
 }
@@ -154,6 +155,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [voiceResult, setVoiceResult] = useState<{ generated: number; totalDialogues: number; narratorName: string } | null>(null);
   const [videoErrors, setVideoErrors] = useState<Record<string, boolean>>({});
+  const [lockingBackground, setLockingBackground] = useState<string | null>(null); // sceneId
+  const [lockedBg, setLockedBg] = useState<Record<string, string>>({}); // sceneId → locationName
   const generatingRef = useRef(false);
   const rescueTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const queueCancelledRef = useRef(false);
@@ -502,6 +505,30 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       }
     } finally {
       setAssembling(false);
+    }
+  }
+
+  // Extract Cloudinary still frame from a video URL (so_0 = first frame)
+  function cloudinaryThumbnail(videoUrl: string): string {
+    // Transform: /video/upload/.../<id>.mp4 → /video/upload/so_0/<id>.jpg
+    return videoUrl.replace(/\/video\/upload\//, "/video/upload/so_0/").replace(/\.[^.]+$/, ".jpg");
+  }
+
+  async function lockBackground(scene: Scene, clipUrl: string) {
+    if (!scene.locationTag) return;
+    setLockingBackground(scene.id);
+    try {
+      const imageUrl = cloudinaryThumbnail(clipUrl);
+      const res = await fetch("/api/locations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locationName: scene.locationTag, imageUrl }),
+      });
+      if (res.ok) {
+        setLockedBg((p) => ({ ...p, [scene.id]: scene.locationTag! }));
+      }
+    } finally {
+      setLockingBackground(null);
     }
   }
 
@@ -968,7 +995,6 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                           )}
                           <div className="mt-2">
                           {scene.sceneAudio ? (
-
                             <div className="flex items-center gap-2">
                               <audio controls preload="none" className="h-7 flex-1" src={scene.sceneAudio} />
                               <button
@@ -982,10 +1008,14 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                                   : <RefreshCw className="h-3 w-3" />}
                               </button>
                             </div>
+                          ) : voiceAssets.length === 0 ? (
+                            <p className="text-xs text-yellow-500/70">
+                              No voice asset — <a href="/voice" className="underline hover:text-yellow-300">set one up</a> to enable audio
+                            </p>
                           ) : (
                             <button
                               onClick={() => generateSceneVoice(scene.id)}
-                              disabled={generatingSceneVoice === scene.id || generatingVoices || voiceAssets.length === 0}
+                              disabled={generatingSceneVoice === scene.id || generatingVoices}
                               className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-200 disabled:opacity-40"
                             >
                               {generatingSceneVoice === scene.id
@@ -1032,6 +1062,9 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="flex items-center gap-1 text-xs text-green-400">
                               <CheckCircle className="h-3 w-3" /> Clip ready · {formatCurrency(clip.cost)}
+                              {scene.locationTag && (
+                                <span className="ml-1 text-zinc-500">· {scene.locationTag}</span>
+                              )}
                             </span>
                             <Button
                               size="sm"
@@ -1047,6 +1080,21 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                                 return meta ? `${meta.icon} Redo with ${m}` : `Regenerate`;
                               })()}
                             </Button>
+                            {/* Lock background: saves this clip's first frame as the reference image for its location */}
+                            {scene.locationTag && clip.clipUrl.includes("cloudinary.com") && (
+                              <button
+                                onClick={() => lockBackground(scene, clip.clipUrl)}
+                                disabled={lockingBackground === scene.id}
+                                className="text-xs text-amber-400 hover:text-amber-200 flex items-center gap-1 disabled:opacity-40"
+                                title={`Lock this background as the default for all ${scene.locationTag} scenes`}
+                              >
+                                {lockingBackground === scene.id
+                                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                                  : lockedBg[scene.id]
+                                    ? <><CheckCircle className="h-3 w-3" /> {scene.locationTag} locked</>
+                                    : <>🔒 Lock {scene.locationTag} bg</>}
+                              </button>
+                            )}
                             <button
                               onClick={() => setFeedbackOpen(isFeedbackOpen ? null : scene.id)}
                               className="text-xs text-zinc-400 hover:text-zinc-200 underline"
