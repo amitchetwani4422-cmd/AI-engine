@@ -1050,7 +1050,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                                 className="bg-orange-600 hover:bg-orange-700 h-7 text-xs"
                                 onClick={() => {
                                   // Clear any stale generating lock so this scene can run immediately
-                                  generatingRef.current = false;
+                                  generatingRef.current.delete(scene.id);
                                   setGeneratingScene(null);
                                   setVideoErrors((p) => ({ ...p, [clip.id]: false }));
                                   runScene(scene.id);
