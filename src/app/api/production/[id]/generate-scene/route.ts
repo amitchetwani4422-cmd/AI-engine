@@ -17,7 +17,8 @@ const FAL_MODEL_IDS: Record<string, string> = {
   'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
 };
 
-const QUALITY_SUFFIX = ', photorealistic live-action film, real Indian actors, North Indian Nagara temple architecture with carved sandstone and ivory marble (NOT Thai temple, NOT Southeast Asian temple, NOT Cambodian, NOT Khmer, NOT Chinese), Baahubali and RRR production quality, hand-embroidered silk costumes and real gold jewellery, volumetric divine golden light rays with floating sacred dust motes, anamorphic lens with natural bokeh, ultra-sharp 8K detail, Treta Yuga ancient India, NOT cartoon, NOT CGI game render, NOT 2D illustration, NOT Amar Chitra Katha, NOT animated, NOT painted, NOT modern, NOT western, NOT oil painting';
+// Kling v1.6 Pro sweet spot: 500–750 chars total. Keep quality suffix tight.
+const QUALITY_SUFFIX = ', photorealistic live-action, Baahubali-quality, North Indian Nagara sandstone palace NOT Thai temple NOT Southeast Asian NOT Cambodian, 8K anamorphic, no cartoon, no CGI, no painting, no modern';
 
 // Phrases to strip from any text before sending to FAL — cause painting/illustration style
 const PAINTING_PHRASES = [
@@ -192,19 +193,24 @@ export async function POST(
       }
     }
 
-    // Build a compact character guide string — prepended to every prompt.
-    // sanitisePrompt strips "Raja Ravi Varma ... oil painting style" from referencePrompts
-    // since those phrases cause Kling to generate 2D illustrated art instead of photorealistic video.
+    // Build a COMPACT character guide — video models have a ~700 char sweet spot.
+    // referencePrompt is designed for Flux image gen (700+ chars). For Kling video we
+    // use only the first sentence (~150 chars) which contains the identity-critical visuals.
+    // Full clothingRules is kept since attire consistency is critical for character recognition.
     let characterGuide = '';
     if (characters.length > 0) {
       const parts = characters.map((c: { id: string; name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string }) => {
         const pieces: string[] = [c.name];
-        if (c.referencePrompt?.trim()) pieces.push(sanitisePrompt(c.referencePrompt.trim()));
-        if (c.colorPalette?.length) pieces.push(`colors: ${c.colorPalette.join(', ')}`);
-        if (c.clothingRules?.trim()) pieces.push(`attire: ${sanitisePrompt(c.clothingRules.trim())}`);
+        if (c.referencePrompt?.trim()) {
+          const clean = sanitisePrompt(c.referencePrompt.trim());
+          // First sentence captures the identity-defining visual tokens
+          const firstSentence = clean.split(/[.,]\s+/)[0].slice(0, 160);
+          pieces.push(firstSentence);
+        }
+        if (c.clothingRules?.trim()) pieces.push(sanitisePrompt(c.clothingRules.trim()).slice(0, 100));
         return pieces.join(', ');
       });
-      characterGuide = `Characters in this scene — ${parts.join(' | ')}. `;
+      characterGuide = `${parts.join(' | ')}. `;
     }
 
     // Look up location reference image AND locked visual description for img2video + prompt lock
@@ -284,11 +290,12 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
         ? `${corePrompt} Camera: ${camDir}.`
         : corePrompt;
 
-      // World context — ALWAYS inject if we have it.
-      // Never drop it based on prompt length — location lock is critical for correct architecture.
-      // If the core prompt is very long, truncate it rather than lose the location context.
-      const coreForBudget = withCamera.length > 650 ? withCamera.slice(0, 650) + '...' : withCamera;
-      const worldContext = worldSetting ? ` Setting: ${worldSetting}` : '';
+      // Keep scene core under 300 chars — leave room for character guide + location + quality.
+      // Total prompt budget: ~700 chars. Distribution: char ~200 + scene ~250 + location ~120 + quality ~130
+      const coreForBudget = withCamera.length > 300 ? withCamera.slice(0, 300) + '...' : withCamera;
+      // Location: use first sentence only (~120 chars) — the architecture type is what matters most
+      const locationSentence = worldSetting ? worldSetting.split(/\.\s+/)[0].slice(0, 130) : '';
+      const worldContext = locationSentence ? ` Setting: ${locationSentence}.` : '';
 
       // ── Optimal prompt structure for maximum quality on Kling/Veo/LTX ──────
       // Video models weight earlier tokens more heavily. Order matters:
