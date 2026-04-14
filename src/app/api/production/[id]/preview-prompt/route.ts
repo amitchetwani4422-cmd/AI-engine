@@ -116,19 +116,19 @@ export async function GET(
 
     const sceneCharacterIds = (scene as Record<string, unknown>).characterIds as string[] | undefined;
 
-    let characters: Array<{ id: string; name: string; referencePrompt: string | null; clothingRules: string }> = [];
+    let characters: Array<{ id: string; name: string; referencePrompt: string | null; clothingRules: string; approvedImages: string[] }> = [];
     let characterSource = 'none';
 
     if (sceneCharacterIds?.length) {
       characters = await prisma.character.findMany({
         where: { id: { in: sceneCharacterIds } },
-        select: { id: true, name: true, referencePrompt: true, clothingRules: true },
+        select: { id: true, name: true, referencePrompt: true, clothingRules: true, approvedImages: true },
       });
       characterSource = 'characterIds field';
     } else {
       const allChannelChars = await prisma.character.findMany({
         where: { channelId: video.channelId },
-        select: { id: true, name: true, referencePrompt: true, clothingRules: true },
+        select: { id: true, name: true, referencePrompt: true, clothingRules: true, approvedImages: true },
       });
       const sceneText = [
         scene.prompt, (scene as Record<string, unknown>).promptEn as string | undefined,
@@ -144,23 +144,10 @@ export async function GET(
       characterSource = matched.length ? 'text-scan fallback' : 'none (no match found)';
     }
 
-    // Build character guide
-    let characterGuide = '';
-    const characterParts: string[] = [];
-    if (characters.length > 0) {
-      const parts = characters.map((c) => {
-        const pieces: string[] = [c.name];
-        if (c.referencePrompt?.trim()) {
-          const clean = sanitisePrompt(c.referencePrompt.trim());
-          const firstSentence = clean.split(/[.,]\s+/)[0].slice(0, 160);
-          pieces.push(firstSentence);
-        }
-        if (c.clothingRules?.trim()) pieces.push(sanitisePrompt(c.clothingRules.trim()).slice(0, 100));
-        characterParts.push(`  ${c.name}: ${pieces.slice(1).join(' | ')}`);
-        return pieces.join(', ');
-      });
-      characterGuide = `${parts.join(' | ')}. `;
-    }
+    // Determine mode: image-mode if any character has an approved image
+    const charWithImage = characters.find((c) => c.approvedImages?.length > 0);
+    const characterRefImage = charWithImage?.approvedImages[0];
+    const mode = characterRefImage ? 'image-mode' : 'text-mode';
 
     // Location
     const locationTag = (scene as Record<string, unknown>).locationTag as string | undefined;
@@ -181,41 +168,80 @@ export async function GET(
     const worldSetting = lockedLocationDesc || video.script?.description?.trim() || '';
     if (!lockedLocationDesc && video.script?.description?.trim()) locationSource = 'script.description fallback';
 
-    const rawCore = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
-    const corePrompt = sanitisePrompt(rawCore);
-    const camDir = scene.cameraDirection?.trim();
-    const coreHasCamera = corePrompt.toLowerCase().includes('camera') || corePrompt.toLowerCase().includes('shot');
-    const withCamera = camDir && !coreHasCamera ? `${corePrompt} Camera: ${camDir}.` : corePrompt;
-    const coreForBudget = withCamera.length > 300 ? withCamera.slice(0, 300) + '...' : withCamera;
-
     const locationSentence = worldSetting ? worldSetting.split(/\.\s+/)[0].slice(0, 130) : '';
     const worldContext = locationSentence ? ` Setting: ${locationSentence}.` : '';
 
-    const characterPrefix = characterGuide ? `${characterGuide.trim()} ` : '';
-    const basePrompt = `${characterPrefix}${coreForBudget}${worldContext}`;
-    const finalPrompt = basePrompt + QUALITY_SUFFIX;
+    let basePrompt: string;
+    let promptParts: Record<string, string>;
 
-    return NextResponse.json({
-      sceneId,
-      locationTag: locationTag ?? null,
-      locationSource,
-      characterSource,
-      characters: characters.map((c) => c.name),
-      budgetBreakdown: {
-        characterGuide: characterGuide.length,
-        corePrompt: coreForBudget.length,
-        worldContext: worldContext.length,
-        qualitySuffix: QUALITY_SUFFIX.length,
-        total: finalPrompt.length,
-      },
-      characterDetails: characterParts,
-      prompt: finalPrompt,
-      promptParts: {
+    if (characterRefImage) {
+      // Image mode — short action prompt only
+      const charName = charWithImage!.name;
+      const actionText = (scene.description || '').trim().slice(0, 180);
+      const camDir = scene.cameraDirection?.trim() || '';
+      const actionWithCam = camDir ? `${actionText}. ${camDir}` : actionText;
+      basePrompt = `${charName} ${actionWithCam}${worldContext}`;
+      promptParts = {
+        mode: 'IMAGE MODE — appearance from reference image',
+        referenceImage: characterRefImage,
+        charName,
+        action: actionWithCam,
+        worldContext: worldContext || '(empty)',
+        qualitySuffix: QUALITY_SUFFIX,
+      };
+    } else {
+      // Text mode — compact appearance description in prompt
+      const characterParts: string[] = [];
+      let characterGuide = '';
+      if (characters.length > 0) {
+        const parts = characters.map((c) => {
+          const pieces: string[] = [c.name];
+          if (c.referencePrompt?.trim()) {
+            const clean = sanitisePrompt(c.referencePrompt.trim());
+            const firstSentence = clean.split(/[.,]\s+/)[0].slice(0, 160);
+            pieces.push(firstSentence);
+          }
+          if (c.clothingRules?.trim()) pieces.push(sanitisePrompt(c.clothingRules.trim()).slice(0, 100));
+          characterParts.push(`  ${c.name}: ${pieces.slice(1).join(' | ')}`);
+          return pieces.join(', ');
+        });
+        characterGuide = `${parts.join(' | ')}. `;
+      }
+
+      const rawCore = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
+      const corePrompt = sanitisePrompt(rawCore);
+      const camDir = scene.cameraDirection?.trim();
+      const coreHasCamera = corePrompt.toLowerCase().includes('camera') || corePrompt.toLowerCase().includes('shot');
+      const withCamera = camDir && !coreHasCamera ? `${corePrompt} Camera: ${camDir}.` : corePrompt;
+      const coreForBudget = withCamera.length > 300 ? withCamera.slice(0, 300) + '...' : withCamera;
+      const characterPrefix = characterGuide ? `${characterGuide.trim()} ` : '';
+      basePrompt = `${characterPrefix}${coreForBudget}${worldContext}`;
+      promptParts = {
+        mode: 'TEXT MODE — no approved character image found',
         characterPrefix: characterPrefix || '(empty — no characters matched)',
         coreForBudget,
         worldContext: worldContext || '(empty — no location found)',
         qualitySuffix: QUALITY_SUFFIX,
+        characterDetails: characterParts.join('\n'),
+      };
+    }
+
+    const finalPrompt = basePrompt + QUALITY_SUFFIX;
+
+    return NextResponse.json({
+      sceneId,
+      mode,
+      locationTag: locationTag ?? null,
+      locationSource,
+      characterSource,
+      characters: characters.map((c) => ({ name: c.name, hasApprovedImage: c.approvedImages?.length > 0 })),
+      budgetBreakdown: {
+        basePrompt: basePrompt.length,
+        qualitySuffix: QUALITY_SUFFIX.length,
+        total: finalPrompt.length,
       },
+      prompt: finalPrompt,
+      promptParts,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

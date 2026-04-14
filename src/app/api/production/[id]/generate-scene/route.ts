@@ -155,20 +155,20 @@ export async function POST(
     // Fetch character visual descriptions so they are injected into every prompt (including As-Is)
     const sceneCharacterIds = (scene as Record<string, unknown>).characterIds as string[] | undefined;
 
-    let characters: Array<{ id: string; name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string }> = [];
+    let characters: Array<{ id: string; name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string; approvedImages: string[] }> = [];
 
     if (sceneCharacterIds?.length) {
       // New scenes: characterIds populated at script generation time
       characters = await prisma.character.findMany({
         where: { id: { in: sceneCharacterIds } },
-        select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true },
+        select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true, approvedImages: true },
       });
     } else {
       // Fallback for scenes with empty characterIds: text-scan with alias matching.
       // Handles spelling variants (Vashishtha/Vasishtha) and Hindi names (वशिष्ठ/Vasishtha).
       const allChannelChars = await prisma.character.findMany({
         where: { channelId: video.channelId },
-        select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true },
+        select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true, approvedImages: true },
       });
 
       const sceneText = [
@@ -193,17 +193,21 @@ export async function POST(
       }
     }
 
-    // Build a COMPACT character guide — video models have a ~700 char sweet spot.
-    // referencePrompt is designed for Flux image gen (700+ chars). For Kling video we
+    // Check if any scene character has an approved reference image.
+    // When an image is available, we use img2video — the model reads appearance from the
+    // image directly, so the text prompt only needs to describe the action (much shorter + cleaner).
+    const charWithImage = characters.find((c) => c.approvedImages?.length > 0);
+    const characterRefImage = charWithImage?.approvedImages[0];
+
+    // Text-mode only: compact character guide used when NO approved image is available.
+    // referencePrompt is designed for Flux image gen (700+ chars); for Kling video we
     // use only the first sentence (~150 chars) which contains the identity-critical visuals.
-    // Full clothingRules is kept since attire consistency is critical for character recognition.
     let characterGuide = '';
-    if (characters.length > 0) {
-      const parts = characters.map((c: { id: string; name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string }) => {
+    if (!characterRefImage && characters.length > 0) {
+      const parts = characters.map((c) => {
         const pieces: string[] = [c.name];
         if (c.referencePrompt?.trim()) {
           const clean = sanitisePrompt(c.referencePrompt.trim());
-          // First sentence captures the identity-defining visual tokens
           const firstSentence = clean.split(/[.,]\s+/)[0].slice(0, 160);
           pieces.push(firstSentence);
         }
@@ -237,11 +241,33 @@ export async function POST(
     // World setting priority: locked location desc > builtin fallback > script worldSetting
     const worldSetting = lockedLocationDesc || video.script?.description?.trim() || '';
 
-    // Build prompt — combine all scene data for the richest possible input
+    // Shared location snippet used in both image-mode and text-mode prompts
+    const locationSentence = worldSetting ? worldSetting.split(/\.\s+/)[0].slice(0, 130) : '';
+    const worldContext = locationSentence ? ` Setting: ${locationSentence}.` : '';
+
+    // Style / feedback clauses (same for both modes)
+    const styleClause = stylePrefix?.trim() ? ` ${stylePrefix.replace(/,$/, '').trim()}.` : '';
+    const feedbackSuffix = feedback?.trim() ? ` Adjust: ${feedback.trim()}.` : '';
+
+    // Build prompt — two modes depending on whether a character image is available
     let basePrompt: string;
     if (promptOverride?.trim()) {
       basePrompt = promptOverride.trim();
+
+    } else if (characterRefImage) {
+      // ── IMAGE MODE ─────────────────────────────────────────────────────────
+      // The character's approved image is sent as the img2video reference frame.
+      // The model reads appearance from the image — the prompt only needs to
+      // describe WHAT THEY DO and WHERE, keeping the total well under 300 chars.
+      const charName = charWithImage!.name;
+      const actionText = (scene.description || '').trim().slice(0, 180);
+      const camDir = scene.cameraDirection?.trim() || '';
+      const actionWithCam = camDir ? `${actionText}. ${camDir}` : actionText;
+      basePrompt = `${charName} ${actionWithCam}${worldContext}${styleClause}${feedbackSuffix}`;
+
     } else {
+      // ── TEXT MODE ──────────────────────────────────────────────────────────
+      // No approved image — describe appearance in the prompt (compact form).
       // For LTX2/Wan: use English promptEn; auto-translate if missing
       let corePrompt: string;
       if (usesEnPrompt) {
@@ -249,7 +275,6 @@ export async function POST(
         if (promptEn?.trim() && !forceRetranslate) {
           corePrompt = sanitisePrompt(promptEn.trim());
         } else {
-          // Auto-translate Hindi prompt to rich English for LTX2/Wan
           const hindiSource = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
           if (hindiSource) {
             try {
@@ -268,58 +293,25 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
                 500
               );
               corePrompt = translated.trim();
-              // Save back so we don't re-translate next time
               await prisma.scene.update({ where: { id: sceneId }, data: { promptEn: corePrompt } });
             } catch {
-              corePrompt = hindiSource; // fallback to Hindi if translation fails
+              corePrompt = hindiSource;
             }
           } else {
             corePrompt = '';
           }
         }
       } else {
-        // Sanitise any stored "oil painting" language from older scripts before sending to FAL
         const rawCore = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
         corePrompt = sanitisePrompt(rawCore);
       }
 
-      // Append cameraDirection if it adds info not already in the core prompt
       const camDir = scene.cameraDirection?.trim();
       const coreHasCamera = corePrompt.toLowerCase().includes('camera') || corePrompt.toLowerCase().includes('shot');
-      const withCamera = camDir && !coreHasCamera
-        ? `${corePrompt} Camera: ${camDir}.`
-        : corePrompt;
-
-      // Keep scene core under 300 chars — leave room for character guide + location + quality.
-      // Total prompt budget: ~700 chars. Distribution: char ~200 + scene ~250 + location ~120 + quality ~130
+      const withCamera = camDir && !coreHasCamera ? `${corePrompt} Camera: ${camDir}.` : corePrompt;
       const coreForBudget = withCamera.length > 300 ? withCamera.slice(0, 300) + '...' : withCamera;
-      // Location: use first sentence only (~120 chars) — the architecture type is what matters most
-      const locationSentence = worldSetting ? worldSetting.split(/\.\s+/)[0].slice(0, 130) : '';
-      const worldContext = locationSentence ? ` Setting: ${locationSentence}.` : '';
 
-      // ── Optimal prompt structure for maximum quality on Kling/Veo/LTX ──────
-      // Video models weight earlier tokens more heavily. Order matters:
-      //   1. CHARACTER visual description (who — most important, highest weight)
-      //   2. Scene content + action (what is happening)
-      //   3. Camera direction
-      //   4. Location/world context (where — locked description)
-      //   5. Style prefix (visual register: cinematic, photorealistic, ancient India)
-      //   6. Feedback adjustment
-      //   7. QUALITY_SUFFIX (appended after)
-
-      // Character description FIRST — gives video model maximum weight on appearance
       const characterPrefix = characterGuide ? `${characterGuide.trim()} ` : '';
-
-      // Style prefix at the end of the main body (after character and scene content)
-      const styleClause = stylePrefix?.trim()
-        ? ` ${stylePrefix.replace(/,$/, '').trim()}.`
-        : '';
-
-      // Feedback: rephrase as a natural instruction
-      const feedbackSuffix = feedback?.trim()
-        ? ` Adjust: ${feedback.trim()}.`
-        : '';
-
       basePrompt = `${characterPrefix}${coreForBudget}${worldContext}${styleClause}${feedbackSuffix}`;
     }
     const prompt = basePrompt + QUALITY_SUFFIX;
@@ -358,11 +350,15 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
     let falModelId = FAL_MODEL_IDS[model];
     let input: Record<string, unknown>;
 
-    if (locationRefImage && model === 'kling-3.0') {
+    // Reference image priority: character approved image > location reference image
+    // Character image gives exact appearance; location image gives exact background.
+    const refImage = characterRefImage ?? locationRefImage;
+
+    if (refImage && model === 'kling-3.0') {
       falModelId = 'fal-ai/kling-video/v1.6/pro/image-to-video';
-      input = { prompt, image_url: locationRefImage, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
-    } else if (locationRefImage && model === 'wan-2.1') {
-      input = { prompt, image_url: locationRefImage, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 81, aspect_ratio: '16:9' };
+      input = { prompt, image_url: refImage, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
+    } else if (refImage && model === 'wan-2.1') {
+      input = { prompt, image_url: refImage, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 81, aspect_ratio: '16:9' };
     } else if (model === 'kling-3.0') {
       input = { prompt, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
     } else if (model === 'ltx-video-2') {
