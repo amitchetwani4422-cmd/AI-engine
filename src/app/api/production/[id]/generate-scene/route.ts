@@ -75,9 +75,9 @@ export async function POST(
     const [video, scene] = await Promise.all([
       prisma.video.findUnique({
         where: { id: videoId },
-        include: { script: { select: { description: true } } }, // description = worldSetting
+        select: { id: true, channelId: true, status: true, script: { select: { description: true } } },
       }),
-      prisma.scene.findUnique({ where: { id: sceneId }, select: { id: true, duration: true, modelAssigned: true, prompt: true, promptEn: true, visualGuidance: true, description: true, cameraDirection: true, locationTag: true, characterIds: true } }),
+      prisma.scene.findUnique({ where: { id: sceneId }, select: { id: true, duration: true, modelAssigned: true, prompt: true, promptEn: true, visualGuidance: true, description: true, cameraDirection: true, locationTag: true, characterIds: true, narrationText: true } }),
     ]);
 
     if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
@@ -89,12 +89,37 @@ export async function POST(
 
     // Fetch character visual descriptions so they are injected into every prompt (including As-Is)
     const sceneCharacterIds = (scene as Record<string, unknown>).characterIds as string[] | undefined;
-    const characters = sceneCharacterIds?.length
-      ? await prisma.character.findMany({
-          where: { id: { in: sceneCharacterIds } },
-          select: { name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true },
-        })
-      : [];
+
+    let characters: Array<{ name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string }> = [];
+
+    if (sceneCharacterIds?.length) {
+      // New scenes: characterIds populated at script generation time
+      characters = await prisma.character.findMany({
+        where: { id: { in: sceneCharacterIds } },
+        select: { name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true },
+      });
+    } else {
+      // Fallback for existing scenes created before the characterIds fix:
+      // match character names (case-insensitive) against all scene text fields.
+      const allChannelChars = await prisma.character.findMany({
+        where: { channelId: video.channelId },
+        select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true },
+      });
+      const sceneText = [
+        scene.prompt, scene.promptEn, scene.visualGuidance,
+        scene.description, (scene as Record<string, unknown>).narrationText as string | undefined,
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      const matched = allChannelChars.filter((c) => sceneText.includes(c.name.toLowerCase()));
+      if (matched.length > 0) {
+        characters = matched;
+        // Persist the match so future regenerations are instant
+        await prisma.scene.update({
+          where: { id: sceneId },
+          data: { characterIds: matched.map((c) => c.id) },
+        });
+      }
+    }
 
     // Build a compact character guide string — prepended to every prompt
     let characterGuide = '';
