@@ -59,6 +59,47 @@ const BUILTIN_LOCATION_DESCS: Record<string, string> = {
   'Sarayu River': 'Sacred Sarayu river beside Ayodhya — broad slow-flowing crystal river reflecting the gold and ivory of Ayodhya palace spires in rippled shimmer, ancient stone ghats with carved divine motifs, oil lamps floating downstream, priests performing aarti creating golden fire reflections on dark water.',
 };
 
+// Canonical Ramayana name → all recognised spelling/Hindi variants used in scene text.
+// Handles: DB seed names, script AI output variants, Hindi Devanagari names.
+const RAMAYANA_NAME_ALIASES: Record<string, string[]> = {
+  'ram':         ['राम', 'श्री राम', 'shri ram', 'lord ram', 'rama'],
+  'sita':        ['सीता', 'sita mata', 'janaki', 'maithili', 'vaidehi'],
+  'hanuman':     ['हनुमान', 'bajrangbali', 'pawanputra', 'mahavir'],
+  'lakshman':    ['लक्ष्मण', 'laxman', 'lakshmana', 'saumitra'],
+  'ravan':       ['रावण', 'ravana', 'ravanan', 'dashanan', 'dashagriva'],
+  'dasharath':   ['दशरथ', 'dasharatha', 'dashrath', 'king dasharath'],
+  'kaushalya':   ['कौशल्या', 'kausalya'],
+  'kaikeyi':     ['कैकेयी', 'kekeyi'],
+  'vashishtha':  ['वशिष्ठ', 'vasishtha', 'vasistha', 'maharishi vashishtha', 'maharishi vasishtha', 'guru vashishtha'],
+  'vishwamitra': ['विश्वामित्र', 'vishvamitra', 'maharishi vishwamitra'],
+  'sugriva':     ['सुग्रीव', 'sugreeva'],
+  'vibhishan':   ['विभीषण', 'vibhishana', 'vibheeshana'],
+  'jatayu':      ['जटायु', 'jatayu'],
+  'shabari':     ['शबरी', 'sabari'],
+  'mandodari':   ['मंदोदरी', 'mandodhari'],
+  'manthara':    ['मंथरा', 'manthara'],
+  'bharat':      ['भरत', 'bharata'],
+  'shatrughan':  ['शत्रुघ्न', 'shatrughna', 'shatrughnan'],
+  'angad':       ['अंगद', 'angada'],
+  'jambavan':    ['जामवंत', 'jambavant', 'jambavanta'],
+  'shurpanakha': ['शूर्पणखा', 'surpanakha', 'shoorpanakha'],
+  'kumbhakarna': ['कुंभकर्ण', 'kumbhakaran'],
+  'indrajit':    ['इंद्रजीत', 'meghnad', 'meghnaad', 'meghanad'],
+  'vali':        ['वाली', 'bali'],
+};
+
+/**
+ * Returns all lowercase text tokens to search for a given character name.
+ * Includes the canonical name, any known aliases, and common prefixes stripped.
+ */
+function buildCharacterTokens(dbName: string): string[] {
+  const canonical = dbName.toLowerCase();
+  const tokens = new Set<string>([canonical]);
+  const aliases = RAMAYANA_NAME_ALIASES[canonical];
+  if (aliases) aliases.forEach((a) => tokens.add(a.toLowerCase()));
+  return [...tokens];
+}
+
 const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
   stylePrefix: z.string().optional(),
@@ -113,30 +154,37 @@ export async function POST(
     // Fetch character visual descriptions so they are injected into every prompt (including As-Is)
     const sceneCharacterIds = (scene as Record<string, unknown>).characterIds as string[] | undefined;
 
-    let characters: Array<{ name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string }> = [];
+    let characters: Array<{ id: string; name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string }> = [];
 
     if (sceneCharacterIds?.length) {
       // New scenes: characterIds populated at script generation time
       characters = await prisma.character.findMany({
         where: { id: { in: sceneCharacterIds } },
-        select: { name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true },
+        select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true },
       });
     } else {
-      // Fallback for existing scenes created before the characterIds fix:
-      // match character names (case-insensitive) against all scene text fields.
+      // Fallback for scenes with empty characterIds: text-scan with alias matching.
+      // Handles spelling variants (Vashishtha/Vasishtha) and Hindi names (वशिष्ठ/Vasishtha).
       const allChannelChars = await prisma.character.findMany({
         where: { channelId: video.channelId },
         select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true },
       });
+
       const sceneText = [
         scene.prompt, scene.promptEn, scene.visualGuidance,
         scene.description, (scene as Record<string, unknown>).narrationText as string | undefined,
       ].filter(Boolean).join(' ').toLowerCase();
 
-      const matched = allChannelChars.filter((c) => sceneText.includes(c.name.toLowerCase()));
+      // Build expanded match tokens for each character:
+      // the canonical DB name + all known aliases (Hindi names, spelling variants)
+      const matched = allChannelChars.filter((c) => {
+        const tokens = buildCharacterTokens(c.name);
+        return tokens.some((t) => sceneText.includes(t));
+      });
+
       if (matched.length > 0) {
         characters = matched;
-        // Persist the match so future regenerations are instant
+        // Persist so future regenerations skip the scan
         await prisma.scene.update({
           where: { id: sceneId },
           data: { characterIds: matched.map((c) => c.id) },
@@ -149,7 +197,7 @@ export async function POST(
     // since those phrases cause Kling to generate 2D illustrated art instead of photorealistic video.
     let characterGuide = '';
     if (characters.length > 0) {
-      const parts = characters.map((c: { name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string }) => {
+      const parts = characters.map((c: { id: string; name: string; referencePrompt: string | null; personality: string; colorPalette: string[]; clothingRules: string }) => {
         const pieces: string[] = [c.name];
         if (c.referencePrompt?.trim()) pieces.push(sanitisePrompt(c.referencePrompt.trim()));
         if (c.colorPalette?.length) pieces.push(`colors: ${c.colorPalette.join(', ')}`);

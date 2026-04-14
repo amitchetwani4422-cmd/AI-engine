@@ -104,31 +104,73 @@ Output this exact JSON (all fields required):
   return { lookup: existingLookup, created };
 }
 
+// Canonical English name → all recognised variants (Hindi + spelling alternates)
+// Mirrors the alias map in generate-scene so extraction and matching are consistent.
+const RAMAYANA_CANONICAL: Record<string, string> = {
+  'राम': 'Ram', 'श्री राम': 'Ram', 'rama': 'Ram', 'shri ram': 'Ram', 'lord ram': 'Ram',
+  'सीता': 'Sita', 'sita mata': 'Sita', 'janaki': 'Sita', 'maithili': 'Sita', 'vaidehi': 'Sita',
+  'हनुमान': 'Hanuman', 'bajrangbali': 'Hanuman', 'pawanputra': 'Hanuman',
+  'लक्ष्मण': 'Lakshman', 'laxman': 'Lakshman', 'lakshmana': 'Lakshman', 'saumitra': 'Lakshman',
+  'रावण': 'Ravan', 'ravana': 'Ravan', 'dashanan': 'Ravan', 'dashagriva': 'Ravan',
+  'दशरथ': 'Dasharath', 'dasharatha': 'Dasharath', 'dashrath': 'Dasharath',
+  'कौशल्या': 'Kaushalya', 'kausalya': 'Kaushalya',
+  'कैकेयी': 'Kaikeyi', 'kekeyi': 'Kaikeyi',
+  'वशिष्ठ': 'Vashishtha', 'vasishtha': 'Vashishtha', 'vasistha': 'Vashishtha',
+  'maharishi vashishtha': 'Vashishtha', 'maharishi vasishtha': 'Vashishtha',
+  'विश्वामित्र': 'Vishwamitra', 'vishvamitra': 'Vishwamitra',
+  'सुग्रीव': 'Sugriva', 'sugreeva': 'Sugriva',
+  'विभीषण': 'Vibhishan', 'vibhishana': 'Vibhishan',
+  'जटायु': 'Jatayu',
+  'शबरी': 'Shabari', 'sabari': 'Shabari',
+  'मंदोदरी': 'Mandodari', 'mandodhari': 'Mandodari',
+  'मंथरा': 'Manthara',
+  'भरत': 'Bharat', 'bharata': 'Bharat',
+  'शत्रुघ्न': 'Shatrughan', 'shatrughna': 'Shatrughan',
+  'अंगद': 'Angad', 'angada': 'Angad',
+  'जामवंत': 'Jambavan', 'jambavant': 'Jambavan',
+  'शूर्पणखा': 'Shurpanakha', 'surpanakha': 'Shurpanakha',
+  'कुंभकर्ण': 'Kumbhakarna', 'kumbhakaran': 'Kumbhakarna',
+  'इंद्रजीत': 'Indrajit', 'meghnad': 'Indrajit', 'meghanad': 'Indrajit',
+  'वाली': 'Vali', 'bali': 'Vali',
+};
+
 /**
  * Extracts all character names mentioned in AI-generated scene data.
- * Pulls from dialogue `character` fields (most reliable — always English)
- * and optionally from prompt text (English).
+ * Pulls from dialogue character fields (most reliable) + English prompts.
+ * Normalises Hindi names and spelling variants to canonical English DB names.
  */
 export function extractCharacterNames(
   scenes: Array<{
     dialogues?: Array<{ character: string; text: string }> | null;
     prompt?: string | null;
     promptEn?: string | null;
+    description?: string | null;
+    narrationText?: string | null;
   }>,
-  knownNames: string[], // existing character names in the DB — used for prompt scanning
+  knownNames: string[],
 ): string[] {
   const names = new Set<string>();
 
   for (const scene of scenes) {
-    // Dialogue character fields are the most reliable source
+    // Dialogue character fields — always in English from AI output
     scene.dialogues?.forEach((d) => {
-      if (d.character?.trim()) names.add(d.character.trim());
+      if (d.character?.trim()) {
+        const canonical = RAMAYANA_CANONICAL[d.character.trim().toLowerCase()];
+        names.add(canonical ?? d.character.trim());
+      }
     });
 
-    // Also scan English prompts for known-name mentions (handles narrator-only scenes)
-    const promptText = [scene.prompt, scene.promptEn].filter(Boolean).join(' ').toLowerCase();
+    // Scan all text fields for known names and alias variants
+    const allText = [scene.prompt, scene.promptEn, scene.description, scene.narrationText]
+      .filter(Boolean).join(' ').toLowerCase();
+
+    // Check existing DB names
     for (const known of knownNames) {
-      if (promptText.includes(known.toLowerCase())) names.add(known);
+      if (allText.includes(known.toLowerCase())) names.add(known);
+    }
+    // Check alias variants → map back to canonical English name
+    for (const [variant, canonical] of Object.entries(RAMAYANA_CANONICAL)) {
+      if (allText.includes(variant.toLowerCase())) names.add(canonical);
     }
   }
 
