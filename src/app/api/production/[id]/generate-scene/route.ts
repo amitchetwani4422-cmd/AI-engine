@@ -424,7 +424,7 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
         sceneId,
         model,
         status: 'pending',
-        inputData: { prompt, duration: durationSeconds, model, falRequestId: request_id },
+        inputData: { prompt, duration: durationSeconds, model, falModelId, falRequestId: request_id },
         retryCount: 0,
       },
     });

@@ -54,15 +54,20 @@ export async function POST(
       return NextResponse.json({ error: 'No FAL request ID stored — job was submitted before webhook support was added. Please regenerate.' }, { status: 400 });
     }
 
-    const modelId = FAL_MODEL_IDS[job.model ?? 'kling-3.0'];
+    // Use the exact FAL endpoint the job was submitted to (stored at submission time).
+    // Falling back to the logical model lookup handles jobs created before this fix.
+    const storedFalModelId = inputData?.falModelId as string | undefined;
+    const modelId = storedFalModelId ?? FAL_MODEL_IDS[job.model ?? 'kling-3.0'];
 
-    // Check FAL queue status — correct API: fal.queue.status(modelId, { requestId })
+    // Check FAL queue status
     let falStatus: string;
     try {
       const status = await fal.queue.status(modelId, { requestId: falRequestId, logs: false });
       falStatus = status.status as string;
-    } catch {
-      return NextResponse.json({ error: 'Could not reach FAL to check job status. Try again in a moment.' }, { status: 502 });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[rescue-scene] fal.queue.status failed:', msg);
+      return NextResponse.json({ error: `Could not reach FAL: ${msg}. Try again in a moment.` }, { status: 502 });
     }
 
     if (falStatus === 'IN_QUEUE' || falStatus === 'IN_PROGRESS') {
