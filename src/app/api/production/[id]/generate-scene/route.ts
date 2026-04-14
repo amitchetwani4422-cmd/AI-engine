@@ -194,16 +194,16 @@ export async function POST(
     }
 
     // ── PRE-GENERATION VALIDATION ────────────────────────────────────────────
-    // Rule 1: If scene has explicit characterIds, every ID must resolve in DB.
+    // Rule 1: If scene has explicit characterIds, verify every ID resolves in DB.
+    // Bug 3 fix: auto-remove stale IDs instead of hard-blocking generation forever.
     if (sceneCharacterIds?.length) {
       const foundIds = new Set(characters.map((c) => c.id));
       const missingIds = sceneCharacterIds.filter((id) => !foundIds.has(id));
       if (missingIds.length > 0) {
-        return NextResponse.json({
-          error: 'Characters assigned to this scene are missing from the database.',
-          missingCharacterIds: missingIds,
-          hint: 'Re-seed characters at /characters or remove the stale character IDs from this scene.',
-        }, { status: 422 });
+        console.warn(`[generate-scene] Auto-removing ${missingIds.length} stale characterId(s) from scene ${sceneId}`);
+        const cleanIds = sceneCharacterIds.filter((id) => foundIds.has(id));
+        await prisma.scene.update({ where: { id: sceneId }, data: { characterIds: cleanIds } });
+        // characters array already contains only resolved records — continue with those
       }
     }
 

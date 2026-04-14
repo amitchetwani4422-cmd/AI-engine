@@ -91,7 +91,7 @@ export async function POST(
       return NextResponse.json({ error: 'FAL job completed but no video URL found in result.' }, { status: 500 });
     }
 
-    // Upload to Cloudinary for a permanent CDN URL (FAL URLs expire in hours)
+    // Upload to Cloudinary for permanent storage. FAL URLs expire in ~24h.
     let clipUrl = videoUrl;
     if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
       try {
@@ -100,9 +100,14 @@ export async function POST(
           folder: 'ai-engine/clips',
         });
         clipUrl = upload.secure_url;
-      } catch {
-        console.warn('[rescue-scene] Cloudinary upload failed — using FAL URL as fallback');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[rescue-scene] Cloudinary upload failed:', msg);
+        // Use FAL URL as fallback — log clearly so admin knows clip may expire
+        console.warn('[rescue-scene] Using temporary FAL URL — clip will expire ~24h. Check Cloudinary config.');
       }
+    } else {
+      console.warn('[rescue-scene] Cloudinary not configured — clip stored as temporary FAL URL (expires ~24h).');
     }
 
     const model = (job.model ?? 'kling-3.0') as string;

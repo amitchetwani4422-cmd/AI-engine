@@ -166,7 +166,9 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [videoErrors, setVideoErrors] = useState<Record<string, boolean>>({});
   const [lockingBackground, setLockingBackground] = useState<string | null>(null); // sceneId
   const [lockedBg, setLockedBg] = useState<Record<string, string>>({}); // sceneId → locationName
-  const generatingRef = useRef(false);
+  // Bug 2 fix: per-scene generating set instead of a single shared boolean ref.
+  // Previously a single ref meant any rapid second click would silently drop the request.
+  const generatingRef = useRef<Set<string>>(new Set());
   const rescueTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const queueCancelledRef = useRef(false);
 
@@ -347,8 +349,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   }, [id]);
 
   const runScene = useCallback(async (sceneId: string, feedback?: string, promptOverride?: string, forceRetranslate?: boolean) => {
-    if (generatingRef.current) return;
-    generatingRef.current = true;
+    if (generatingRef.current.has(sceneId)) return;
+    generatingRef.current.add(sceneId);
     setGeneratingScene(sceneId);
     setSceneError(null);
     setFeedbackOpen(null);
@@ -418,7 +420,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       setQueue([]);
       setQueueRunning(false);
     } finally {
-      generatingRef.current = false;
+      generatingRef.current.delete(sceneId);
       setGeneratingScene(null);
     }
   }, [id, videoStyle, budgetMode, pollForClip, scheduleAutoRescue]); // eslint-disable-line react-hooks/exhaustive-deps

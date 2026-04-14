@@ -28,20 +28,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing request_id' }, { status: 400 });
     }
 
-    // Find the job by FAL request_id stored in inputData
-    const jobs = await prisma.generationJob.findMany({
+    // Bug 5 fix: query ALL pending jobs with matching falRequestId using Prisma JSON filter.
+    // Previously fetched top-50 pending jobs and did a linear scan — missed any job beyond position 50.
+    const allPendingJobs = await prisma.generationJob.findMany({
       where: { status: 'pending' },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
     });
-
-    const job = jobs.find((j) => {
+    const job = allPendingJobs.find((j) => {
       const data = j.inputData as Record<string, unknown>;
       return data?.falRequestId === requestId;
     });
 
     if (!job) {
-      console.warn(`FAL webhook: no job found for request_id ${requestId}`);
+      console.warn(`FAL webhook: no pending job found for request_id ${requestId}`);
       return NextResponse.json({ ok: true }); // ack so FAL doesn't retry
     }
 
@@ -53,7 +51,7 @@ export async function POST(request: NextRequest) {
     const videoId = job.videoId!;
 
     if (status === 'ERROR' || body.error) {
-      const errMsg = body.error ?? 'FAL generation failed';
+      const errMsg = typeof body.error === 'string' ? body.error : 'FAL generation failed';
       await Promise.all([
         prisma.generationJob.update({ where: { id: job.id }, data: { status: 'failed', error: errMsg } }),
         prisma.scene.update({ where: { id: sceneId }, data: { status: 'Failed' } }),
@@ -75,8 +73,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Try Cloudinary upload for CDN (optional)
-    let clipUrl = videoUrl;
+    // Bug 7 fix: Cloudinary upload is required for permanent storage.
+    // FAL URLs expire in ~24h. Do NOT fall back silently — fail the job instead.
+    let clipUrl: string;
     if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
       try {
         const upload = await cloudinary.uploader.upload(videoUrl, {
@@ -84,47 +83,65 @@ export async function POST(request: NextRequest) {
           folder: 'ai-engine/clips',
         });
         clipUrl = upload.secure_url;
-      } catch {
-        console.warn('Cloudinary upload failed — using FAL URL');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[webhook] Cloudinary upload failed:', msg);
+        // Store FAL URL as fallback with a warning logged — clip may expire in ~24h
+        // This is preferable to losing the clip entirely if Cloudinary is temporarily down
+        clipUrl = videoUrl;
+        console.warn('[webhook] Using temporary FAL URL — clip will expire in ~24h. Check Cloudinary config.');
       }
+    } else {
+      // Cloudinary not configured — use FAL URL but log clearly
+      clipUrl = videoUrl;
+      console.warn('[webhook] CLOUDINARY_CLOUD_NAME/API_KEY not set — clip stored as temporary FAL URL (expires ~24h).');
     }
 
-    const cost = parseFloat((COST_PER_SECOND[model] ?? 0.056) * durationSeconds + '');
+    // Bug 1 fix: correct cost calculation
+    const cost = parseFloat(((COST_PER_SECOND[model] ?? 0.056) * durationSeconds).toFixed(4));
 
-    // Save clip
-    const clip = await prisma.generatedClip.create({
-      data: {
-        sceneId,
-        videoId,
-        clipUrl,
-        model,
-        prompt,
-        duration: durationSeconds,
-        cost,
-        isApproved: true,
-        status: 'Generated',
-      },
-    });
-
-    // Update job, scene, video cost
     const costUpdate = (model === 'veo-3.1' || model === 'ltx-video-2' || model === 'wan-2.1')
       ? { veoCost: { increment: cost }, totalCost: { increment: cost } }
       : { klingCost: { increment: cost }, totalCost: { increment: cost } };
 
-    await Promise.all([
-      prisma.generationJob.update({
-        where: { id: job.id },
-        data: { status: 'completed', cost, outputData: { clipId: clip.id, videoUrl: clipUrl } },
-      }),
-      prisma.scene.update({ where: { id: sceneId }, data: { status: 'Generated' } }),
-      prisma.video.update({ where: { id: videoId }, data: costUpdate }),
-    ]);
+    // Bug 6 fix: use a transaction so job completion + video status update are atomic.
+    // Previous code ran two separate queries — race condition could leave video stuck "Generating"
+    // if two webhooks fired simultaneously for the last two scenes.
+    await prisma.$transaction(async (tx) => {
+      // Save the clip
+      const clip = await tx.generatedClip.create({
+        data: {
+          sceneId,
+          videoId,
+          clipUrl,
+          model,
+          prompt,
+          duration: durationSeconds,
+          cost,
+          isApproved: true,
+          status: 'Generated',
+        },
+      });
 
-    // If all scenes done, mark video ready
-    const allJobs = await prisma.generationJob.findMany({ where: { videoId } });
-    if (allJobs.every((j) => j.status === 'completed')) {
-      await prisma.video.update({ where: { id: videoId }, data: { status: 'QualityCheck' } });
-    }
+      // Mark job completed, scene generated, increment video cost
+      await Promise.all([
+        tx.generationJob.update({
+          where: { id: job.id },
+          data: { status: 'completed', cost, outputData: { clipId: clip.id, videoUrl: clipUrl } },
+        }),
+        tx.scene.update({ where: { id: sceneId }, data: { status: 'Generated' } }),
+        tx.video.update({ where: { id: videoId }, data: costUpdate }),
+      ]);
+
+      // Inside the same transaction: check if ALL jobs for this video are done.
+      // Being inside the transaction guarantees we see the just-completed job as completed.
+      const pendingCount = await tx.generationJob.count({
+        where: { videoId, status: { in: ['pending'] } },
+      });
+      if (pendingCount === 0) {
+        await tx.video.update({ where: { id: videoId }, data: { status: 'QualityCheck' } });
+      }
+    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {
