@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { generateWithModel, DEFAULT_SCRIPT_MODEL } from "@/lib/ai-provider";
 import type { AIModel } from "@/lib/ai-provider";
+import { ensureCharactersExist, extractCharacterNames } from "@/lib/auto-create-characters";
 
 export async function POST(
   request: NextRequest,
@@ -219,6 +220,25 @@ RESPONSE FORMAT:
       return NextResponse.json({ error: "AI response parse failed", raw }, { status: 500 });
     }
 
+    // Build initial lookup from characters already in DB
+    const existingCharLookup = new Map<string, string>(
+      relevantChars.filter(Boolean).map((c) => [c!.name.toLowerCase(), c!.id] as [string, string])
+    );
+
+    // Also add ALL channel characters (not just beat.characters) so text scanning works broadly
+    characters.forEach((c) => existingCharLookup.set(c.name.toLowerCase(), c.id));
+
+    // Auto-create any characters mentioned in the AI script that don't exist in DB yet
+    const allMentionedNames = extractCharacterNames(scriptData.scenes, [...existingCharLookup.keys()]);
+    const { lookup: charLookup, created: autoCreated } = await ensureCharactersExist(
+      allMentionedNames,
+      channel.id,
+      existingCharLookup,
+    );
+    if (autoCreated.length > 0) {
+      console.log(`[generate-script] Auto-created ${autoCreated.length} character(s): ${autoCreated.map((c) => c.name).join(', ')}`);
+    }
+
     const script = await prisma.$transaction(async (tx) => {
       // Create Idea linked to episode
       const idea = await tx.idea.create({
@@ -252,13 +272,6 @@ RESPONSE FORMAT:
       });
 
       if (scriptData.scenes?.length > 0) {
-        // Build a lookup: character name (lowercase) → DB id
-        const charLookup = new Map(
-          relevantChars
-            .filter(Boolean)
-            .map((c) => [c!.name.toLowerCase(), c!.id])
-        );
-
         await tx.scene.createMany({
           data: scriptData.scenes.map((s) => {
             // Match character names that appear in this scene's text

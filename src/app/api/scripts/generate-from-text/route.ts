@@ -4,6 +4,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { generateWithModel, DEFAULT_SCRIPT_MODEL } from "@/lib/ai-provider";
 import type { AIModel } from "@/lib/ai-provider";
+import { ensureCharactersExist, extractCharacterNames } from "@/lib/auto-create-characters";
 
 const Schema = z.object({
   rawScript: z.string().min(10, "Script is too short"),
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // name (lowercase) → id for per-scene character matching
-    const charLookup = new Map(channelCharacters.map((c) => [c.name.toLowerCase(), c.id]));
+    const charLookup = new Map<string, string>(channelCharacters.map((c) => [c.name.toLowerCase(), c.id] as [string, string]));
 
     const styleGuide = channel.styleBible
       ? `Visual Style: ${channel.visualStyle}
@@ -178,6 +179,21 @@ RESPONSE FORMAT (valid JSON only)
       );
     }
 
+    // Auto-create any characters mentioned in the script that don't exist in DB yet.
+    // This runs before the transaction so the IDs are ready for scene.characterIds.
+    const allMentionedNames = extractCharacterNames(
+      scriptData.scenes,
+      [...charLookup.keys()],
+    );
+    const { lookup: updatedCharLookup, created: autoCreated } = await ensureCharactersExist(
+      allMentionedNames,
+      channelId,
+      charLookup,
+    );
+    if (autoCreated.length > 0) {
+      console.log(`[generate-from-text] Auto-created ${autoCreated.length} character(s): ${autoCreated.map((c) => c.name).join(', ')}`);
+    }
+
     const script = await prisma.$transaction(async (tx) => {
       const newScript = await tx.script.create({
         data: {
@@ -206,7 +222,7 @@ RESPONSE FORMAT (valid JSON only)
               ...(scene.dialogues?.map((d) => d.character) ?? []),
             ].filter(Boolean).join(' ').toLowerCase();
 
-            const sceneCharIds = [...charLookup.entries()]
+            const sceneCharIds = [...updatedCharLookup.entries()]
               .filter(([name]) => sceneText.includes(name))
               .map(([, id]) => id);
 
