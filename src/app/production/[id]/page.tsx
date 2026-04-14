@@ -1197,18 +1197,6 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                         </div>
                       )}
                     </div>
-                    <div className="flex-shrink-0">
-                      {!clip && !isGenerating && !isQueued && scene.status !== "Generating" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => generateScene(scene.id)}
-                          disabled={!!generatingScene || queueRunning}
-                        >
-                          <Zap className="h-3 w-3 mr-1" /> Generate
-                        </Button>
-                      )}
-                    </div>
                   </div>
                 </CardContent>
               </Card>
