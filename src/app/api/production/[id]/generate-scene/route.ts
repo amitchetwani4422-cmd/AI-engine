@@ -193,25 +193,58 @@ export async function POST(
       }
     }
 
-    // Check if any scene character has an approved reference image.
-    // When an image is available, we use img2video — the model reads appearance from the
-    // image directly, so the text prompt only needs to describe the action (much shorter + cleaner).
+    // ── PRE-GENERATION VALIDATION ────────────────────────────────────────────
+    // Rule 1: If scene has explicit characterIds, every ID must resolve in DB.
+    if (sceneCharacterIds?.length) {
+      const foundIds = new Set(characters.map((c) => c.id));
+      const missingIds = sceneCharacterIds.filter((id) => !foundIds.has(id));
+      if (missingIds.length > 0) {
+        return NextResponse.json({
+          error: 'Characters assigned to this scene are missing from the database.',
+          missingCharacterIds: missingIds,
+          hint: 'Re-seed characters at /characters or remove the stale character IDs from this scene.',
+        }, { status: 422 });
+      }
+    }
+
+    // Rule 2: Kling (image-to-video model) with characters → approved images are required.
+    // We do NOT silently fall back to text mode — flag it so the user can add the image first.
+    if (model === 'kling-3.0' && characters.length > 0) {
+      const charsWithoutImages = characters.filter((c) => !c.approvedImages?.length);
+      if (charsWithoutImages.length === characters.length) {
+        // None of the characters have an approved image — block generation
+        return NextResponse.json({
+          error: `Add approved images before generating with Kling: ${charsWithoutImages.map((c) => c.name).join(', ')}`,
+          needsApprovedImages: true,
+          characters: charsWithoutImages.map((c) => ({ id: c.id, name: c.name })),
+          hint: 'Go to /characters → open each character → upload to Approved Images. Then regenerate.',
+        }, { status: 422 });
+      }
+    }
+
+    // Character image: first character that has an approved image becomes the visual reference.
     const charWithImage = characters.find((c) => c.approvedImages?.length > 0);
     const characterRefImage = charWithImage?.approvedImages[0];
 
-    // Text-mode only: compact character guide used when NO approved image is available.
-    // referencePrompt is designed for Flux image gen (700+ chars); for Kling video we
-    // use only the first sentence (~150 chars) which contains the identity-critical visuals.
+    // Text-mode character guide (used when no approved image exists, or for LTX/Wan).
+    // For LTX/Wan: use full referencePrompt (these models accept longer prompts than Kling).
+    // For Kling no-character scenes (wide shots): compact first-sentence only.
     let characterGuide = '';
-    if (!characterRefImage && characters.length > 0) {
+    if (characters.length > 0) {
       const parts = characters.map((c) => {
         const pieces: string[] = [c.name];
         if (c.referencePrompt?.trim()) {
           const clean = sanitisePrompt(c.referencePrompt.trim());
-          const firstSentence = clean.split(/[.,]\s+/)[0].slice(0, 160);
-          pieces.push(firstSentence);
+          if (usesEnPrompt) {
+            // LTX/Wan can handle full description — no truncation
+            pieces.push(clean);
+          } else {
+            // Kling: first sentence only to stay under char budget
+            const firstSentence = clean.split(/[.,]\s+/)[0].slice(0, 160);
+            pieces.push(firstSentence);
+          }
         }
-        if (c.clothingRules?.trim()) pieces.push(sanitisePrompt(c.clothingRules.trim()).slice(0, 100));
+        if (c.clothingRules?.trim()) pieces.push(sanitisePrompt(c.clothingRules.trim()));
         return pieces.join(', ');
       });
       characterGuide = `${parts.join(' | ')}. `;
@@ -267,10 +300,12 @@ export async function POST(
 
     } else {
       // ── TEXT MODE ──────────────────────────────────────────────────────────
-      // No approved image — describe appearance in the prompt (compact form).
-      // For LTX2/Wan: use English promptEn; auto-translate if missing
+      // Full prompt: character description + scene action + location/background.
+      // LTX/Wan accept long prompts — no truncation. Kling without characters: keep compact.
       let corePrompt: string;
       if (usesEnPrompt) {
+        // LTX/Wan: use English promptEn (full scene + character + background description).
+        // Auto-translate from Hindi if not yet cached.
         const promptEn = (scene as Record<string, unknown>).promptEn as string | undefined;
         if (promptEn?.trim() && !forceRetranslate) {
           corePrompt = sanitisePrompt(promptEn.trim());
@@ -302,6 +337,7 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
           }
         }
       } else {
+        // Kling without characters (wide/establishing shots): use scene prompt as-is, compact.
         const rawCore = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
         corePrompt = sanitisePrompt(rawCore);
       }
@@ -309,7 +345,10 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
       const camDir = scene.cameraDirection?.trim();
       const coreHasCamera = corePrompt.toLowerCase().includes('camera') || corePrompt.toLowerCase().includes('shot');
       const withCamera = camDir && !coreHasCamera ? `${corePrompt} Camera: ${camDir}.` : corePrompt;
-      const coreForBudget = withCamera.length > 300 ? withCamera.slice(0, 300) + '...' : withCamera;
+      // Kling no-character scenes: 300-char cap. LTX/Wan: no cap (full description).
+      const coreForBudget = (!usesEnPrompt && withCamera.length > 300)
+        ? withCamera.slice(0, 300) + '...'
+        : withCamera;
 
       const characterPrefix = characterGuide ? `${characterGuide.trim()} ` : '';
       basePrompt = `${characterPrefix}${coreForBudget}${worldContext}${styleClause}${feedbackSuffix}`;
