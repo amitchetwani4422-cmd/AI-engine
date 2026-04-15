@@ -4,6 +4,7 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { generateWithModel, DEFAULT_SCRIPT_MODEL } from "@/lib/ai-provider";
 import type { AIModel } from "@/lib/ai-provider";
+import { extractCharacterNames, ensureCharactersExist } from "@/lib/auto-create-characters";
 
 const GenerateScriptSchema = z.object({
   ideaId: z.string().min(1),
@@ -38,13 +39,19 @@ export async function POST(request: NextRequest) {
     const { ideaId, channelId, formatVariant, aiModel } = parsed.data;
     const model = (aiModel ?? DEFAULT_SCRIPT_MODEL) as AIModel;
 
-    const [idea, channel] = await Promise.all([
+    const [idea, channel, channelCharacters] = await Promise.all([
       prisma.idea.findUnique({ where: { id: ideaId } }),
       prisma.channel.findUnique({
         where: { id: channelId },
         include: { styleBible: true },
       }),
+      prisma.character.findMany({ where: { channelId }, select: { id: true, name: true } }),
     ]);
+
+    // name (lowercase) → id for per-scene character matching
+    const charLookup = new Map<string, string>(
+      channelCharacters.map((c) => [c.name.toLowerCase(), c.id] as [string, string])
+    );
 
     if (!idea) {
       return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
@@ -207,6 +214,15 @@ CRITICAL RULES:
       );
     }
 
+    // Extract character names from scenes and ensure they exist in DB before the transaction.
+    // This populates characterIds correctly so generate-scene doesn't need the text-scan fallback.
+    const allMentionedNames = extractCharacterNames(scriptData.scenes, [...charLookup.keys()]);
+    const { lookup: updatedCharLookup } = await ensureCharactersExist(
+      allMentionedNames,
+      channelId,
+      charLookup,
+    );
+
     // Create script with scenes in a transaction
     const script = await prisma.$transaction(async (tx) => {
       const newScript = await tx.script.create({
@@ -228,18 +244,27 @@ CRITICAL RULES:
 
       if (scriptData.scenes && scriptData.scenes.length > 0) {
         await tx.scene.createMany({
-          data: scriptData.scenes.map((scene) => ({
-            scriptId: newScript.id,
-            sequenceNumber: scene.sequenceNumber,
-            description: scene.description,
-            duration: scene.duration,
-            modelAssigned: scene.modelAssigned,
-            routingReason: scene.routingReason,
-            cameraDirection: scene.cameraDirection,
-            visualGuidance: scene.visualGuidance,
-            prompt: scene.prompt ?? null,
-            characterIds: [],
-          })),
+          data: scriptData.scenes.map((scene) => {
+            const sceneText = [scene.description, scene.prompt, scene.visualGuidance]
+              .filter(Boolean).join(' ').toLowerCase();
+
+            const sceneCharIds = [...updatedCharLookup.entries()]
+              .filter(([name]) => sceneText.includes(name))
+              .map(([, id]) => id);
+
+            return {
+              scriptId: newScript.id,
+              sequenceNumber: scene.sequenceNumber,
+              description: scene.description,
+              duration: scene.duration,
+              modelAssigned: scene.modelAssigned,
+              routingReason: scene.routingReason,
+              cameraDirection: scene.cameraDirection,
+              visualGuidance: scene.visualGuidance,
+              prompt: scene.prompt ?? null,
+              characterIds: sceneCharIds,
+            };
+          }),
         });
       }
 
