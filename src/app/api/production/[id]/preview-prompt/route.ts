@@ -228,20 +228,38 @@ export async function GET(
 
     const finalPrompt = basePrompt + QUALITY_SUFFIX;
 
+    // Gather location reference image for display
+    let locationRefImage: string | null = null;
+    if (locationTag) {
+      const locAsset = await prisma.locationAsset.findUnique({
+        where: { name: locationTag },
+        select: { referenceImages: true },
+      });
+      locationRefImage = locAsset?.referenceImages?.[0] ?? null;
+    }
+
+    // Characters with full image info for the preview UI
+    const characterPreviews = characters.map((c) => ({
+      id: c.id,
+      name: c.name,
+      imageUrl: c.approvedImages?.[0] ?? null,
+      hasImage: c.approvedImages?.length > 0,
+    }));
+
+    const readyToGenerate = characters.length === 0 || characterPreviews.some((c) => c.hasImage);
+    const missingImages = characterPreviews.filter((c) => !c.hasImage);
+
     return NextResponse.json({
       sceneId,
       mode,
+      readyToGenerate,
       locationTag: locationTag ?? null,
-      locationSource,
+      locationRefImage,
       characterSource,
-      characters: characters.map((c) => ({ name: c.name, hasApprovedImage: c.approvedImages?.length > 0 })),
-      budgetBreakdown: {
-        basePrompt: basePrompt.length,
-        qualitySuffix: QUALITY_SUFFIX.length,
-        total: finalPrompt.length,
-      },
+      characters: characterPreviews,
+      missingImages,
       prompt: finalPrompt,
-      promptParts,
+      promptLength: finalPrompt.length,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

@@ -170,8 +170,19 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [backfillingChars, setBackfillingChars] = useState(false);
   const [backfillResult, setBackfillResult] = useState<string | null>(null);
   // Bug 2 fix: per-scene generating set instead of a single shared boolean ref.
-  // Previously a single ref meant any rapid second click would silently drop the request.
   const generatingRef = useRef<Set<string>>(new Set());
+
+  // Preview-before-generate state
+  type CharacterPreview = { id: string; name: string; imageUrl: string | null; hasImage: boolean; };
+  type GeneratePreview = {
+    sceneId: string; sceneName: string; mode: string; readyToGenerate: boolean;
+    locationTag: string | null; locationRefImage: string | null;
+    characters: CharacterPreview[]; missingImages: CharacterPreview[];
+    prompt: string; promptLength: number;
+    feedback?: string; promptOverride?: string;
+  };
+  const [generatePreview, setGeneratePreview] = useState<GeneratePreview | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState<string | null>(null);
   const rescueTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const queueCancelledRef = useRef(false);
 
@@ -451,9 +462,34 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     }
   }, [id, videoStyle, budgetMode, pollForClip, scheduleAutoRescue]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function generateScene(sceneId: string, feedback?: string, promptOverride?: string) {
-    // forceRetranslate only when user provides feedback — keeps the original
-    // promptEn intact for plain regenerations so results stay consistent
+  // Step 1: fetch preview → show dialog. User confirms → step 2 runs the actual generation.
+  async function generateScene(sceneId: string, feedback?: string, promptOverride?: string, sceneName?: string) {
+    setLoadingPreview(sceneId);
+    try {
+      const res = await fetch(`/api/production/${id}/preview-prompt?sceneId=${sceneId}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setSceneError(data.error ?? 'Failed to load preview');
+        return;
+      }
+      setGeneratePreview({
+        ...data,
+        sceneId,
+        sceneName: sceneName || `Scene`,
+        feedback,
+        promptOverride,
+      });
+    } catch {
+      setSceneError('Network error loading preview');
+    } finally {
+      setLoadingPreview(null);
+    }
+  }
+
+  function confirmGenerate() {
+    if (!generatePreview) return;
+    const { sceneId, feedback, promptOverride } = generatePreview;
+    setGeneratePreview(null);
     const forceRetranslate = !!(feedback?.trim());
     runScene(sceneId, feedback, promptOverride, forceRetranslate);
   }
@@ -613,8 +649,105 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const ltxScenes = scenes.filter((s) => s.modelAssigned === "ltx-video-2");
   const wanScenes = scenes.filter((s) => s.modelAssigned === "wan-2.1");
 
+  // ── Generate Preview Dialog ───────────────────────────────────────────────
+  const PreviewDialog = generatePreview ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setGeneratePreview(null)}>
+      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="p-5 border-b border-zinc-800">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-zinc-100">Preview — {generatePreview.sceneName}</h2>
+            <button onClick={() => setGeneratePreview(null)} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">×</button>
+          </div>
+          <p className="text-xs text-zinc-500 mt-1">
+            {generatePreview.mode === 'image-mode' ? '🖼 Image-to-video — character image sent as reference frame' : '📝 Text-to-video — appearance described in prompt'}
+          </p>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Characters */}
+          {generatePreview.characters.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-zinc-400 mb-2">Characters in this scene</p>
+              <div className="flex flex-wrap gap-3">
+                {generatePreview.characters.map((c) => (
+                  <div key={c.id} className="flex flex-col items-center gap-1.5">
+                    {c.imageUrl ? (
+                      <img src={c.imageUrl} alt={c.name} className="w-20 h-20 rounded-lg object-cover border border-zinc-700" />
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg bg-zinc-800 border border-dashed border-zinc-600 flex flex-col items-center justify-center gap-1">
+                        <span className="text-zinc-500 text-2xl">👤</span>
+                        <span className="text-zinc-600 text-xs">No image</span>
+                      </div>
+                    )}
+                    <span className="text-xs text-zinc-300 font-medium">{c.name}</span>
+                    {!c.hasImage && (
+                      <a href={`/characters/${c.id}`} target="_blank" rel="noreferrer" className="text-xs text-amber-400 hover:text-amber-300 underline">
+                        Add image →
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Location */}
+          {generatePreview.locationTag && (
+            <div>
+              <p className="text-xs font-medium text-zinc-400 mb-2">Location: {generatePreview.locationTag}</p>
+              {generatePreview.locationRefImage ? (
+                <img src={generatePreview.locationRefImage} alt={generatePreview.locationTag} className="h-24 rounded-lg object-cover border border-zinc-700 w-full" />
+              ) : (
+                <p className="text-xs text-zinc-600 italic">No location reference image — using text description</p>
+              )}
+            </div>
+          )}
+
+          {/* Prompt */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-medium text-zinc-400">Prompt being sent to FAL</p>
+              <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${generatePreview.promptLength > 800 ? 'bg-red-900/40 text-red-400' : 'bg-zinc-800 text-zinc-500'}`}>
+                {generatePreview.promptLength} chars
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 bg-zinc-800 rounded-lg p-3 leading-relaxed font-mono whitespace-pre-wrap">{generatePreview.prompt}</p>
+          </div>
+
+          {/* Missing images warning */}
+          {generatePreview.missingImages.length > 0 && (
+            <div className="bg-amber-950/40 border border-amber-800/50 rounded-lg p-3">
+              <p className="text-xs text-amber-400 font-medium mb-1">⚠ Missing approved images</p>
+              <p className="text-xs text-amber-500/80">
+                {generatePreview.missingImages.map((c) => c.name).join(', ')} {generatePreview.missingImages.length === 1 ? 'has' : 'have'} no approved image.
+                Click the character name above to add one, then regenerate.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="p-4 border-t border-zinc-800 flex gap-3">
+          <Button variant="outline" size="sm" className="flex-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800" onClick={() => setGeneratePreview(null)}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            className={`flex-1 ${generatePreview.readyToGenerate ? 'bg-blue-600 hover:bg-blue-700' : 'bg-zinc-700 text-zinc-400 cursor-not-allowed'}`}
+            disabled={!generatePreview.readyToGenerate}
+            onClick={confirmGenerate}
+          >
+            <Zap className="h-3.5 w-3.5 mr-1.5" />
+            {generatePreview.readyToGenerate ? 'Confirm & Generate' : 'Add images first'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      {PreviewDialog}
       <Header
         title={video.title}
         description={video.channel?.name ?? ""}
@@ -980,10 +1113,13 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                           <Button
                             size="sm"
                             className="h-7 px-3 text-xs bg-blue-600 hover:bg-blue-700"
-                            disabled={!!generatingScene}
-                            onClick={() => generateScene(scene.id)}
+                            disabled={loadingPreview === scene.id}
+                            onClick={() => generateScene(scene.id, undefined, undefined, `Scene ${scene.sequenceNumber} — ${(scene.description || '').slice(0, 40)}`)}
                           >
-                            <Zap className="h-3 w-3 mr-1" /> Generate
+                            {loadingPreview === scene.id
+                              ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Loading…</>
+                              : <><Zap className="h-3 w-3 mr-1" /> Preview & Generate</>
+                            }
                           </Button>
                         )}
                       </div>
