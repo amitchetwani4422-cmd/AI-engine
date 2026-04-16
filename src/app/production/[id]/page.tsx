@@ -81,6 +81,7 @@ interface Scene {
   sceneAudioPublicId?: string;
   locationTag?: string;
   status: string;
+  characters?: { id: string; name: string }[];
   generatedClips: GeneratedClip[];
 }
 
@@ -970,6 +971,20 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                         )}
                       </div>
                       <p className="text-sm text-zinc-300 mb-2">{scene.description}</p>
+
+                      {/* Characters in this scene */}
+                      {scene.characters && scene.characters.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {scene.characters.map((c) => (
+                            <span
+                              key={c.id}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/20"
+                            >
+                              {c.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Current prompt (collapsible) */}
                       {(scene.prompt || scene.promptEn) && (() => {

@@ -4,7 +4,36 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { generateWithModel, DEFAULT_SCRIPT_MODEL } from "@/lib/ai-provider";
 import type { AIModel } from "@/lib/ai-provider";
-import { extractCharacterNames, ensureCharactersExist } from "@/lib/auto-create-characters";
+
+// All known name variants for Ramayana characters.
+// Keys are the canonical DB name (lowercase), values are additional aliases
+// (Hindi names, spelling variants, honorifics) that may appear in AI-generated prompts.
+const RAMAYANA_NAME_ALIASES: Record<string, string[]> = {
+  'ram':         ['राम', 'श्री राम', 'shri ram', 'lord ram', 'rama'],
+  'sita':        ['सीता', 'sita mata', 'janaki', 'maithili', 'vaidehi'],
+  'hanuman':     ['हनुमान', 'bajrangbali', 'pawanputra', 'mahavir'],
+  'lakshman':    ['लक्ष्मण', 'laxman', 'lakshmana', 'saumitra'],
+  'ravan':       ['रावण', 'ravana', 'ravanan', 'dashanan', 'dashagriva'],
+  'dasharath':   ['दशरथ', 'dasharatha', 'dashrath', 'king dasharath'],
+  'kaushalya':   ['कौशल्या', 'kausalya'],
+  'kaikeyi':     ['कैकेयी', 'kekeyi'],
+  'vashishtha':  ['वशिष्ठ', 'vasishtha', 'vasistha', 'maharishi vashishtha', 'maharishi vasishtha', 'guru vashishtha'],
+  'vishwamitra': ['विश्वामित्र', 'vishvamitra', 'maharishi vishwamitra'],
+  'sugriva':     ['सुग्रीव', 'sugreeva'],
+  'vibhishan':   ['विभीषण', 'vibhishana', 'vibheeshana'],
+  'jatayu':      ['जटायु'],
+  'shabari':     ['शबरी', 'sabari'],
+  'mandodari':   ['मंदोदरी', 'mandodhari'],
+  'manthara':    ['मंथरा'],
+  'bharat':      ['भरत', 'bharata'],
+  'shatrughan':  ['शत्रुघ्न', 'shatrughna', 'shatrughnan'],
+  'angad':       ['अंगद', 'angada'],
+  'jambavan':    ['जामवंत', 'jambavant', 'jambavanta'],
+  'shurpanakha': ['शूर्पणखा', 'surpanakha', 'shoorpanakha'],
+  'kumbhakarna': ['कुंभकर्ण', 'kumbhakaran'],
+  'indrajit':    ['इंद्रजीत', 'meghnad', 'meghnaad', 'meghanad'],
+  'vali':        ['वाली', 'bali'],
+};
 
 const GenerateScriptSchema = z.object({
   ideaId: z.string().min(1),
@@ -48,10 +77,21 @@ export async function POST(request: NextRequest) {
       prisma.character.findMany({ where: { channelId }, select: { id: true, name: true } }),
     ]);
 
-    // name (lowercase) → id for per-scene character matching
-    const charLookup = new Map<string, string>(
-      channelCharacters.map((c) => [c.name.toLowerCase(), c.id] as [string, string])
-    );
+    // Build an alias-expanded token → id map so that Hindi-named DB characters
+    // (e.g. "राम") are matched when the AI prompt uses the English form ("ram",
+    // "lord ram", etc.) and vice-versa.  This mirrors the logic in generate-scene.
+    const charTokenLookup = new Map<string, string>();
+    for (const c of channelCharacters) {
+      const canonical = c.name.toLowerCase();
+      charTokenLookup.set(canonical, c.id);
+      // Check if this DB name is a key or an alias value in our alias map
+      for (const [key, aliases] of Object.entries(RAMAYANA_NAME_ALIASES)) {
+        if (key === canonical || aliases.some((a) => a.toLowerCase() === canonical)) {
+          charTokenLookup.set(key, c.id);
+          aliases.forEach((a) => charTokenLookup.set(a.toLowerCase(), c.id));
+        }
+      }
+    }
 
     if (!idea) {
       return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
@@ -214,15 +254,6 @@ CRITICAL RULES:
       );
     }
 
-    // Extract character names from scenes and ensure they exist in DB before the transaction.
-    // This populates characterIds correctly so generate-scene doesn't need the text-scan fallback.
-    const allMentionedNames = extractCharacterNames(scriptData.scenes, [...charLookup.keys()]);
-    const { lookup: updatedCharLookup } = await ensureCharactersExist(
-      allMentionedNames,
-      channelId,
-      charLookup,
-    );
-
     // Create script with scenes in a transaction
     const script = await prisma.$transaction(async (tx) => {
       const newScript = await tx.script.create({
@@ -248,9 +279,12 @@ CRITICAL RULES:
             const sceneText = [scene.description, scene.prompt, scene.visualGuidance]
               .filter(Boolean).join(' ').toLowerCase();
 
-            const sceneCharIds = [...updatedCharLookup.entries()]
-              .filter(([name]) => sceneText.includes(name))
-              .map(([, id]) => id);
+            // Use alias-expanded lookup so Hindi DB names match English prompt text
+            const sceneCharIds = [...new Set(
+              [...charTokenLookup.entries()]
+                .filter(([token]) => sceneText.includes(token))
+                .map(([, id]) => id)
+            )];
 
             return {
               scriptId: newScript.id,

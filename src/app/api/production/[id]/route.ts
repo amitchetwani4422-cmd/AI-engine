@@ -38,11 +38,38 @@ export async function GET(
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
+    // Resolve character names for all scenes so the frontend can display them
+    const allCharacterIds = [
+      ...new Set(
+        video.script?.sceneBreakdown.flatMap((s) => (s as { characterIds?: string[] }).characterIds ?? []) ?? []
+      ),
+    ];
+    const characterMap = new Map<string, string>();
+    if (allCharacterIds.length > 0) {
+      const chars = await prisma.character.findMany({
+        where: { id: { in: allCharacterIds } },
+        select: { id: true, name: true },
+      });
+      chars.forEach((c) => characterMap.set(c.id, c.name));
+    }
+
     const totalScenes = video.script?.sceneBreakdown.length ?? 0;
     const generatedScenes = new Set(video.generatedClips.map((c) => c.sceneId)).size;
 
     return NextResponse.json({
       ...video,
+      script: video.script
+        ? {
+            ...video.script,
+            sceneBreakdown: video.script.sceneBreakdown.map((scene) => {
+              const charIds = (scene as { characterIds?: string[] }).characterIds ?? [];
+              return {
+                ...scene,
+                characters: charIds.map((id) => ({ id, name: characterMap.get(id) ?? id })),
+              };
+            }),
+          }
+        : null,
       productionProgress: {
         totalScenes,
         generatedScenes,
