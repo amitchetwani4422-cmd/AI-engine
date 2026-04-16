@@ -1275,15 +1275,20 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                               size="sm"
                               variant="outline"
                               className="h-6 px-2 text-xs"
-                              disabled={isGenerating || !!generatingScene}
-                              onClick={() => runScene(scene.id)}
+                              disabled={isGenerating || !!generatingScene || loadingPreview === scene.id}
+                              onClick={() => generateScene(scene.id, undefined, undefined, `Scene ${scene.sequenceNumber} — ${(scene.description || '').slice(0, 40)}`)}
                             >
-                              <RefreshCw className="h-3 w-3 mr-1" />
-                              {(() => {
-                                const m = budgetMode ? "kling-3.0" : (sceneModels[scene.id] ?? scene.modelAssigned);
-                                const meta = MODEL_META[m];
-                                return meta ? `${meta.icon} Redo with ${m}` : `Regenerate`;
-                              })()}
+                              {loadingPreview === scene.id
+                                ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Loading…</>
+                                : <>
+                                    <RefreshCw className="h-3 w-3 mr-1" />
+                                    {(() => {
+                                      const m = budgetMode ? "kling-3.0" : (sceneModels[scene.id] ?? scene.modelAssigned);
+                                      const meta = MODEL_META[m];
+                                      return meta ? `${meta.icon} Redo with ${m}` : `Regenerate`;
+                                    })()}
+                                  </>
+                              }
                             </Button>
                             {/* Lock background: saves this clip's first frame as the reference image for its location */}
                             {scene.locationTag && clip.clipUrl.includes("cloudinary.com") && (
