@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +28,18 @@ export default function LocationsPage() {
   const [urlInput, setUrlInput] = useState<Record<string, string>>({});
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const highlight = searchParams.get("highlight") ?? "";
+  const highlightRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => { fetchLocations(); }, []);
+
+  // Scroll to highlighted location once data loads
+  useEffect(() => {
+    if (!loading && highlight && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [loading, highlight]);
 
   async function fetchLocations() {
     setLoading(true);
@@ -126,8 +137,14 @@ export default function LocationsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {locations.map((loc) => (
-              <Card key={loc.id} className="bg-zinc-900 border-zinc-800">
+            {locations.map((loc) => {
+              const isHighlighted = highlight && loc.name.toLowerCase() === highlight.toLowerCase();
+              return (
+              <Card
+                key={loc.id}
+                ref={isHighlighted ? (el) => { highlightRef.current = el; } : undefined}
+                className={`bg-zinc-900 border transition-all ${isHighlighted ? "border-amber-500/60 ring-2 ring-amber-500/30" : "border-zinc-800"}`}
+              >
                 <CardContent className="p-4 space-y-3">
                   {/* Header */}
                   <div className="flex items-start justify-between">
@@ -219,7 +236,8 @@ export default function LocationsPage() {
                   )}
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

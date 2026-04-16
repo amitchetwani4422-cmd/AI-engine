@@ -694,11 +694,31 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           {/* Location */}
           {generatePreview.locationTag && (
             <div>
-              <p className="text-xs font-medium text-zinc-400 mb-2">Location: {generatePreview.locationTag}</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-zinc-400">Location: {generatePreview.locationTag}</p>
+                <a
+                  href={`/locations?highlight=${encodeURIComponent(generatePreview.locationTag)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-blue-400 hover:text-blue-300 underline"
+                >
+                  {generatePreview.locationRefImage ? 'Manage →' : 'Add image →'}
+                </a>
+              </div>
               {generatePreview.locationRefImage ? (
                 <img src={generatePreview.locationRefImage} alt={generatePreview.locationTag} className="h-24 rounded-lg object-cover border border-zinc-700 w-full" />
               ) : (
-                <p className="text-xs text-zinc-600 italic">No location reference image — using text description</p>
+                <div className="bg-zinc-800/60 border border-dashed border-zinc-600 rounded-lg p-3 flex items-center justify-between">
+                  <p className="text-xs text-zinc-500 italic">No reference image — using text description</p>
+                  <a
+                    href={`/locations?highlight=${encodeURIComponent(generatePreview.locationTag)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-amber-400 hover:text-amber-300 underline ml-3 shrink-0"
+                  >
+                    Add image →
+                  </a>
+                </div>
               )}
             </div>
           )}
