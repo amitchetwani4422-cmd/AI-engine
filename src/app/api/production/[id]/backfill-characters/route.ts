@@ -100,8 +100,23 @@ export async function POST(
     }
 
     const totalLinked = results.filter((r) => r.characterIds.length > 0).length;
+
+    // Debug info to diagnose zero-match cases
+    const firstScene = video.script.sceneBreakdown[0];
+    const sampleText = firstScene
+      ? [firstScene.description, firstScene.prompt, firstScene.visualGuidance, firstScene.narrationText]
+          .filter(Boolean).join(' ').slice(0, 300)
+      : '(no scenes)';
+
     return NextResponse.json({
       message: `Backfilled ${results.length} scenes. ${totalLinked} now have characters linked.`,
+      debug: {
+        channelId: video.channelId,
+        charactersFoundInChannel: channelCharacters.length,
+        characterNames: channelCharacters.map((c) => c.name),
+        tokenCount: charTokenLookup.size,
+        sampleSceneText: sampleText,
+      },
       results,
     });
   } catch (error) {
