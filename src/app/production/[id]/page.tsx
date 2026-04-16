@@ -193,7 +193,11 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       const res = await fetch(`/api/production/${id}/backfill-characters`, { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        setBackfillResult(data.message);
+        const d = data.debug;
+        const debugLine = d
+          ? ` | Channel chars: ${d.charactersFoundInChannel} (${d.characterNames.join(', ') || 'none'}) | Sample text: "${d.sampleSceneText?.slice(0, 120)}"`
+          : '';
+        setBackfillResult(data.message + debugLine);
         await fetchVideo();
       } else {
         setBackfillResult(`Error: ${data.error}`);
