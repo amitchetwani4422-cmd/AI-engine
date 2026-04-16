@@ -167,6 +167,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [videoErrors, setVideoErrors] = useState<Record<string, boolean>>({});
   const [lockingBackground, setLockingBackground] = useState<string | null>(null); // sceneId
   const [lockedBg, setLockedBg] = useState<Record<string, string>>({}); // sceneId → locationName
+  const [backfillingChars, setBackfillingChars] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<string | null>(null);
   // Bug 2 fix: per-scene generating set instead of a single shared boolean ref.
   // Previously a single ref meant any rapid second click would silently drop the request.
   const generatingRef = useRef<Set<string>>(new Set());
@@ -182,6 +184,25 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
       setLoading(false);
     }
     return null;
+  }
+
+  async function backfillCharacters() {
+    setBackfillingChars(true);
+    setBackfillResult(null);
+    try {
+      const res = await fetch(`/api/production/${id}/backfill-characters`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setBackfillResult(data.message);
+        await fetchVideo();
+      } else {
+        setBackfillResult(`Error: ${data.error}`);
+      }
+    } catch (e) {
+      setBackfillResult(`Error: ${String(e)}`);
+    } finally {
+      setBackfillingChars(false);
+    }
   }
 
   async function rerouteScenes() {
@@ -844,6 +865,11 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
 
         {/* Scenes */}
         <div className="space-y-3">
+          {backfillResult && (
+            <div className={`px-4 py-2.5 rounded-lg text-sm border ${backfillResult.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-amber-500/10 border-amber-500/20 text-amber-400"}`}>
+              {backfillResult}
+            </div>
+          )}
           {rerouteResult && (
             <div className={`px-4 py-2.5 rounded-lg text-sm border ${rerouteResult.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-green-500/10 border-green-500/20 text-green-400"}`}>
               {rerouteResult}
@@ -859,6 +885,19 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
               )}
             </div>
             <div className="flex items-center gap-2">
+              {/* Link characters: re-scans scene text and populates characterIds */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-700/50 text-amber-400 hover:text-amber-200"
+                onClick={backfillCharacters}
+                disabled={backfillingChars || queueRunning}
+                title="Re-scan each scene's text and link the correct characters from DB"
+              >
+                {backfillingChars
+                  ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Linking...</>
+                  : <>Link Characters</>}
+              </Button>
               {/* Auto-route: re-analyses scene text and assigns LTX2/Wan/Kling per scene */}
               <Button
                 size="sm"
