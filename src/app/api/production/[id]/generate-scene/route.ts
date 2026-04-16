@@ -227,7 +227,10 @@ export async function POST(
     //        split evenly when multiple characters share a scene.
     let characterGuide = '';
     if (characters.length > 0) {
-      const klingCharBudget = Math.floor(500 / characters.length); // divide budget across chars
+      // Kling total char budget ~750. Reserve 200 for scene core, 140 for worldContext+style,
+      // 220 for QUALITY_SUFFIX → leaves ~190 chars for character guide across all chars.
+      // LTX/Wan have no limit so use 600 total.
+      const klingCharBudget = Math.floor((usesEnPrompt ? 600 : 190) / characters.length);
       const parts = characters.map((c) => {
         const pieces: string[] = [c.name];
         if (c.referencePrompt?.trim()) {
@@ -285,16 +288,18 @@ export async function POST(
       basePrompt = promptOverride.trim();
 
     } else {
-      // ── TEXT MODE ──────────────────────────────────────────────────────────
-      // For Kling WITH characters: use English promptEn (better motion/action descriptions)
-      // falling back to scene.prompt if not yet translated.
-      // For Kling WITHOUT characters: use scene.prompt as-is (compact).
-      // LTX/Wan: always use English promptEn.
-      const needsEnglish = usesEnPrompt || characters.length > 0;
+      // ── MODEL-SPECIFIC CORE PROMPT ─────────────────────────────────────────
+      //
+      // Kling: scene.prompt is already in English (written by the script builder).
+      //   Use it directly. characterGuide (referencePrompt) is prepended separately.
+      //   Cap scene core at 200 chars when characters present to stay in budget.
+      //
+      // LTX-Video 2 / Wan 2.1: use English promptEn which includes full scene
+      //   description. Auto-translate from Hindi scene.prompt if not yet cached.
+      //   No cap — these models handle long prompts well.
       let corePrompt: string;
-      if (needsEnglish) {
-        // LTX/Wan: use English promptEn (full scene + character + background description).
-        // Auto-translate from Hindi if not yet cached.
+      if (usesEnPrompt) {
+        // LTX/Wan — English translation required
         const promptEn = (scene as Record<string, unknown>).promptEn as string | undefined;
         if (promptEn?.trim() && !forceRetranslate) {
           corePrompt = sanitisePrompt(promptEn.trim());
@@ -326,7 +331,7 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
           }
         }
       } else {
-        // Kling without characters (wide/establishing shots): use scene prompt as-is, compact.
+        // Kling — use scene.prompt directly (already English from script generation)
         const rawCore = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
         corePrompt = sanitisePrompt(rawCore);
       }
@@ -334,11 +339,12 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
       const camDir = scene.cameraDirection?.trim();
       const coreHasCamera = corePrompt.toLowerCase().includes('camera') || corePrompt.toLowerCase().includes('shot');
       const withCamera = camDir && !coreHasCamera ? `${corePrompt} Camera: ${camDir}.` : corePrompt;
-      // Kling without characters: 300-char cap on scene core.
-      // Kling with characters: characterGuide takes the main budget, allow 250 chars for scene core.
-      // LTX/Wan: no cap.
-      const klingCoreCap = characters.length > 0 ? 250 : 300;
-      const coreForBudget = (!needsEnglish && withCamera.length > klingCoreCap)
+
+      // Kling budget: characterGuide (~250 chars) + scene core + worldContext + QUALITY_SUFFIX
+      // must stay near 750 chars total. Cap scene core to leave room for character guide.
+      // LTX/Wan: no cap (long prompts accepted).
+      const klingCoreCap = characters.length > 0 ? 200 : 300;
+      const coreForBudget = (!usesEnPrompt && withCamera.length > klingCoreCap)
         ? withCamera.slice(0, klingCoreCap) + '...'
         : withCamera;
 
