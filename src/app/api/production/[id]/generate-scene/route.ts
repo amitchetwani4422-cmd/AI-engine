@@ -215,44 +215,31 @@ export async function POST(
       }
     }
 
-    // Rule 2: Kling (image-to-video model) with characters → approved images are required.
-    // We do NOT silently fall back to text mode — flag it so the user can add the image first.
-    if (model === 'kling-3.0' && characters.length > 0) {
-      const charsWithoutImages = characters.filter((c) => !c.approvedImages?.length);
-      if (charsWithoutImages.length === characters.length) {
-        // None of the characters have an approved image — block generation
-        return NextResponse.json({
-          error: `Add approved images before generating with Kling: ${charsWithoutImages.map((c) => c.name).join(', ')}`,
-          needsApprovedImages: true,
-          characters: charsWithoutImages.map((c) => ({ id: c.id, name: c.name })),
-          hint: 'Go to /characters → open each character → upload to Approved Images. Then regenerate.',
-        }, { status: 422 });
-      }
-    }
+    // Character portraits (approvedImages) are NOT used as i2v reference frames.
+    // Sending a portrait as the starting frame produces a near-static video with no
+    // background or scene context. Instead we always use text-to-video and inject the
+    // full character visual description into the prompt so the model composes the full
+    // scene (character + background + natural movement) from scratch.
 
-    // Character image: first character that has an approved image becomes the visual reference.
-    const charWithImage = characters.find((c) => c.approvedImages?.length > 0);
-    const characterRefImage = charWithImage?.approvedImages[0];
-
-    // Text-mode character guide (used when no approved image exists, or for LTX/Wan).
-    // For LTX/Wan: use full referencePrompt (these models accept longer prompts than Kling).
-    // For Kling no-character scenes (wide shots): compact first-sentence only.
+    // Character guide injected into every text-to-video prompt.
+    // LTX/Wan: full referencePrompt (long prompts accepted).
+    // Kling: up to 250 chars per character — enough for appearance + clothing + key attribute,
+    //        split evenly when multiple characters share a scene.
     let characterGuide = '';
     if (characters.length > 0) {
+      const klingCharBudget = Math.floor(500 / characters.length); // divide budget across chars
       const parts = characters.map((c) => {
         const pieces: string[] = [c.name];
         if (c.referencePrompt?.trim()) {
           const clean = sanitisePrompt(c.referencePrompt.trim());
           if (usesEnPrompt) {
-            // LTX/Wan can handle full description — no truncation
             pieces.push(clean);
           } else {
-            // Kling: first sentence only to stay under char budget
-            const firstSentence = clean.split(/[.,]\s+/)[0].slice(0, 160);
-            pieces.push(firstSentence);
+            // Kling: use as much of the referencePrompt as the budget allows
+            pieces.push(clean.slice(0, klingCharBudget));
           }
         }
-        if (c.clothingRules?.trim()) pieces.push(sanitisePrompt(c.clothingRules.trim()));
+        if (c.clothingRules?.trim()) pieces.push(sanitisePrompt(c.clothingRules.trim()).slice(0, 80));
         return pieces.join(', ');
       });
       characterGuide = `${parts.join(' | ')}. `;
@@ -290,28 +277,22 @@ export async function POST(
     const styleClause = stylePrefix?.trim() ? ` ${stylePrefix.replace(/,$/, '').trim()}.` : '';
     const feedbackSuffix = feedback?.trim() ? ` Adjust: ${feedback.trim()}.` : '';
 
-    // Build prompt — two modes depending on whether a character image is available
+    // Build prompt — always text-to-video.
+    // Character appearance is injected via characterGuide (referencePrompt + clothingRules).
+    // Location context is injected via worldContext / lockedLocationDesc.
     let basePrompt: string;
     if (promptOverride?.trim()) {
       basePrompt = promptOverride.trim();
 
-    } else if (characterRefImage) {
-      // ── IMAGE MODE ─────────────────────────────────────────────────────────
-      // The character's approved image is sent as the img2video reference frame.
-      // The model reads appearance from the image — the prompt only needs to
-      // describe WHAT THEY DO and WHERE, keeping the total well under 300 chars.
-      const charName = charWithImage!.name;
-      const actionText = (scene.description || '').trim().slice(0, 180);
-      const camDir = scene.cameraDirection?.trim() || '';
-      const actionWithCam = camDir ? `${actionText}. ${camDir}` : actionText;
-      basePrompt = `${charName} ${actionWithCam}${worldContext}${styleClause}${feedbackSuffix}`;
-
     } else {
       // ── TEXT MODE ──────────────────────────────────────────────────────────
-      // Full prompt: character description + scene action + location/background.
-      // LTX/Wan accept long prompts — no truncation. Kling without characters: keep compact.
+      // For Kling WITH characters: use English promptEn (better motion/action descriptions)
+      // falling back to scene.prompt if not yet translated.
+      // For Kling WITHOUT characters: use scene.prompt as-is (compact).
+      // LTX/Wan: always use English promptEn.
+      const needsEnglish = usesEnPrompt || characters.length > 0;
       let corePrompt: string;
-      if (usesEnPrompt) {
+      if (needsEnglish) {
         // LTX/Wan: use English promptEn (full scene + character + background description).
         // Auto-translate from Hindi if not yet cached.
         const promptEn = (scene as Record<string, unknown>).promptEn as string | undefined;
@@ -353,9 +334,12 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
       const camDir = scene.cameraDirection?.trim();
       const coreHasCamera = corePrompt.toLowerCase().includes('camera') || corePrompt.toLowerCase().includes('shot');
       const withCamera = camDir && !coreHasCamera ? `${corePrompt} Camera: ${camDir}.` : corePrompt;
-      // Kling no-character scenes: 300-char cap. LTX/Wan: no cap (full description).
-      const coreForBudget = (!usesEnPrompt && withCamera.length > 300)
-        ? withCamera.slice(0, 300) + '...'
+      // Kling without characters: 300-char cap on scene core.
+      // Kling with characters: characterGuide takes the main budget, allow 250 chars for scene core.
+      // LTX/Wan: no cap.
+      const klingCoreCap = characters.length > 0 ? 250 : 300;
+      const coreForBudget = (!needsEnglish && withCamera.length > klingCoreCap)
+        ? withCamera.slice(0, klingCoreCap) + '...'
         : withCamera;
 
       const characterPrefix = characterGuide ? `${characterGuide.trim()} ` : '';
@@ -397,9 +381,11 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
     let falModelId = FAL_MODEL_IDS[model];
     let input: Record<string, unknown>;
 
-    // Reference image priority: character approved image > location reference image
-    // Character image gives exact appearance; location image gives exact background.
-    const refImage = characterRefImage ?? locationRefImage;
+    // Only use location reference image for i2v (gives proper scene background).
+    // Character portraits are NOT used as i2v starting frames — they produce
+    // near-static videos with no background. Character appearance is instead
+    // injected via the text prompt (characterGuide from referencePrompt).
+    const refImage = locationRefImage;
 
     if (refImage && model === 'kling-3.0') {
       falModelId = 'fal-ai/kling-video/v1.6/pro/image-to-video';
