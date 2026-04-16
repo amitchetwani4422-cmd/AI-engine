@@ -166,10 +166,18 @@ export async function POST(
     } else {
       // Fallback for scenes with empty characterIds: text-scan with alias matching.
       // Handles spelling variants (Vashishtha/Vasishtha) and Hindi names (वशिष्ठ/Vasishtha).
-      const allChannelChars = await prisma.character.findMany({
+      // If the video's channel has no characters, search all channels — handles the common
+      // case where Ramayana characters are seeded to one channel but videos are produced
+      // under a different channel.
+      let allChannelChars = await prisma.character.findMany({
         where: { channelId: video.channelId },
         select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true, approvedImages: true },
       });
+      if (allChannelChars.length === 0) {
+        allChannelChars = await prisma.character.findMany({
+          select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true, approvedImages: true },
+        });
+      }
 
       const sceneText = [
         scene.prompt, scene.promptEn, scene.visualGuidance,

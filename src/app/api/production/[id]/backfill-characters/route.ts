@@ -60,11 +60,20 @@ export async function POST(
     if (!video) return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     if (!video.script) return NextResponse.json({ error: 'No script found' }, { status: 404 });
 
-    // Build alias-expanded token → character id map for this channel
-    const channelCharacters = await prisma.character.findMany({
+    // Build alias-expanded token → character id map.
+    // If this channel has no characters of its own, fall back to all characters in DB
+    // (handles the common case where Ramayana characters are seeded to one channel
+    // but videos are produced under a different channel).
+    let channelCharacters = await prisma.character.findMany({
       where: { channelId: video.channelId },
       select: { id: true, name: true },
     });
+    const usedChannelId = channelCharacters.length > 0 ? video.channelId : 'ALL';
+    if (channelCharacters.length === 0) {
+      channelCharacters = await prisma.character.findMany({
+        select: { id: true, name: true },
+      });
+    }
 
     const charTokenLookup = new Map<string, string>();
     for (const c of channelCharacters) {
@@ -111,8 +120,9 @@ export async function POST(
     return NextResponse.json({
       message: `Backfilled ${results.length} scenes. ${totalLinked} now have characters linked.`,
       debug: {
-        channelId: video.channelId,
-        charactersFoundInChannel: channelCharacters.length,
+        videoChannelId: video.channelId,
+        searchedScope: usedChannelId,
+        charactersFound: channelCharacters.length,
         characterNames: channelCharacters.map((c) => c.name),
         tokenCount: charTokenLookup.size,
         sampleSceneText: sampleText,

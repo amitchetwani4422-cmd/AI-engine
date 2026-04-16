@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const { ideaId, channelId, formatVariant, aiModel } = parsed.data;
     const model = (aiModel ?? DEFAULT_SCRIPT_MODEL) as AIModel;
 
-    const [idea, channel, channelCharacters] = await Promise.all([
+    const [idea, channel, channelCharactersRaw] = await Promise.all([
       prisma.idea.findUnique({ where: { id: ideaId } }),
       prisma.channel.findUnique({
         where: { id: channelId },
@@ -76,6 +76,12 @@ export async function POST(request: NextRequest) {
       }),
       prisma.character.findMany({ where: { channelId }, select: { id: true, name: true } }),
     ]);
+
+    // If this channel has no characters, fall back to all characters in DB.
+    // Handles the case where Ramayana characters are seeded under a different channel.
+    const channelCharacters = channelCharactersRaw.length > 0
+      ? channelCharactersRaw
+      : await prisma.character.findMany({ select: { id: true, name: true } });
 
     // Build an alias-expanded token → id map so that Hindi-named DB characters
     // (e.g. "राम") are matched when the AI prompt uses the English form ("ram",
