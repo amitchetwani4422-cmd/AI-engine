@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +21,7 @@ interface LocationAsset {
   isVisualLocked?: boolean;
 }
 
-export default function LocationsPage() {
+function LocationsContent() {
   const [locations, setLocations] = useState<LocationAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -242,5 +242,13 @@ export default function LocationsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LocationsPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" /></div>}>
+      <LocationsContent />
+    </Suspense>
   );
 }
