@@ -116,35 +116,76 @@ export async function GET(
 
     const sceneCharacterIds = (scene as Record<string, unknown>).characterIds as string[] | undefined;
 
+    // Build full scene text for scanning
+    const sceneText = [
+      scene.prompt, (scene as Record<string, unknown>).promptEn as string | undefined,
+      scene.visualGuidance, scene.description,
+      (scene as Record<string, unknown>).narrationText as string | undefined,
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    // Detect ALL Ramayana character names mentioned in scene text (whether in DB or not)
+    const mentionedCanonicalNames: string[] = [];
+    for (const [canonical, aliases] of Object.entries(RAMAYANA_NAME_ALIASES)) {
+      const allTokens = [canonical, ...aliases];
+      if (allTokens.some((t) => sceneText.includes(t.toLowerCase()))) {
+        mentionedCanonicalNames.push(canonical);
+      }
+    }
+
+    // Fetch all characters (by IDs if available, else by channel + text-scan)
     let characters: Array<{ id: string; name: string; referencePrompt: string | null; clothingRules: string; approvedImages: string[] }> = [];
     let characterSource = 'none';
 
+    // Fetch all characters in DB (by sceneIds or by all channel chars)
+    const allDbChars = sceneCharacterIds?.length
+      ? await prisma.character.findMany({
+          where: { id: { in: sceneCharacterIds } },
+          select: { id: true, name: true, referencePrompt: true, clothingRules: true, approvedImages: true },
+        })
+      : await prisma.character.findMany({
+          select: { id: true, name: true, referencePrompt: true, clothingRules: true, approvedImages: true },
+        });
+
     if (sceneCharacterIds?.length) {
-      characters = await prisma.character.findMany({
-        where: { id: { in: sceneCharacterIds } },
-        select: { id: true, name: true, referencePrompt: true, clothingRules: true, approvedImages: true },
-      });
+      characters = allDbChars;
       characterSource = 'characterIds field';
     } else {
-      const allChannelChars = await prisma.character.findMany({
-        where: { channelId: video.channelId },
-        select: { id: true, name: true, referencePrompt: true, clothingRules: true, approvedImages: true },
-      });
-      const sceneText = [
-        scene.prompt, (scene as Record<string, unknown>).promptEn as string | undefined,
-        scene.visualGuidance, scene.description,
-        (scene as Record<string, unknown>).narrationText as string | undefined,
-      ].filter(Boolean).join(' ').toLowerCase();
-
-      const matched = allChannelChars.filter((c) => {
+      const matched = allDbChars.filter((c) => {
         const tokens = buildCharacterTokens(c.name);
         return tokens.some((t) => sceneText.includes(t));
       });
       characters = matched;
-      characterSource = matched.length ? 'text-scan fallback' : 'none (no match found)';
+      characterSource = matched.length ? 'text-scan' : 'none';
     }
 
-    // Determine mode: image-mode if any character has an approved image
+    // Build character previews: matched DB chars + mentioned-but-not-in-DB chars
+    const matchedIds = new Set(characters.map((c) => c.id));
+
+    // For mentioned names, find DB record (any channel)
+    const mentionedPreviews = mentionedCanonicalNames.map((canonical) => {
+      // Try to find in DB by canonical name or aliases
+      const dbChar = allDbChars.find((c) => {
+        const tokens = buildCharacterTokens(c.name);
+        return tokens.some((t) => t === canonical || t === canonical.toLowerCase());
+      }) ?? allDbChars.find((c) => c.name.toLowerCase() === canonical.toLowerCase());
+
+      if (dbChar) {
+        return {
+          id: dbChar.id,
+          name: dbChar.name,
+          imageUrl: dbChar.approvedImages?.[0] ?? null,
+          hasImage: (dbChar.approvedImages?.length ?? 0) > 0,
+          inDb: true,
+          isMatched: matchedIds.has(dbChar.id),
+        };
+      }
+      // Not in DB at all
+      const displayName = canonical.charAt(0).toUpperCase() + canonical.slice(1);
+      return { id: null as string | null, name: displayName, imageUrl: null, hasImage: false, inDb: false, isMatched: false };
+    });
+
+    // Final character list for prompt building = DB-matched characters
+    // Determine mode: image-mode if any matched DB character has an approved image
     const charWithImage = characters.find((c) => c.approvedImages?.length > 0);
     const characterRefImage = charWithImage?.approvedImages[0];
     const mode = characterRefImage ? 'image-mode' : 'text-mode';
@@ -238,16 +279,8 @@ export async function GET(
       locationRefImage = locAsset?.referenceImages?.[0] ?? null;
     }
 
-    // Characters with full image info for the preview UI
-    const characterPreviews = characters.map((c) => ({
-      id: c.id,
-      name: c.name,
-      imageUrl: c.approvedImages?.[0] ?? null,
-      hasImage: c.approvedImages?.length > 0,
-    }));
-
-    const readyToGenerate = characters.length === 0 || characterPreviews.some((c) => c.hasImage);
-    const missingImages = characterPreviews.filter((c) => !c.hasImage);
+    const readyToGenerate = mentionedPreviews.length === 0 || mentionedPreviews.some((c) => c.hasImage);
+    const missingImages = mentionedPreviews.filter((c) => !c.hasImage);
 
     return NextResponse.json({
       sceneId,
@@ -256,7 +289,7 @@ export async function GET(
       locationTag: locationTag ?? null,
       locationRefImage,
       characterSource,
-      characters: characterPreviews,
+      characters: mentionedPreviews,
       missingImages,
       prompt: finalPrompt,
       promptLength: finalPrompt.length,

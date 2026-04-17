@@ -173,7 +173,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const generatingRef = useRef<Set<string>>(new Set());
 
   // Preview-before-generate state
-  type CharacterPreview = { id: string; name: string; imageUrl: string | null; hasImage: boolean; };
+  type CharacterPreview = { id: string | null; name: string; imageUrl: string | null; hasImage: boolean; inDb: boolean; isMatched: boolean; };
   type GeneratePreview = {
     sceneId: string; sceneName: string; mode: string; readyToGenerate: boolean;
     locationTag: string | null; locationRefImage: string | null;
@@ -673,21 +673,29 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
             </div>
             {generatePreview.characters.length > 0 ? (
               <div className="flex flex-wrap gap-3">
-                {generatePreview.characters.map((c) => (
-                  <div key={c.id} className="flex flex-col items-center gap-1.5">
+                {generatePreview.characters.map((c, i) => (
+                  <div key={c.id ?? i} className="flex flex-col items-center gap-1.5 w-20">
                     {c.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.imageUrl} alt={c.name} className="w-20 h-20 rounded-lg object-cover border border-zinc-700" />
+                      <img src={c.imageUrl} alt={c.name} className="w-20 h-20 rounded-lg object-cover border border-green-700/50" />
                     ) : (
-                      <div className="w-20 h-20 rounded-lg bg-zinc-800 border border-dashed border-zinc-600 flex flex-col items-center justify-center gap-1">
-                        <span className="text-zinc-500 text-2xl">👤</span>
-                        <span className="text-zinc-600 text-[10px]">No image</span>
+                      <div className={`w-20 h-20 rounded-lg flex flex-col items-center justify-center gap-1 border border-dashed ${c.inDb ? 'bg-zinc-800 border-amber-700/50' : 'bg-zinc-800/50 border-zinc-600'}`}>
+                        <span className="text-2xl">👤</span>
+                        <span className={`text-[10px] ${c.inDb ? 'text-amber-500' : 'text-zinc-600'}`}>
+                          {c.inDb ? 'No image' : 'Not created'}
+                        </span>
                       </div>
                     )}
-                    <span className="text-xs text-zinc-300 font-medium">{c.name}</span>
-                    {!c.hasImage && (
-                      <a href={`/characters/${c.id}`} target="_blank" rel="noreferrer" className="text-[10px] text-amber-400 hover:text-amber-300 underline">
-                        Add image →
+                    <span className="text-xs text-zinc-300 font-medium text-center leading-tight">{c.name}</span>
+                    {c.inDb && c.id ? (
+                      <a href={`/characters/${c.id}`} target="_blank" rel="noreferrer"
+                        className="text-[10px] text-amber-400 hover:text-amber-300 underline text-center">
+                        {c.hasImage ? 'View →' : 'Add image →'}
+                      </a>
+                    ) : (
+                      <a href="/characters" target="_blank" rel="noreferrer"
+                        className="text-[10px] text-blue-400 hover:text-blue-300 underline text-center">
+                        Create →
                       </a>
                     )}
                   </div>
@@ -695,7 +703,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
               </div>
             ) : (
               <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2.5 text-xs text-zinc-500 italic">
-                No characters matched — appearance will be text-only in prompt
+                No Ramayana characters detected in scene text
               </div>
             )}
           </div>
