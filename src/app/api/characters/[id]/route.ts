@@ -19,6 +19,9 @@ const UpdateCharacterSchema = z.object({
   samplePoses: z.array(z.string()).optional(),
   seriesIds: z.array(z.string()).optional(),
   voiceId: z.string().nullable().optional(),
+  action: z.enum(["approve-image", "unapprove-image", "delete-image"]).optional(),
+  imageUrl: z.string().optional(),
+  imageFrom: z.enum(["approved", "pending"]).optional(),
 });
 
 export async function GET(
@@ -56,11 +59,41 @@ export async function PATCH(
       return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
     }
 
+    const { action, imageUrl, imageFrom, ...fields } = parsed.data;
+
+    let updateData: Record<string, unknown> = { ...fields };
+
+    if (action && imageUrl) {
+      const current = await prisma.character.findUnique({ where: { id }, select: { approvedImages: true, pendingImages: true } });
+      if (!current) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+
+      if (action === 'approve-image') {
+        const from = imageFrom === 'pending' ? current.pendingImages.filter((u: string) => u !== imageUrl) : current.pendingImages;
+        updateData = {
+          ...updateData,
+          approvedImages: [...current.approvedImages, imageUrl],
+          pendingImages: from,
+        };
+      } else if (action === 'unapprove-image') {
+        updateData = {
+          ...updateData,
+          approvedImages: current.approvedImages.filter((u: string) => u !== imageUrl),
+          pendingImages: [...current.pendingImages, imageUrl],
+        };
+      } else if (action === 'delete-image') {
+        updateData = {
+          ...updateData,
+          approvedImages: current.approvedImages.filter((u: string) => u !== imageUrl),
+          pendingImages: current.pendingImages.filter((u: string) => u !== imageUrl),
+        };
+      }
+    }
+
     const character = await prisma.character.update({
       where: { id },
-      data: parsed.data,
+      data: updateData,
       include: {
-        voice: { select: { id: true, name: true } },
+        voice: { select: { id: true, name: true, elevenlabsVoiceId: true } },
         approvedPrompts: { orderBy: { createdAt: 'desc' } },
       },
     });
