@@ -178,6 +178,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     sceneId: string; sceneName: string; mode: string; readyToGenerate: boolean;
     locationTag: string | null; locationRefImage: string | null;
     characters: CharacterPreview[]; missingImages: CharacterPreview[];
+    characterSource: string;
     prompt: string; promptLength: number;
     feedback?: string; promptOverride?: string;
   };
@@ -663,65 +664,76 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           </p>
         </div>
 
-        <div className="p-5 space-y-5">
-          {/* Characters */}
-          {generatePreview.characters.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-zinc-400 mb-2">Characters in this scene</p>
+        <div className="p-5 space-y-4">
+          {/* Characters — always shown */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-zinc-400">Characters detected</p>
+              <span className="text-xs text-zinc-600">{generatePreview.characterSource}</span>
+            </div>
+            {generatePreview.characters.length > 0 ? (
               <div className="flex flex-wrap gap-3">
                 {generatePreview.characters.map((c) => (
                   <div key={c.id} className="flex flex-col items-center gap-1.5">
                     {c.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.imageUrl} alt={c.name} className="w-20 h-20 rounded-lg object-cover border border-zinc-700" />
                     ) : (
                       <div className="w-20 h-20 rounded-lg bg-zinc-800 border border-dashed border-zinc-600 flex flex-col items-center justify-center gap-1">
                         <span className="text-zinc-500 text-2xl">👤</span>
-                        <span className="text-zinc-600 text-xs">No image</span>
+                        <span className="text-zinc-600 text-[10px]">No image</span>
                       </div>
                     )}
                     <span className="text-xs text-zinc-300 font-medium">{c.name}</span>
                     {!c.hasImage && (
-                      <a href={`/characters/${c.id}`} target="_blank" rel="noreferrer" className="text-xs text-amber-400 hover:text-amber-300 underline">
+                      <a href={`/characters/${c.id}`} target="_blank" rel="noreferrer" className="text-[10px] text-amber-400 hover:text-amber-300 underline">
                         Add image →
                       </a>
                     )}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2.5 text-xs text-zinc-500 italic">
+                No characters matched — appearance will be text-only in prompt
+              </div>
+            )}
+          </div>
 
-          {/* Location */}
-          {generatePreview.locationTag && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-zinc-400">Location: {generatePreview.locationTag}</p>
+          {/* Location — always shown */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-zinc-400">
+                Location: <span className="text-zinc-300">{generatePreview.locationTag ?? 'not tagged'}</span>
+              </p>
+              {generatePreview.locationTag && (
                 <a
                   href={`/locations?highlight=${encodeURIComponent(generatePreview.locationTag)}`}
-                  target="_blank"
-                  rel="noreferrer"
+                  target="_blank" rel="noreferrer"
                   className="text-xs text-blue-400 hover:text-blue-300 underline"
                 >
                   {generatePreview.locationRefImage ? 'Manage →' : 'Add image →'}
                 </a>
-              </div>
-              {generatePreview.locationRefImage ? (
+              )}
+            </div>
+            {generatePreview.locationTag ? (
+              generatePreview.locationRefImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={generatePreview.locationRefImage} alt={generatePreview.locationTag} className="h-24 rounded-lg object-cover border border-zinc-700 w-full" />
               ) : (
                 <div className="bg-zinc-800/60 border border-dashed border-zinc-600 rounded-lg p-3 flex items-center justify-between">
                   <p className="text-xs text-zinc-500 italic">No reference image — using text description</p>
-                  <a
-                    href={`/locations?highlight=${encodeURIComponent(generatePreview.locationTag)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-amber-400 hover:text-amber-300 underline ml-3 shrink-0"
-                  >
+                  <a href={`/locations?highlight=${encodeURIComponent(generatePreview.locationTag)}`} target="_blank" rel="noreferrer" className="text-xs text-amber-400 hover:text-amber-300 underline ml-3 shrink-0">
                     Add image →
                   </a>
                 </div>
-              )}
-            </div>
-          )}
+              )
+            ) : (
+              <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2.5 text-xs text-zinc-500 italic">
+                Scene has no location tag — regenerate script to assign one
+              </div>
+            )}
+          </div>
 
           {/* Prompt */}
           <div>
