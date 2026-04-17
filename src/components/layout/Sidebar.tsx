@@ -32,11 +32,13 @@ import {
   Menu,
   X,
   Zap,
+  Lightbulb,
 } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", icon: Home, href: "/" },
   { label: "Channels", icon: Tv, href: "/channels" },
+  { label: "Ideas", icon: Lightbulb, href: "/ideas" },
   { label: "Arc Generator", icon: Zap, href: "/arcs" },
   { label: "Research", icon: Search, href: "/research" },
   { label: "Planner", icon: Calendar, href: "/planner" },
