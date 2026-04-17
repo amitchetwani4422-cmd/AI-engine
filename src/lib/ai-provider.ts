@@ -45,7 +45,7 @@ export const AI_MODEL_OPTIONS: AIModelOption[] = [
   },
 ];
 
-export const DEFAULT_IDEA_MODEL: AIModel = "gpt-4o-mini";
+export const DEFAULT_IDEA_MODEL: AIModel = "gpt-4o";
 export const DEFAULT_SCRIPT_MODEL: AIModel = "gpt-4o";
 
 // ─────────────────────────────────────────────────────────────────────────────
