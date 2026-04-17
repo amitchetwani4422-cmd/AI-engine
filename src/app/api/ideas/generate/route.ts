@@ -104,7 +104,8 @@ Return ONLY a JSON array like:
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
-    console.error("[ideas/generate POST]", error);
-    return NextResponse.json({ error: "Failed to generate ideas" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[ideas/generate POST]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -45,8 +45,8 @@ export const AI_MODEL_OPTIONS: AIModelOption[] = [
   },
 ];
 
-export const DEFAULT_IDEA_MODEL: AIModel = "claude-haiku-4-5";
-export const DEFAULT_SCRIPT_MODEL: AIModel = "claude-sonnet-4-6";
+export const DEFAULT_IDEA_MODEL: AIModel = "gpt-4o-mini";
+export const DEFAULT_SCRIPT_MODEL: AIModel = "gpt-4o";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Retry helper — handles 529 Overloaded + 529-like transient errors
