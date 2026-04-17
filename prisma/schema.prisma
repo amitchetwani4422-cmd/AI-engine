@@ -119,6 +119,9 @@ model Scene {
   cameraDirection  String
   visualGuidance   String
   prompt           String?  @db.Text
+  promptEn         String?  @db.Text
+  locationTag      String?
+  narrationText    String?  @db.Text
   characterIds     String[]
   status           String   @default("Pending")
   createdAt        DateTime @default(now())
@@ -143,6 +146,7 @@ model Character {
   colorPalette        String[]
   worldRole           String
   voiceId             String?
+  referencePrompt     String?  @db.Text
   restrictedChanges   String[]
   samplePoses         String[]
   preferredModel      String
