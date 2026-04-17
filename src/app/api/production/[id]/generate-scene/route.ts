@@ -290,13 +290,11 @@ export async function POST(
     } else if (characterRefImage) {
       // ── IMAGE MODE ─────────────────────────────────────────────────────────
       // The character's approved image is the reference frame — appearance is fixed.
-      // The prompt only needs to describe MOTION and WHERE.
-      // Key for Kling img2video: start with action verbs, include body movement,
-      // fabric/hair motion, and a specific camera move to ensure the clip animates.
+      // The prompt describes MOTION and WHERE using the full scene visual prompt.
       const charName = charWithImage!.name;
-      const actionText = (scene.description || '').trim().slice(0, 150);
+      const rawScene = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
+      const actionText = sanitisePrompt(rawScene).slice(0, 220);
       const camDir = scene.cameraDirection?.trim() || 'smooth cinematic push-in';
-      // Append motion cues so Kling knows to animate and not output a still frame
       const motionCues = 'robes and hair gently flowing, subtle divine aura pulsing, natural breathing movement';
       basePrompt = `${charName} ${actionText}. ${camDir}. ${motionCues}.${worldContext}${styleClause}${feedbackSuffix}`;
 

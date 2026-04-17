@@ -216,11 +216,13 @@ export async function GET(
     let promptParts: Record<string, string>;
 
     if (characterRefImage) {
-      // Image mode — short action prompt only
+      // Image mode — use full scene visual prompt (not just the short title/description)
       const charName = charWithImage!.name;
-      const actionText = (scene.description || '').trim().slice(0, 180);
+      const rawScene = scene.prompt?.trim() || scene.visualGuidance?.trim() || scene.description?.trim() || '';
+      const actionText = sanitisePrompt(rawScene).slice(0, 220);
       const camDir = scene.cameraDirection?.trim() || '';
-      const actionWithCam = camDir ? `${actionText}. ${camDir}` : actionText;
+      const motionCues = 'robes and hair gently flowing, subtle divine aura pulsing, natural breathing movement';
+      const actionWithCam = camDir ? `${actionText}. ${camDir}. ${motionCues}` : `${actionText}. ${motionCues}`;
       basePrompt = `${charName} ${actionWithCam}${worldContext}`;
       promptParts = {
         mode: 'IMAGE MODE — appearance from reference image',
