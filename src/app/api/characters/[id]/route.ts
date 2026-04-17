@@ -21,7 +21,6 @@ const UpdateCharacterSchema = z.object({
   voiceId: z.string().nullable().optional(),
   action: z.enum(["approve-image", "unapprove-image", "delete-image"]).optional(),
   imageUrl: z.string().optional(),
-  imageFrom: z.enum(["approved", "pending"]).optional(),
 });
 
 export async function GET(
@@ -64,28 +63,13 @@ export async function PATCH(
     let updateData: Record<string, unknown> = { ...fields };
 
     if (action && imageUrl) {
-      const current = await prisma.character.findUnique({ where: { id }, select: { approvedImages: true, pendingImages: true } });
+      const current = await prisma.character.findUnique({ where: { id }, select: { approvedImages: true } });
       if (!current) return NextResponse.json({ error: 'Character not found' }, { status: 404 });
 
       if (action === 'approve-image') {
-        const from = imageFrom === 'pending' ? current.pendingImages.filter((u: string) => u !== imageUrl) : current.pendingImages;
-        updateData = {
-          ...updateData,
-          approvedImages: [...current.approvedImages, imageUrl],
-          pendingImages: from,
-        };
-      } else if (action === 'unapprove-image') {
-        updateData = {
-          ...updateData,
-          approvedImages: current.approvedImages.filter((u: string) => u !== imageUrl),
-          pendingImages: [...current.pendingImages, imageUrl],
-        };
-      } else if (action === 'delete-image') {
-        updateData = {
-          ...updateData,
-          approvedImages: current.approvedImages.filter((u: string) => u !== imageUrl),
-          pendingImages: current.pendingImages.filter((u: string) => u !== imageUrl),
-        };
+        updateData = { ...updateData, approvedImages: [...current.approvedImages, imageUrl] };
+      } else if (action === 'unapprove-image' || action === 'delete-image') {
+        updateData = { ...updateData, approvedImages: current.approvedImages.filter((u: string) => u !== imageUrl) };
       }
     }
 
