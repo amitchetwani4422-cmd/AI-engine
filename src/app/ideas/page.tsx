@@ -84,6 +84,7 @@ export default function IdeasPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [generateCount, setGenerateCount] = useState(10);
   const [generateType, setGenerateType] = useState("");
+  const [customFocus, setCustomFocus] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export default function IdeasPage() {
           channelId: selectedChannel,
           count: generateCount,
           type: generateType || undefined,
+          customFocus: customFocus.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -192,7 +194,7 @@ export default function IdeasPage() {
               ))}
             </select>
 
-            {/* Count + type pickers */}
+            {/* Count + type + focus pickers */}
             {selectedChannel !== "all" && (
               <>
                 <select
@@ -213,6 +215,14 @@ export default function IdeasPage() {
                   <option value="hook">Hook / Trend</option>
                   <option value="evergreen">Evergreen</option>
                 </select>
+                <input
+                  type="text"
+                  placeholder="Focus: e.g. Indian street food, ASMR cooking…"
+                  value={customFocus}
+                  onChange={(e) => setCustomFocus(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && generateIdeas()}
+                  className="bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 w-64"
+                />
               </>
             )}
 
@@ -239,12 +249,15 @@ export default function IdeasPage() {
         {/* Channel context banner */}
         {channel && (
           <div className="mb-5 px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-800 flex flex-wrap gap-4 text-xs text-zinc-400">
-            <span><span className="text-zinc-600">Niche</span> {channel.niche}</span>
-            <span><span className="text-zinc-600">Platform</span> {channel.primaryPlatform}</span>
-            <span><span className="text-zinc-600">Audience</span> {channel.targetAudience}</span>
-            <span><span className="text-zinc-600">Language</span> {channel.language}</span>
+            <span><span className="text-zinc-600">Niche </span>{channel.niche}</span>
+            <span><span className="text-zinc-600">Platform </span>{channel.primaryPlatform}</span>
+            <span><span className="text-zinc-600">Audience </span>{channel.targetAudience}</span>
+            <span><span className="text-zinc-600">Language </span>{channel.language}</span>
             {channel.contentPillars.length > 0 && (
-              <span><span className="text-zinc-600">Pillars</span> {channel.contentPillars.join(", ")}</span>
+              <span><span className="text-zinc-600">Pillars </span>{channel.contentPillars.join(", ")}</span>
+            )}
+            {customFocus.trim() && (
+              <span className="text-amber-400"><span className="text-zinc-600">Focus </span>{customFocus.trim()}</span>
             )}
           </div>
         )}

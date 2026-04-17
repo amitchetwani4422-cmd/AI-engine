@@ -9,6 +9,7 @@ const schema = z.object({
   channelId: z.string().min(1),
   count: z.number().int().min(1).max(20).default(5),
   type: z.string().optional(),
+  customFocus: z.string().optional(),
   aiModel: z.string().optional(),
 });
 
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 400 });
     }
-    const { channelId, count, type, aiModel } = parsed.data;
+    const { channelId, count, type, customFocus, aiModel } = parsed.data;
     const model = (aiModel ?? DEFAULT_IDEA_MODEL) as AIModel;
 
     const channel = await prisma.channel.findUnique({
@@ -45,7 +46,8 @@ Target Audience: ${channel.targetAudience}
 Platform: ${channel.primaryPlatform}
 Language: ${channel.language}
 Content Pillars: ${channel.contentPillars.join(", ")}
-${type ? `Focus Type: ${type}` : ""}
+${type ? `Content Type: ${type}` : ""}
+${customFocus ? `Specific Focus / Sub-niche: ${customFocus} — ALL ideas must be tightly focused on this angle` : ""}
 Avoid duplicating: ${recentTitles || "none yet"}
 
 Return ONLY a JSON array like:
