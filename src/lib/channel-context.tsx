@@ -48,10 +48,13 @@ export function ChannelProvider({ children }: { children: React.ReactNode }) {
       const data = await fetchChannels();
 
       if (data.length > 0) {
-        setChannels(data);
+        // Deduplicate by id in case DB has duplicate rows
+        const seen = new Set<string>();
+        const unique = data.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
+        setChannels(unique);
         const stored = localStorage.getItem(STORAGE_KEY);
-        const valid = stored && data.find((c) => c.id === stored);
-        setActiveChannelIdState(valid ? stored! : data[0].id);
+        const valid = stored && unique.find((c) => c.id === stored);
+        setActiveChannelIdState(valid ? stored! : unique[0].id);
         return;
       }
 

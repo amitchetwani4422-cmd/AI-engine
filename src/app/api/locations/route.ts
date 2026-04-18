@@ -2,37 +2,44 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET() {
-  const locations = await prisma.locationAsset.findMany({ orderBy: { name: "asc" } });
+export async function GET(request: NextRequest) {
+  const channelId = request.nextUrl.searchParams.get("channelId");
+  const locations = await prisma.locationAsset.findMany({
+    where: channelId ? { OR: [{ channelId }, { channelId: null }] } : {},
+    orderBy: { name: "asc" },
+  });
   return NextResponse.json(locations);
 }
 
-export async function PATCH(request: NextRequest) {
-  const { id, referenceImages } = await request.json();
-  if (!id || !Array.isArray(referenceImages)) {
-    return NextResponse.json({ error: "id and referenceImages required" }, { status: 400 });
-  }
-  const updated = await prisma.locationAsset.update({
-    where: { id },
-    data: { referenceImages },
-  });
-  return NextResponse.json(updated);
-}
-
-// POST: upsert a LocationAsset reference image by location name.
-// If the LocationAsset already exists, prepends the image to referenceImages.
-// If it doesn't exist yet, creates a minimal record so future scenes can use it.
 export async function POST(request: NextRequest) {
   try {
-    const { locationName, imageUrl } = await request.json() as { locationName?: string; imageUrl?: string };
+    const body = await request.json() as Record<string, unknown>;
+
+    // Full create form
+    if (body.name && body.description !== undefined && !body.locationName) {
+      const created = await prisma.locationAsset.create({
+        data: {
+          channelId: (body.channelId as string | null) ?? null,
+          name: body.name as string,
+          nameHindi: (body.nameHindi as string | undefined) || (body.name as string),
+          description: body.description as string,
+          kandas: Array.isArray(body.kandas) ? (body.kandas as string[]) : [],
+          referenceImages: [],
+          visualKeywords: (body.visualKeywords as string | undefined) || "",
+          lockedVisualDesc: (body.lockedVisualDesc as string | undefined) || null,
+          isVisualLocked: !!(body.lockedVisualDesc as string | undefined),
+        },
+      });
+      return NextResponse.json(created, { status: 201 });
+    }
+
+    // Legacy: upsert by locationName (called from production page background lock)
+    const { locationName, imageUrl } = body as { locationName?: string; imageUrl?: string };
     if (!locationName?.trim() || !imageUrl?.trim()) {
       return NextResponse.json({ error: "locationName and imageUrl are required" }, { status: 400 });
     }
-
     const existing = await prisma.locationAsset.findUnique({ where: { name: locationName } });
-
     if (existing) {
-      // Prepend new image (most recent first), keep max 5
       const updated = await prisma.locationAsset.update({
         where: { name: locationName },
         data: {
@@ -42,11 +49,10 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(updated);
     } else {
-      // Create a minimal LocationAsset so it can hold the reference image
       const created = await prisma.locationAsset.create({
         data: {
           name: locationName,
-          nameHindi: locationName, // will be refined later
+          nameHindi: locationName,
           description: `Background reference for ${locationName}`,
           kandas: [],
           referenceImages: [imageUrl],
@@ -56,6 +62,40 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(created);
     }
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json() as Record<string, unknown>;
+    const { id } = body;
+    if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+    const updateData: Record<string, unknown> = {};
+    if (Array.isArray(body.referenceImages)) updateData.referenceImages = body.referenceImages;
+    if (body.lockedVisualDesc !== undefined) {
+      updateData.lockedVisualDesc = body.lockedVisualDesc as string | null;
+      updateData.isVisualLocked = !!(body.lockedVisualDesc as string | undefined);
+    }
+    if (body.description !== undefined) updateData.description = body.description as string;
+    if (body.visualKeywords !== undefined) updateData.visualKeywords = body.visualKeywords as string;
+    if (body.channelId !== undefined) updateData.channelId = body.channelId as string | null;
+
+    const updated = await prisma.locationAsset.update({ where: { id: id as string }, data: updateData });
+    return NextResponse.json(updated);
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { id } = await request.json() as { id?: string };
+    if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+    await prisma.locationAsset.delete({ where: { id } });
+    return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

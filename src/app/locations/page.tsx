@@ -4,10 +4,27 @@ import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Upload, Trash2, Loader2, Image as ImageIcon, CheckCircle, RefreshCw, Lock } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MapPin, Upload, Trash2, Loader2, Image as ImageIcon, CheckCircle, RefreshCw, Lock, Plus, Save, Edit2 } from "lucide-react";
+import { useChannel } from "@/lib/channel-context";
+import { cn } from "@/lib/utils";
 
 interface LocationAsset {
   id: string;
@@ -15,36 +32,64 @@ interface LocationAsset {
   nameHindi: string;
   description: string;
   kandas: string[];
+  channelId?: string | null;
   referenceImages: string[];
   visualKeywords: string;
   lockedVisualDesc?: string;
   isVisualLocked?: boolean;
 }
 
+const universeColors: Record<string, string> = {
+  A: "bg-orange-500/20 text-orange-400",
+  B: "bg-blue-500/20 text-blue-400",
+  C: "bg-green-500/20 text-green-400",
+};
+
 function LocationsContent() {
+  const { channels, loading: channelsLoading } = useChannel();
   const [locations, setLocations] = useState<LocationAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState<Record<string, string>>({});
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<string | null>(null);
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+
+  // Inline locked visual desc editing
+  const [editingDesc, setEditingDesc] = useState<string | null>(null); // location id
+  const [descDraft, setDescDraft] = useState<string>("");
+  const [savingDesc, setSavingDesc] = useState<string | null>(null);
+
+  // Create dialog
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    channelId: "",
+    name: "",
+    nameHindi: "",
+    description: "",
+    visualKeywords: "",
+    lockedVisualDesc: "",
+    kandas: "",
+  });
+
   const searchParams = useSearchParams();
   const highlight = searchParams.get("highlight") ?? "";
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => { fetchLocations(); }, []);
+  useEffect(() => { fetchLocations(channelFilter); }, [channelFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll to highlighted location once data loads
   useEffect(() => {
     if (!loading && highlight && highlightRef.current) {
       highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [loading, highlight]);
 
-  async function fetchLocations() {
+  async function fetchLocations(filter: string) {
     setLoading(true);
     try {
-      const d = await fetch("/api/locations").then(r => r.json());
+      const url = filter === "all" ? "/api/locations" : `/api/locations?channelId=${filter}`;
+      const d = await fetch(url).then(r => r.json());
       setLocations(Array.isArray(d) ? d : []);
     } finally { setLoading(false); }
   }
@@ -56,9 +101,8 @@ function LocationsContent() {
       const res = await fetch("/api/locations/seed-ramayana", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        const withImages = (data.locations as { hasReferenceImage: boolean }[]).filter(l => l.hasReferenceImage).length;
-        setSeedResult(`✓ ${data.seeded} locations seeded with locked visual descriptions. ${withImages} have reference images.`);
-        await fetchLocations();
+        setSeedResult(`✓ ${data.seeded} Ramayana locations seeded with locked visual descriptions.`);
+        await fetchLocations(channelFilter);
       } else {
         setSeedResult(`Error: ${data.error ?? "Seed failed"}`);
       }
@@ -80,7 +124,7 @@ function LocationsContent() {
         body: JSON.stringify({ id: loc.id, referenceImages: [...loc.referenceImages, url] }),
       });
       setUrlInput(prev => ({ ...prev, [loc.id]: "" }));
-      fetchLocations();
+      fetchLocations(channelFilter);
     } finally { setUploading(null); }
   }
 
@@ -90,25 +134,71 @@ function LocationsContent() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: loc.id, referenceImages: loc.referenceImages.filter(u => u !== imageUrl) }),
     });
-    fetchLocations();
+    fetchLocations(channelFilter);
   }
+
+  async function saveLockedDesc(loc: LocationAsset) {
+    setSavingDesc(loc.id);
+    try {
+      await fetch("/api/locations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: loc.id, lockedVisualDesc: descDraft.trim() || null }),
+      });
+      setEditingDesc(null);
+      fetchLocations(channelFilter);
+    } finally { setSavingDesc(null); }
+  }
+
+  async function deleteLocation(id: string) {
+    if (!confirm("Delete this location?")) return;
+    await fetch("/api/locations", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    fetchLocations(channelFilter);
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const res = await fetch("/api/locations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...createForm,
+          channelId: createForm.channelId || null,
+          kandas: createForm.kandas.split(",").map(s => s.trim()).filter(Boolean),
+        }),
+      });
+      if (res.ok) {
+        setShowCreate(false);
+        setCreateForm({ channelId: "", name: "", nameHindi: "", description: "", visualKeywords: "", lockedVisualDesc: "", kandas: "" });
+        fetchLocations(channelFilter);
+      }
+    } finally { setCreating(false); }
+  }
+
+  const activeChannelName = (id: string) => channels.find((c) => c.id === id)?.name;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <Header
         title="Location References"
-        description="Upload environment reference images for consistent scene backgrounds"
+        description="Scene environment descriptions and reference images per channel"
         actions={
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={seedLocations}
-            disabled={seeding}
-          >
-            {seeding
-              ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Seeding...</>
-              : <><RefreshCw className="h-3 w-3 mr-1.5" /> Seed / Refresh Locations</>}
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={seedLocations} disabled={seeding}>
+              {seeding
+                ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Seeding...</>
+                : <><RefreshCw className="h-3 w-3 mr-1.5" /> Seed Ramayana Locations</>}
+            </Button>
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" /> New Location
+            </Button>
+          </div>
         }
       />
       <div className="flex-1 overflow-auto p-6">
@@ -117,6 +207,33 @@ function LocationsContent() {
             {seedResult}
           </div>
         )}
+
+        {/* Channel filter bar */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          <button
+            onClick={() => setChannelFilter("all")}
+            className={cn("px-3 py-1.5 rounded-md text-sm transition-colors", channelFilter === "all" ? "bg-blue-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200")}
+          >
+            All Channels
+          </button>
+          {channelsLoading ? (
+            <span className="px-3 py-1.5 text-sm text-zinc-600">Loading...</span>
+          ) : (
+            channels.map((ch) => (
+              <button
+                key={ch.id}
+                onClick={() => setChannelFilter(ch.id)}
+                className={cn("px-3 py-1.5 rounded-md text-sm transition-colors flex items-center gap-1.5", channelFilter === ch.id ? "bg-blue-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200")}
+              >
+                <span className={cn("text-[10px] px-1 py-0.5 rounded font-medium", universeColors[ch.universe] ?? "bg-zinc-700 text-zinc-400")}>
+                  U{ch.universe}
+                </span>
+                {ch.name}
+              </button>
+            ))
+          )}
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
@@ -124,123 +241,228 @@ function LocationsContent() {
         ) : locations.length === 0 ? (
           <div className="text-center py-16">
             <MapPin className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-            <p className="text-zinc-400 mb-2">No locations seeded yet</p>
-            <p className="text-zinc-600 text-sm mb-4 max-w-md mx-auto">
-              Click below to create all 12 Ramayana locations with locked visual descriptions.
-              Each location will have a detailed cinematic description injected into every scene prompt — ensuring consistent backgrounds without reference images.
+            <p className="text-zinc-400 mb-2">No locations yet</p>
+            <p className="text-zinc-600 text-sm mb-6 max-w-sm mx-auto">
+              Create a location and write its locked visual description — this text gets injected verbatim into every scene prompt for consistent backgrounds.
             </p>
-            <Button onClick={seedLocations} disabled={seeding}>
-              {seeding
-                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Seeding...</>
-                : <><RefreshCw className="h-4 w-4 mr-2" /> Create All 12 Ramayana Locations</>}
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4 mr-2" /> New Location
+              </Button>
+              <Button variant="outline" onClick={seedLocations} disabled={seeding}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Seed Ramayana Locations
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {locations.map((loc) => {
               const isHighlighted = highlight && loc.name.toLowerCase() === highlight.toLowerCase();
+              const chName = loc.channelId ? activeChannelName(loc.channelId) : null;
+              const isEditingThisDesc = editingDesc === loc.id;
               return (
-              <Card
-                key={loc.id}
-                ref={isHighlighted ? (el) => { highlightRef.current = el; } : undefined}
-                className={`bg-zinc-900 border transition-all ${isHighlighted ? "border-amber-500/60 ring-2 ring-amber-500/30" : "border-zinc-800"}`}
-              >
-                <CardContent className="p-4 space-y-3">
-                  {/* Header */}
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-orange-400" />
-                        <p className="font-medium text-zinc-100">{loc.name}</p>
-                        {loc.referenceImages.length > 0 && (
-                          <CheckCircle className="h-3.5 w-3.5 text-green-400" />
-                        )}
-                      </div>
-                      <p className="text-sm text-orange-300/70 mt-0.5">{loc.nameHindi}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-1 justify-end">
-                      {loc.kandas.map(k => (
-                        <Badge key={k} className="text-[10px] bg-zinc-800 text-zinc-400">{k}</Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-xs text-zinc-500">{loc.description}</p>
-
-                  {/* Visual keywords */}
-                  <p className="text-xs text-zinc-600 font-mono">{loc.visualKeywords}</p>
-
-                  {/* Locked visual description */}
-                  {loc.lockedVisualDesc && (
-                    <div className="bg-amber-950/20 border border-amber-700/30 rounded-lg p-2.5">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Lock className="h-3 w-3 text-amber-400" />
-                        <span className="text-xs font-medium text-amber-400">Locked Visual Description</span>
-                        {loc.isVisualLocked && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 ml-auto">Active</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-amber-200/70 leading-relaxed italic">"{loc.lockedVisualDesc}"</p>
-                    </div>
-                  )}
-
-                  {/* Reference images */}
-                  {loc.referenceImages.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {loc.referenceImages.map((url, i) => (
-                        <div key={i} className="relative group">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={url}
-                            alt={`${loc.name} reference ${i + 1}`}
-                            className="w-20 h-14 object-cover rounded border border-zinc-700"
-                          />
-                          <button
-                            onClick={() => removeImage(loc, url)}
-                            className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white"
-                          >
-                            <Trash2 className="h-2.5 w-2.5" />
-                          </button>
+                <Card
+                  key={loc.id}
+                  ref={isHighlighted ? (el) => { highlightRef.current = el; } : undefined}
+                  className={`bg-zinc-900 border transition-all ${isHighlighted ? "border-amber-500/60 ring-2 ring-amber-500/30" : "border-zinc-800"}`}
+                >
+                  <CardContent className="p-4 space-y-3">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <MapPin className="h-4 w-4 text-orange-400 shrink-0" />
+                          <p className="font-medium text-zinc-100">{loc.name}</p>
+                          {loc.referenceImages.length > 0 && <CheckCircle className="h-3.5 w-3.5 text-green-400" />}
+                          {chName && channelFilter === "all" && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 border border-zinc-700">{chName}</span>
+                          )}
                         </div>
-                      ))}
+                        {loc.nameHindi && loc.nameHindi !== loc.name && (
+                          <p className="text-sm text-orange-300/70 mt-0.5 ml-6">{loc.nameHindi}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        {loc.kandas.length > 0 && loc.kandas.slice(0, 2).map(k => (
+                          <span key={k} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500">{k}</span>
+                        ))}
+                        <button onClick={() => deleteLocation(loc.id)} className="ml-1 text-zinc-600 hover:text-red-400 transition-colors">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Add image URL */}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Paste image URL (Cloudinary, Midjourney, etc.)"
-                      value={urlInput[loc.id] ?? ""}
-                      onChange={e => setUrlInput(prev => ({ ...prev, [loc.id]: e.target.value }))}
-                      onKeyDown={e => e.key === "Enter" && addImageUrl(loc)}
-                      className="text-xs h-8"
-                    />
-                    <Button
-                      size="sm"
-                      className="h-8 px-3 shrink-0"
-                      disabled={uploading === loc.id || !urlInput[loc.id]?.trim()}
-                      onClick={() => addImageUrl(loc)}
-                    >
-                      {uploading === loc.id
-                        ? <Loader2 className="h-3 w-3 animate-spin" />
-                        : <><Upload className="h-3 w-3 mr-1" /> Add</>}
-                    </Button>
-                  </div>
+                    {loc.description && <p className="text-xs text-zinc-500">{loc.description}</p>}
+                    {loc.visualKeywords && <p className="text-xs text-zinc-600 font-mono">{loc.visualKeywords}</p>}
 
-                  {loc.referenceImages.length === 0 && (
-                    <div className="flex items-center gap-1.5 text-xs text-zinc-600">
-                      <ImageIcon className="h-3 w-3" />
-                      No reference image yet — scenes will use text-to-video
+                    {/* Locked visual description — inline editable */}
+                    <div className="bg-amber-950/20 border border-amber-700/30 rounded-lg p-2.5">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Lock className="h-3 w-3 text-amber-400" />
+                          <span className="text-xs font-medium text-amber-400">Scene Prompt / Locked Visual Description</span>
+                          {loc.isVisualLocked && !isEditingThisDesc && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">Active</span>
+                          )}
+                        </div>
+                        {!isEditingThisDesc ? (
+                          <button
+                            onClick={() => { setEditingDesc(loc.id); setDescDraft(loc.lockedVisualDesc ?? ""); }}
+                            className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors"
+                          >
+                            <Edit2 className="h-3 w-3" /> Edit
+                          </button>
+                        ) : (
+                          <div className="flex gap-1.5">
+                            <button onClick={() => setEditingDesc(null)} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">Cancel</button>
+                            <button
+                              onClick={() => saveLockedDesc(loc)}
+                              disabled={savingDesc === loc.id}
+                              className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1 transition-colors disabled:opacity-50"
+                            >
+                              {savingDesc === loc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Save
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {isEditingThisDesc ? (
+                        <Textarea
+                          value={descDraft}
+                          onChange={e => setDescDraft(e.target.value)}
+                          rows={5}
+                          className="text-xs bg-zinc-900 border-amber-700/40 text-amber-100/80"
+                          placeholder="Write the scene environment description that will be injected into every FAL prompt for this location…"
+                          autoFocus
+                        />
+                      ) : loc.lockedVisualDesc ? (
+                        <p className="text-xs text-amber-200/70 leading-relaxed italic">"{loc.lockedVisualDesc}"</p>
+                      ) : (
+                        <p className="text-xs text-zinc-600 italic">No description yet — click Edit to add one.</p>
+                      )}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+
+                    {/* Reference images */}
+                    {loc.referenceImages.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {loc.referenceImages.map((url, i) => (
+                          <div key={i} className="relative group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={url} alt={`${loc.name} ref ${i + 1}`} className="w-20 h-14 object-cover rounded border border-zinc-700" />
+                            <button
+                              onClick={() => removeImage(loc, url)}
+                              className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white"
+                            >
+                              <Trash2 className="h-2.5 w-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add image URL */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Paste image URL to use as background reference"
+                        value={urlInput[loc.id] ?? ""}
+                        onChange={e => setUrlInput(prev => ({ ...prev, [loc.id]: e.target.value }))}
+                        onKeyDown={e => e.key === "Enter" && addImageUrl(loc)}
+                        className="text-xs h-8"
+                      />
+                      <Button
+                        size="sm" className="h-8 px-3 shrink-0"
+                        disabled={uploading === loc.id || !urlInput[loc.id]?.trim()}
+                        onClick={() => addImageUrl(loc)}
+                      >
+                        {uploading === loc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Upload className="h-3 w-3 mr-1" /> Add</>}
+                      </Button>
+                    </div>
+
+                    {loc.referenceImages.length === 0 && (
+                      <div className="flex items-center gap-1.5 text-xs text-zinc-600">
+                        <ImageIcon className="h-3 w-3" />
+                        No reference image — will use text description only
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Create Location Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New Location</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Channel</Label>
+              <Select value={createForm.channelId} onValueChange={(v) => setCreateForm({ ...createForm, channelId: v === "global" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Global (all channels)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="global">Global (all channels)</SelectItem>
+                  {channels.map((ch) => (
+                    <SelectItem key={ch.id} value={ch.id}>
+                      <span className="flex items-center gap-2">
+                        <span className={cn("text-[10px] px-1 rounded", universeColors[ch.universe] ?? "bg-zinc-700 text-zinc-400")}>U{ch.universe}</span>
+                        {ch.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Name *</Label>
+                <Input required value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} placeholder="e.g. Ayodhya, Kitchen Studio" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Local name / Hindi name</Label>
+                <Input value={createForm.nameHindi} onChange={e => setCreateForm({ ...createForm, nameHindi: e.target.value })} placeholder="e.g. अयोध्या" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Input value={createForm.description} onChange={e => setCreateForm({ ...createForm, description: e.target.value })} placeholder="Brief description of this location" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Scene Prompt / Locked Visual Description</Label>
+              <Textarea
+                value={createForm.lockedVisualDesc}
+                onChange={e => setCreateForm({ ...createForm, lockedVisualDesc: e.target.value })}
+                rows={4}
+                placeholder="The exact environment description injected into every FAL video prompt for this location. Be detailed — lighting, architecture, atmosphere, colors…"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Visual Keywords</Label>
+                <Input value={createForm.visualKeywords} onChange={e => setCreateForm({ ...createForm, visualKeywords: e.target.value })} placeholder="e.g. kitchen, warm light, tiles" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tags / Arcs (comma-separated)</Label>
+                <Input value={createForm.kandas} onChange={e => setCreateForm({ ...createForm, kandas: e.target.value })} placeholder="e.g. Series 1, Cooking Arc" />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button type="submit" disabled={creating || !createForm.name}>
+                {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Create Location
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

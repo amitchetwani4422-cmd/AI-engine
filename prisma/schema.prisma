@@ -54,10 +54,11 @@ model Channel {
 // ─────────────────────────────────────────────────────────────────────────────
 model LocationAsset {
   id               String   @id @default(cuid())
-  name             String   @unique  // "Ayodhya", "Lanka", "Dandaka Forest" etc.
-  nameHindi        String            // "अयोध्या", "लंका"
+  channelId        String?           // null = global / shared across channels
+  name             String   @unique  // "Ayodhya", "Kitchen Studio", etc.
+  nameHindi        String            // local name or same as name
   description      String   @db.Text
-  kandas           String[]          // which kandas / arcs this location appears in
+  kandas           String[]          // story arcs / tags this location appears in
   referenceImages  String[]          // uploaded reference image URLs
   visualKeywords   String            // English keywords for prompts
   lockedVisualDesc String?  @db.Text // exact text injected verbatim into every scene prompt
