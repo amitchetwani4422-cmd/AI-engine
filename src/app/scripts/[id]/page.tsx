@@ -17,7 +17,41 @@ import {
   List,
   DollarSign,
   Video,
+  Mic,
+  Copy,
+  Download,
+  RefreshCw,
 } from "lucide-react";
+
+interface VoiceScriptLine {
+  lineNumber: string;
+  timestamp: string;
+  sceneName: string;
+  voiceDirection: string;
+  scriptText: string;
+  elevenLabsSettings: {
+    stability: number;
+    similarityBoost: number;
+    style: number;
+    speakerBoost: boolean;
+  };
+}
+
+interface VoiceScript {
+  episodeTitle: string;
+  language: string;
+  voiceDescription: string;
+  platform: string;
+  totalDurationMins: string;
+  defaultSettings: {
+    stability: number;
+    similarityBoost: number;
+    style: number;
+    speakerBoost: boolean;
+    model: string;
+  };
+  lines: VoiceScriptLine[];
+}
 
 interface Scene {
   id: string;
@@ -64,6 +98,9 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [startingProd, setStartingProd] = useState(false);
+  const [voiceScript, setVoiceScript] = useState<VoiceScript | null>(null);
+  const [generatingVS, setGeneratingVS] = useState(false);
+  const [vsCopied, setVsCopied] = useState(false);
 
   useEffect(() => {
     fetch(`/api/scripts/${id}`)
@@ -83,6 +120,48 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
     } finally {
       setApproving(false);
     }
+  }
+
+  async function generateVoiceScript() {
+    setGeneratingVS(true);
+    try {
+      const res = await fetch(`/api/scripts/${id}/voice-script`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const data = await res.json();
+      if (res.ok) setVoiceScript(data);
+    } finally {
+      setGeneratingVS(false);
+    }
+  }
+
+  function copyVoiceScript() {
+    if (!voiceScript) return;
+    const text = [
+      `DOCUMENT 2 — VOICE SCRIPT FOR 11LABS`,
+      `Episode: ${voiceScript.episodeTitle}`,
+      `Language: ${voiceScript.language} | Voice: ${voiceScript.voiceDescription} | Platform: ${voiceScript.platform} | Total Duration: ${voiceScript.totalDurationMins}`,
+      ``,
+      `11LABS SETTINGS`,
+      `Stability: ${voiceScript.defaultSettings.stability} | Similarity Boost: ${voiceScript.defaultSettings.similarityBoost} | Style: ${voiceScript.defaultSettings.style} | Speaker Boost: ${voiceScript.defaultSettings.speakerBoost ? "ON" : "OFF"} | Model: ${voiceScript.defaultSettings.model}`,
+      ``,
+      voiceScript.lines.map((l: VoiceScriptLine) =>
+        `[${l.lineNumber}] ${l.timestamp} | ${l.sceneName}\nVoice: ${l.voiceDirection}\nScript: ${l.scriptText}\n11Labs: Stability ${l.elevenLabsSettings.stability} | SimilarityBoost ${l.elevenLabsSettings.similarityBoost} | Style ${l.elevenLabsSettings.style}`
+      ).join("\n\n"),
+    ].join("\n");
+    navigator.clipboard.writeText(text);
+    setVsCopied(true);
+    setTimeout(() => setVsCopied(false), 2000);
+  }
+
+  function downloadVoiceScript() {
+    if (!voiceScript) return;
+    const data = JSON.stringify(voiceScript, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `voice-script-${id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function startProduction() {
@@ -193,6 +272,9 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
           <TabsList className="bg-zinc-900 border border-zinc-800">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="scenes">Scenes ({script.sceneBreakdown.length})</TabsTrigger>
+            <TabsTrigger value="voice-script" className="flex items-center gap-1.5">
+              <Mic className="h-3.5 w-3.5" /> Voice Script
+            </TabsTrigger>
             <TabsTrigger value="assets">Assets</TabsTrigger>
           </TabsList>
 
@@ -306,6 +388,98 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
                 </CardContent>
               </Card>
             ))}
+          </TabsContent>
+
+          {/* Voice Script Tab */}
+          <TabsContent value="voice-script" className="space-y-4">
+            {!voiceScript ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <Mic className="h-10 w-10 text-zinc-600" />
+                <p className="text-zinc-400 text-sm">Generate the ElevenLabs voice script for this episode</p>
+                <Button onClick={generateVoiceScript} disabled={generatingVS}>
+                  {generatingVS
+                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating...</>
+                    : <><Mic className="h-4 w-4 mr-2" /> Generate Voice Script</>}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Header card */}
+                <Card className="bg-zinc-900 border-zinc-800">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">Document 2 — Voice Script for 11Labs</p>
+                        <p className="font-semibold text-zinc-100">Episode: {voiceScript.episodeTitle}</p>
+                        <p className="text-sm text-zinc-400 mt-0.5">
+                          Language: {voiceScript.language} · Voice: {voiceScript.voiceDescription} · Platform: {voiceScript.platform} · Duration: {voiceScript.totalDurationMins}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button size="sm" variant="outline" onClick={generateVoiceScript} disabled={generatingVS}>
+                          {generatingVS ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={copyVoiceScript}>
+                          <Copy className="h-3.5 w-3.5 mr-1.5" />{vsCopied ? "Copied!" : "Copy"}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={downloadVoiceScript}>
+                          <Download className="h-3.5 w-3.5 mr-1.5" />JSON
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* 11Labs default settings bar */}
+                    <div className="bg-zinc-800/60 rounded-lg px-3 py-2 text-xs text-zinc-400 flex flex-wrap gap-x-4 gap-y-1">
+                      <span className="font-medium text-zinc-300">11Labs Settings</span>
+                      <span>Stability: <span className="text-zinc-200">{voiceScript.defaultSettings.stability}</span></span>
+                      <span>Similarity Boost: <span className="text-zinc-200">{voiceScript.defaultSettings.similarityBoost}</span></span>
+                      <span>Style: <span className="text-zinc-200">{voiceScript.defaultSettings.style}</span></span>
+                      <span>Speaker Boost: <span className="text-zinc-200">{voiceScript.defaultSettings.speakerBoost ? "ON" : "OFF"}</span></span>
+                      <span>Model: <span className="text-zinc-200">{voiceScript.defaultSettings.model}</span></span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Voice script table */}
+                <div className="overflow-x-auto rounded-lg border border-zinc-800">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-amber-900/40 text-amber-200 text-xs uppercase tracking-wide">
+                        <th className="px-3 py-2.5 text-left font-semibold w-12">Line</th>
+                        <th className="px-3 py-2.5 text-left font-semibold w-28">Timestamp</th>
+                        <th className="px-3 py-2.5 text-left font-semibold w-24">Scene</th>
+                        <th className="px-3 py-2.5 text-left font-semibold w-64">Voice Direction (11Labs)</th>
+                        <th className="px-3 py-2.5 text-left font-semibold">Script</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {voiceScript.lines.map((line: VoiceScriptLine, i: number) => (
+                        <tr
+                          key={i}
+                          className={`border-t border-zinc-800 align-top ${i % 2 === 0 ? "bg-zinc-900" : "bg-zinc-900/50"}`}
+                        >
+                          <td className="px-3 py-3 font-mono text-amber-400 font-semibold">{line.lineNumber}</td>
+                          <td className="px-3 py-3 text-zinc-500 text-xs whitespace-nowrap">{line.timestamp}</td>
+                          <td className="px-3 py-3 font-medium text-zinc-300 text-xs">{line.sceneName}</td>
+                          <td className="px-3 py-3 text-zinc-400 text-xs leading-relaxed">
+                            <p className="mb-2">{line.voiceDirection}</p>
+                            <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-zinc-600">
+                              <span>S:{line.elevenLabsSettings.stability}</span>
+                              <span>SB:{line.elevenLabsSettings.similarityBoost}</span>
+                              <span>St:{line.elevenLabsSettings.style}</span>
+                              <span className={line.elevenLabsSettings.speakerBoost ? "text-green-600" : "text-red-600"}>
+                                Boost:{line.elevenLabsSettings.speakerBoost ? "ON" : "OFF"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-zinc-200 text-sm leading-relaxed">{line.scriptText}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Assets Tab */}
