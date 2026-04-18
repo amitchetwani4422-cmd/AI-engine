@@ -4,8 +4,10 @@ import prisma from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   const channelId = request.nextUrl.searchParams.get("channelId");
+  // When a channel is selected: show only that channel's locations (strict)
+  // When "All Channels" (no filter): show everything
   const locations = await prisma.locationAsset.findMany({
-    where: channelId ? { OR: [{ channelId }, { channelId: null }] } : {},
+    where: channelId ? { channelId } : {},
     orderBy: { name: "asc" },
   });
   return NextResponse.json(locations);

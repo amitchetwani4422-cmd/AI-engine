@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,16 +106,21 @@ const RAMAYANA_LOCATIONS = [
   },
 ];
 
-// POST /api/locations/seed-ramayana
+// POST /api/locations/seed-ramayana?channelId=xxx
 // Upserts all 12 canonical Ramayana LocationAssets with locked visual descriptions.
+// Pass channelId to pin these locations to a specific channel (recommended).
 // Safe to call multiple times — uses upsert so existing data is updated, not duplicated.
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const body = await request.json().catch(() => ({})) as { channelId?: string };
+    const channelId: string | null = body.channelId ?? null;
+
     const results = await Promise.all(
       RAMAYANA_LOCATIONS.map((loc) =>
         prisma.locationAsset.upsert({
           where: { name: loc.name },
           update: {
+            channelId: channelId ?? undefined, // only update channelId if provided
             nameHindi: loc.nameHindi,
             description: loc.description,
             kandas: loc.kandas,
@@ -124,6 +129,7 @@ export async function POST() {
             isVisualLocked: true,
           },
           create: {
+            channelId,
             name: loc.name,
             nameHindi: loc.nameHindi,
             description: loc.description,

@@ -48,9 +48,15 @@ export function ChannelProvider({ children }: { children: React.ReactNode }) {
       const data = await fetchChannels();
 
       if (data.length > 0) {
-        // Deduplicate by id in case DB has duplicate rows
-        const seen = new Set<string>();
-        const unique = data.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
+        // Deduplicate by name — prevents same-name channels created via race condition
+        // from showing twice in the UI (seed cleans DB, this guards the render layer)
+        const seenNames = new Set<string>();
+        const unique = data.filter((c) => {
+          const key = c.name.toLowerCase().trim();
+          if (seenNames.has(key)) return false;
+          seenNames.add(key);
+          return true;
+        });
         setChannels(unique);
         const stored = localStorage.getItem(STORAGE_KEY);
         const valid = stored && unique.find((c) => c.id === stored);

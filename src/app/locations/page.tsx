@@ -50,13 +50,14 @@ function LocationsContent() {
   const [locations, setLocations] = useState<LocationAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState<string | null>(null);
   const [urlInput, setUrlInput] = useState<Record<string, string>>({});
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<string | null>(null);
   const [channelFilter, setChannelFilter] = useState<string>("all");
 
   // Inline locked visual desc editing
-  const [editingDesc, setEditingDesc] = useState<string | null>(null); // location id
+  const [editingDesc, setEditingDesc] = useState<string | null>(null);
   const [descDraft, setDescDraft] = useState<string>("");
   const [savingDesc, setSavingDesc] = useState<string | null>(null);
 
@@ -72,6 +73,9 @@ function LocationsContent() {
     lockedVisualDesc: "",
     kandas: "",
   });
+
+  // File input refs per location
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const searchParams = useSearchParams();
   const highlight = searchParams.get("highlight") ?? "";
@@ -95,13 +99,21 @@ function LocationsContent() {
   }
 
   async function seedLocations() {
+    if (channelFilter === "all") {
+      setSeedResult("Please select a specific channel before seeding — Ramayana locations will be pinned to that channel only.");
+      return;
+    }
     setSeeding(true);
     setSeedResult(null);
     try {
-      const res = await fetch("/api/locations/seed-ramayana", { method: "POST" });
+      const res = await fetch("/api/locations/seed-ramayana", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId: channelFilter }),
+      });
       const data = await res.json();
       if (res.ok) {
-        setSeedResult(`✓ ${data.seeded} Ramayana locations seeded with locked visual descriptions.`);
+        setSeedResult(`✓ ${data.seeded} Ramayana locations seeded and pinned to this channel.`);
         await fetchLocations(channelFilter);
       } else {
         setSeedResult(`Error: ${data.error ?? "Seed failed"}`);
@@ -126,6 +138,27 @@ function LocationsContent() {
       setUrlInput(prev => ({ ...prev, [loc.id]: "" }));
       fetchLocations(channelFilter);
     } finally { setUploading(null); }
+  }
+
+  async function uploadImageFile(loc: LocationAsset, file: File) {
+    setUploadingFile(loc.id);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("folder", "ai-engine/locations");
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error ?? "Upload failed"); return; }
+      await fetch("/api/locations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: loc.id, referenceImages: [...loc.referenceImages, data.url] }),
+      });
+      fetchLocations(channelFilter);
+    } finally {
+      setUploadingFile(null);
+      if (fileInputRefs.current[loc.id]) fileInputRefs.current[loc.id]!.value = "";
+    }
   }
 
   async function removeImage(loc: LocationAsset, imageUrl: string) {
@@ -203,7 +236,7 @@ function LocationsContent() {
       />
       <div className="flex-1 overflow-auto p-6">
         {seedResult && (
-          <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm border ${seedResult.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-green-500/10 border-green-500/20 text-green-400"}`}>
+          <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm border ${seedResult.startsWith("Error") || seedResult.startsWith("Please") ? "bg-amber-500/10 border-amber-500/20 text-amber-400" : "bg-green-500/10 border-green-500/20 text-green-400"}`}>
             {seedResult}
           </div>
         )}
@@ -241,17 +274,19 @@ function LocationsContent() {
         ) : locations.length === 0 ? (
           <div className="text-center py-16">
             <MapPin className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-            <p className="text-zinc-400 mb-2">No locations yet</p>
+            <p className="text-zinc-400 mb-2">No locations for this channel yet</p>
             <p className="text-zinc-600 text-sm mb-6 max-w-sm mx-auto">
-              Create a location and write its locked visual description — this text gets injected verbatim into every scene prompt for consistent backgrounds.
+              Create a location and write its scene prompt — this text gets injected into every FAL video prompt for consistent backgrounds.
             </p>
             <div className="flex gap-2 justify-center">
               <Button onClick={() => setShowCreate(true)}>
                 <Plus className="h-4 w-4 mr-2" /> New Location
               </Button>
-              <Button variant="outline" onClick={seedLocations} disabled={seeding}>
-                <RefreshCw className="h-4 w-4 mr-2" /> Seed Ramayana Locations
-              </Button>
+              {channelFilter !== "all" && (
+                <Button variant="outline" onClick={seedLocations} disabled={seeding}>
+                  <RefreshCw className="h-4 w-4 mr-2" /> Seed Ramayana Locations
+                </Button>
+              )}
             </div>
           </div>
         ) : (
@@ -260,6 +295,7 @@ function LocationsContent() {
               const isHighlighted = highlight && loc.name.toLowerCase() === highlight.toLowerCase();
               const chName = loc.channelId ? activeChannelName(loc.channelId) : null;
               const isEditingThisDesc = editingDesc === loc.id;
+              const isUploadingThis = uploadingFile === loc.id;
               return (
                 <Card
                   key={loc.id}
@@ -282,7 +318,7 @@ function LocationsContent() {
                           <p className="text-sm text-orange-300/70 mt-0.5 ml-6">{loc.nameHindi}</p>
                         )}
                       </div>
-                      <div className="flex gap-1 shrink-0">
+                      <div className="flex gap-1 shrink-0 items-center">
                         {loc.kandas.length > 0 && loc.kandas.slice(0, 2).map(k => (
                           <span key={k} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500">{k}</span>
                         ))}
@@ -300,7 +336,7 @@ function LocationsContent() {
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-1.5">
                           <Lock className="h-3 w-3 text-amber-400" />
-                          <span className="text-xs font-medium text-amber-400">Scene Prompt / Locked Visual Description</span>
+                          <span className="text-xs font-medium text-amber-400">Scene Prompt</span>
                           {loc.isVisualLocked && !isEditingThisDesc && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">Active</span>
                           )}
@@ -331,13 +367,13 @@ function LocationsContent() {
                           onChange={e => setDescDraft(e.target.value)}
                           rows={5}
                           className="text-xs bg-zinc-900 border-amber-700/40 text-amber-100/80"
-                          placeholder="Write the scene environment description that will be injected into every FAL prompt for this location…"
+                          placeholder="Write the scene environment description injected into every FAL prompt for this location…"
                           autoFocus
                         />
                       ) : loc.lockedVisualDesc ? (
                         <p className="text-xs text-amber-200/70 leading-relaxed italic">"{loc.lockedVisualDesc}"</p>
                       ) : (
-                        <p className="text-xs text-zinc-600 italic">No description yet — click Edit to add one.</p>
+                        <p className="text-xs text-zinc-600 italic">No scene prompt yet — click Edit to add one.</p>
                       )}
                     </div>
 
@@ -347,7 +383,7 @@ function LocationsContent() {
                         {loc.referenceImages.map((url, i) => (
                           <div key={i} className="relative group">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={url} alt={`${loc.name} ref ${i + 1}`} className="w-20 h-14 object-cover rounded border border-zinc-700" />
+                            <img src={url} alt={`${loc.name} ref ${i + 1}`} className="w-24 h-16 object-cover rounded border border-zinc-700" />
                             <button
                               onClick={() => removeImage(loc, url)}
                               className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white"
@@ -359,28 +395,47 @@ function LocationsContent() {
                       </div>
                     )}
 
-                    {/* Add image URL */}
-                    <div className="flex gap-2">
+                    {/* Upload image from computer */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={el => { fileInputRefs.current[loc.id] = el; }}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) uploadImageFile(loc, f); }}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs border-zinc-700 text-zinc-400 hover:text-zinc-200"
+                        disabled={isUploadingThis}
+                        onClick={() => fileInputRefs.current[loc.id]?.click()}
+                      >
+                        {isUploadingThis
+                          ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Uploading...</>
+                          : <><Upload className="h-3 w-3 mr-1.5" /> Upload Image</>}
+                      </Button>
+                      <span className="text-zinc-600 text-xs">or</span>
                       <Input
-                        placeholder="Paste image URL to use as background reference"
+                        placeholder="Paste image URL"
                         value={urlInput[loc.id] ?? ""}
                         onChange={e => setUrlInput(prev => ({ ...prev, [loc.id]: e.target.value }))}
                         onKeyDown={e => e.key === "Enter" && addImageUrl(loc)}
-                        className="text-xs h-8"
+                        className="text-xs h-8 flex-1"
                       />
                       <Button
                         size="sm" className="h-8 px-3 shrink-0"
                         disabled={uploading === loc.id || !urlInput[loc.id]?.trim()}
                         onClick={() => addImageUrl(loc)}
                       >
-                        {uploading === loc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Upload className="h-3 w-3 mr-1" /> Add</>}
+                        {uploading === loc.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Add"}
                       </Button>
                     </div>
 
                     {loc.referenceImages.length === 0 && (
                       <div className="flex items-center gap-1.5 text-xs text-zinc-600">
                         <ImageIcon className="h-3 w-3" />
-                        No reference image — will use text description only
+                        No reference image — will use scene prompt text only
                       </div>
                     )}
                   </CardContent>
@@ -400,7 +455,10 @@ function LocationsContent() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="space-y-1.5">
               <Label>Channel</Label>
-              <Select value={createForm.channelId} onValueChange={(v) => setCreateForm({ ...createForm, channelId: v === "global" ? "" : v })}>
+              <Select
+                value={createForm.channelId || "global"}
+                onValueChange={(v) => setCreateForm({ ...createForm, channelId: v === "global" ? "" : v })}
+              >
                 <SelectTrigger><SelectValue placeholder="Global (all channels)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="global">Global (all channels)</SelectItem>
@@ -419,17 +477,17 @@ function LocationsContent() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Name *</Label>
-                <Input required value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} placeholder="e.g. Ayodhya, Kitchen Studio" />
+                <Input required value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} placeholder="e.g. Kitchen Studio" />
               </div>
               <div className="space-y-1.5">
-                <Label>Local name / Hindi name</Label>
-                <Input value={createForm.nameHindi} onChange={e => setCreateForm({ ...createForm, nameHindi: e.target.value })} placeholder="e.g. अयोध्या" />
+                <Label>Local / Hindi name</Label>
+                <Input value={createForm.nameHindi} onChange={e => setCreateForm({ ...createForm, nameHindi: e.target.value })} placeholder="e.g. रसोई" />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <Label>Description</Label>
-              <Input value={createForm.description} onChange={e => setCreateForm({ ...createForm, description: e.target.value })} placeholder="Brief description of this location" />
+              <Input value={createForm.description} onChange={e => setCreateForm({ ...createForm, description: e.target.value })} placeholder="Brief description" />
             </div>
 
             <div className="space-y-1.5">
@@ -438,18 +496,18 @@ function LocationsContent() {
                 value={createForm.lockedVisualDesc}
                 onChange={e => setCreateForm({ ...createForm, lockedVisualDesc: e.target.value })}
                 rows={4}
-                placeholder="The exact environment description injected into every FAL video prompt for this location. Be detailed — lighting, architecture, atmosphere, colors…"
+                placeholder="Exact environment description injected into every FAL video prompt. Be detailed — lighting, surfaces, atmosphere, colors…"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Visual Keywords</Label>
-                <Input value={createForm.visualKeywords} onChange={e => setCreateForm({ ...createForm, visualKeywords: e.target.value })} placeholder="e.g. kitchen, warm light, tiles" />
+                <Input value={createForm.visualKeywords} onChange={e => setCreateForm({ ...createForm, visualKeywords: e.target.value })} placeholder="e.g. kitchen, warm light" />
               </div>
               <div className="space-y-1.5">
-                <Label>Tags / Arcs (comma-separated)</Label>
-                <Input value={createForm.kandas} onChange={e => setCreateForm({ ...createForm, kandas: e.target.value })} placeholder="e.g. Series 1, Cooking Arc" />
+                <Label>Tags (comma-separated)</Label>
+                <Input value={createForm.kandas} onChange={e => setCreateForm({ ...createForm, kandas: e.target.value })} placeholder="e.g. Series 1, Ep 3" />
               </div>
             </div>
 
