@@ -83,6 +83,19 @@ function buildCharacterTokens(dbName: string): string[] {
   return [...tokens];
 }
 
+// Word-boundary safe match — avoids "ram" matching inside "ramayana" or "ashram"
+function matchesWholeWord(text: string, token: string): boolean {
+  if (token.includes(' ')) return text.includes(token); // multi-word: spaces act as boundaries
+  // Devanagari tokens (contain Unicode range 0900-097F) — use includes; substring collisions are rare
+  if (/[\u0900-\u097F]/.test(token)) return text.includes(token);
+  // ASCII/Roman: require non-alpha boundary on both sides
+  try {
+    return new RegExp(`(?<![a-z])${token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])`, 'i').test(text);
+  } catch {
+    return text.includes(token);
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -130,7 +143,7 @@ export async function GET(
     const mentionedCanonicalNames: string[] = [];
     for (const [canonical, aliases] of Object.entries(RAMAYANA_NAME_ALIASES)) {
       const allTokens = [canonical, ...aliases];
-      if (allTokens.some((t) => sceneText.includes(t.toLowerCase()))) {
+      if (allTokens.some((t) => matchesWholeWord(sceneText, t.toLowerCase()))) {
         mentionedCanonicalNames.push(canonical);
       }
     }
@@ -139,13 +152,14 @@ export async function GET(
     let characters: Array<{ id: string; name: string; referencePrompt: string | null; clothingRules: string; approvedImages: string[] }> = [];
     let characterSource = 'none';
 
-    // Fetch all characters in DB (by sceneIds or by all channel chars)
+    // Fetch characters scoped to this video's channel (or by explicit sceneCharacterIds)
     const allDbChars = sceneCharacterIds?.length
       ? await prisma.character.findMany({
           where: { id: { in: sceneCharacterIds } },
           select: { id: true, name: true, referencePrompt: true, clothingRules: true, approvedImages: true },
         })
       : await prisma.character.findMany({
+          where: { channelId: video.channelId },
           select: { id: true, name: true, referencePrompt: true, clothingRules: true, approvedImages: true },
         });
 
@@ -155,7 +169,7 @@ export async function GET(
     } else {
       const matched = allDbChars.filter((c) => {
         const tokens = buildCharacterTokens(c.name);
-        return tokens.some((t) => sceneText.includes(t));
+        return tokens.some((t) => matchesWholeWord(sceneText, t));
       });
       characters = matched;
       characterSource = matched.length ? 'text-scan' : 'none';
