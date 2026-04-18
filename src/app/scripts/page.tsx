@@ -129,7 +129,15 @@ export default function ScriptsPage() {
           <div className="text-center py-16">
             <FileText className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
             <p className="text-zinc-400 mb-2">No scripts found</p>
-            <p className="text-zinc-600 text-sm mb-6">Generate a script from an approved idea in the Research module</p>
+            <p className="text-zinc-600 text-sm mb-6">Write a script manually or generate one from an idea</p>
+            <div className="flex gap-3 justify-center">
+              <Button asChild>
+                <Link href="/scripts/new"><Plus className="h-4 w-4 mr-2" /> Write Script</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/research"><Wand2 className="h-4 w-4 mr-2" /> Generate from Idea</Link>
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
