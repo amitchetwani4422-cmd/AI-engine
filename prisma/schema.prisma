@@ -31,6 +31,7 @@ model Channel {
   formatStrategy       String?
   repurposingRules     String?
   defaultModelPref     String   @default("kling-heavy")
+  videoPromptSuffix    String?  @db.Text
   maxBudgetPerVideo    Float    @default(10)
   maxBudgetPerWeek     Float    @default(50)
   subscriberCount      Int      @default(0)

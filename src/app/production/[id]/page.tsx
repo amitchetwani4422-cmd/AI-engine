@@ -25,29 +25,29 @@ import { formatCurrency } from "@/lib/utils";
 
 const VIDEO_STYLES = [
   {
-    value: "ramayana-divine",
-    label: "🔱 Divine / Palace (recommended)",
-    prefix: "Photorealistic live-action ancient India, real actors in hand-embroidered silk and real gold jewellery, volumetric saffron god-rays streaming through carved Nagara stone pillars, golden sacred dust motes suspended in divine light, divine celestial aura glowing around figures,",
+    value: "cinematic",
+    label: "🎬 Cinematic",
+    prefix: "photorealistic, cinematic lighting, 4K, professional camera work, shallow depth of field, filmic color grade,",
   },
   {
-    value: "ramayana-battle",
-    label: "⚔️ Battle / Epic War",
-    prefix: "Epic cinematic ancient Indian battlefield, photorealistic warriors in authentic bronze-age armour and leather, towering fire columns and battle smoke creating crimson-and-smoke-purple sky, dramatic directional raking light catching weapon edges and armour detail, raw visceral motion and scale,",
+    value: "dramatic",
+    label: "⚡ Dramatic / Epic",
+    prefix: "epic cinematic, dramatic directional lighting, volumetric light rays, high contrast, powerful scale, intense atmosphere,",
   },
   {
-    value: "ramayana-devotional",
-    label: "🪔 Devotional / Emotional",
-    prefix: "Intimate cinematic devotional moment, photorealistic divine figures with sacred aura, warm ghee-lamp and camphor-flame light casting golden glow on faces, sacred incense smoke curling upward, loose lotus petals drifting in still sacred air, deeply emotional and spiritually charged atmosphere,",
+    value: "realistic",
+    label: "📸 Natural / Realistic",
+    prefix: "photorealistic, natural daylight, documentary style, authentic, true-to-life colors, handheld camera feel,",
   },
   {
-    value: "ramayana-reveal",
-    label: "✨ Epic Divine Reveal",
-    prefix: "Cinematic wide-angle divine epic reveal, photorealistic ancient India massive scale, celestial white light descending from parting clouds illuminating the divine figure, camera slowly pulling back to reveal full magnificent scale, awe-inspiring sacred grandeur,",
+    value: "warm-intimate",
+    label: "🕯 Warm / Intimate",
+    prefix: "intimate close-up, warm golden light, soft focus background, emotionally resonant, candle or lamp light atmosphere,",
   },
   {
-    value: "ramayana-forest",
-    label: "🌿 Forest / Exile / Nature",
-    prefix: "Cinematic ancient Indian forest, photorealistic actors in forest-dweller attire against towering ancient trees, dappled amber-gold god-ray shafts filtering through emerald forest canopy, mist between ancient roots, sacred wilderness of Treta Yuga India,",
+    value: "3d-animated",
+    label: "🎭 3D Animated",
+    prefix: "high-quality 3D CGI animation, smooth character animation, vibrant stylized colors, Pixar-quality rendering,",
   },
   { value: "none", label: "✏️ Use Prompt As-Is", prefix: "" },
 ] as const;
@@ -145,7 +145,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [sceneError, setSceneError] = useState<string | null>(null);
   const [rescuingScene, setRescuingScene] = useState<string | null>(null);
   const [rescueMsg, setRescueMsg] = useState<Record<string, string>>({});
-  const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("ramayana-divine"); // default: divine/palace
+  const [videoStyle, setVideoStyle] = useState<VideoStyleValue>("cinematic"); // default: cinematic
   const [budgetMode, setBudgetMode] = useState(false); // false = smart routing per scene; true = force all to Kling
   const [feedbackOpen, setFeedbackOpen] = useState<string | null>(null);
   const [feedbackText, setFeedbackText] = useState<Record<string, string>>({});

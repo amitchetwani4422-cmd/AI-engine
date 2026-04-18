@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ interface Channel {
   contentPillars?: string[];
   formatStrategy?: string;
   defaultModelPref?: string;
+  videoPromptSuffix?: string;
   videos?: Array<{
     id: string;
     title: string;
@@ -476,6 +478,17 @@ export default function ChannelDetailPage() {
                     setEditForm({ ...editForm, maxBudgetPerWeek: parseFloat(e.target.value) || undefined })
                   }
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Video Prompt Suffix</Label>
+                <Textarea
+                  rows={4}
+                  placeholder="Quality and style constraints appended to every video prompt. E.g. for Ramayana: 'photorealistic live-action, North Indian Nagara palace, 8K anamorphic, no cartoon'. For cooking: 'photorealistic food photography, natural light, shallow depth of field, 4K'."
+                  value={editForm.videoPromptSuffix || ""}
+                  onChange={(e) => setEditForm({ ...editForm, videoPromptSuffix: e.target.value || undefined })}
+                  className="text-xs"
+                />
+                <p className="text-xs text-zinc-500">Leave blank to use the generic fallback (photorealistic, cinematic, 4K).</p>
               </div>
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? (

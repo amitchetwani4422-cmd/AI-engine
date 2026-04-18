@@ -17,8 +17,8 @@ const FAL_MODEL_IDS: Record<string, string> = {
   'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
 };
 
-// Kling v1.6 Pro sweet spot: 500–750 chars total. Keep quality suffix tight.
-const QUALITY_SUFFIX = ', photorealistic live-action, Baahubali-quality, North Indian Nagara sandstone palace NOT Thai temple NOT Southeast Asian NOT Cambodian, 8K anamorphic, no cartoon, no CGI, no painting, no modern';
+// Default quality suffix — used when the channel has no videoPromptSuffix configured
+const DEFAULT_QUALITY_SUFFIX = ', photorealistic, cinematic, 4K, high quality, professional';
 
 // Phrases to strip from any text before sending to FAL — cause painting/illustration style
 const PAINTING_PHRASES = [
@@ -140,7 +140,11 @@ export async function POST(
     const [video, scene] = await Promise.all([
       prisma.video.findUnique({
         where: { id: videoId },
-        select: { id: true, channelId: true, status: true, script: { select: { description: true } } },
+        select: {
+          id: true, channelId: true, status: true,
+          script: { select: { description: true } },
+          channel: { select: { videoPromptSuffix: true } },
+        },
       }),
       prisma.scene.findUnique({ where: { id: sceneId }, select: { id: true, duration: true, modelAssigned: true, prompt: true, promptEn: true, visualGuidance: true, description: true, cameraDirection: true, locationTag: true, characterIds: true, narrationText: true } }),
     ]);
@@ -247,6 +251,10 @@ export async function POST(
       });
       characterGuide = `${parts.join(' | ')}. `;
     }
+
+    // Character with approved image — used for image-mode prompting
+    const charWithImage = characters.find((c) => c.approvedImages?.length > 0);
+    const characterRefImage = charWithImage?.approvedImages[0];
 
     // Look up location reference image AND locked visual description for img2video + prompt lock
     const locationTag = (scene as Record<string, unknown>).locationTag as string | undefined;
@@ -363,7 +371,10 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
       const characterPrefix = characterGuide ? `${characterGuide.trim()} ` : '';
       basePrompt = `${characterPrefix}${coreForBudget}${worldContext}${styleClause}${feedbackSuffix}`;
     }
-    const prompt = basePrompt + QUALITY_SUFFIX;
+    const qualitySuffix = video.channel?.videoPromptSuffix?.trim()
+      ? `, ${video.channel.videoPromptSuffix.trim()}`
+      : DEFAULT_QUALITY_SUFFIX;
+    const prompt = basePrompt + qualitySuffix;
 
     // Delete existing clips (regenerate case)
     await prisma.generatedClip.deleteMany({ where: { sceneId } });

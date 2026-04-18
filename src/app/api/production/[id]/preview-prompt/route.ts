@@ -10,8 +10,7 @@ import prisma from '@/lib/prisma';
 
 // ─── Duplicate only the prompt-building logic from generate-scene ───────────
 
-const QUALITY_SUFFIX =
-  ', photorealistic live-action, Baahubali-quality, North Indian Nagara sandstone palace NOT Thai temple NOT Southeast Asian NOT Cambodian, 8K anamorphic, no cartoon, no CGI, no painting, no modern';
+const DEFAULT_QUALITY_SUFFIX = ', photorealistic, cinematic, 4K, high quality, professional';
 
 const PAINTING_PHRASES = [
   /raja ravi varma divine indian oil painting( style)?,?\s*/gi,
@@ -98,7 +97,11 @@ export async function GET(
     const [video, scene] = await Promise.all([
       prisma.video.findUnique({
         where: { id: videoId },
-        select: { id: true, channelId: true, script: { select: { description: true } } },
+        select: {
+          id: true, channelId: true,
+          script: { select: { description: true } },
+          channel: { select: { videoPromptSuffix: true } },
+        },
       }),
       prisma.scene.findUnique({
         where: { id: sceneId },
@@ -211,6 +214,9 @@ export async function GET(
 
     const locationSentence = worldSetting ? worldSetting.split(/\.\s+/)[0].slice(0, 130) : '';
     const worldContext = locationSentence ? ` Setting: ${locationSentence}.` : '';
+    const qualitySuffix = video.channel?.videoPromptSuffix?.trim()
+      ? `, ${video.channel.videoPromptSuffix.trim()}`
+      : DEFAULT_QUALITY_SUFFIX;
 
     let basePrompt: string;
     let promptParts: Record<string, string>;
@@ -230,7 +236,7 @@ export async function GET(
         charName,
         action: actionWithCam,
         worldContext: worldContext || '(empty)',
-        qualitySuffix: QUALITY_SUFFIX,
+        qualitySuffix: qualitySuffix,
       };
     } else {
       // Text mode — compact appearance description in prompt
@@ -264,12 +270,12 @@ export async function GET(
         characterPrefix: characterPrefix || '(empty — no characters matched)',
         coreForBudget,
         worldContext: worldContext || '(empty — no location found)',
-        qualitySuffix: QUALITY_SUFFIX,
+        qualitySuffix: qualitySuffix,
         characterDetails: characterParts.join('\n'),
       };
     }
 
-    const finalPrompt = basePrompt + QUALITY_SUFFIX;
+    const finalPrompt = basePrompt + qualitySuffix;
 
     // Gather location reference image for display
     let locationRefImage: string | null = null;

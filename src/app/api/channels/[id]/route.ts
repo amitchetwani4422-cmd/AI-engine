@@ -16,6 +16,7 @@ const UpdateChannelSchema = z.object({
   voiceStyle: z.string().optional(),
   formatStrategy: z.string().nullable().optional(),
   defaultModelPref: z.string().optional(),
+  videoPromptSuffix: z.string().nullable().optional(),
   maxBudgetPerVideo: z.number().optional(),
   maxBudgetPerWeek: z.number().optional(),
   status: z.string().optional(),
