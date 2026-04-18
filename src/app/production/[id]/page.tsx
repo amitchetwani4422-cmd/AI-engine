@@ -96,7 +96,7 @@ interface ProductionVideo {
   title: string;
   status: string;
   channelId: string;
-  channel?: { name: string };
+  channel?: { id: string; name: string };
   totalCost: number;
   klingCost: number;
   veoCost: number;
@@ -167,6 +167,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const [assembleError, setAssembleError] = useState<string | null>(null);
   const [rerouting, setRerouting] = useState(false);
   const [rerouteResult, setRerouteResult] = useState<string | null>(null);
+  const [channelLocations, setChannelLocations] = useState<Array<{ name: string; referenceImages: string[] }>>([]);
+  const [settingLocation, setSettingLocation] = useState<string | null>(null);
   const [voiceAssets, setVoiceAssets] = useState<VoiceAsset[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>("");
   const [generatingVoices, setGeneratingVoices] = useState(false);
@@ -200,7 +202,17 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     try {
       const res = await fetch(`/api/production/${id}`);
       const data = await res.json();
-      if (data && !data.error) { setVideo(data); return data; }
+      if (data && !data.error) {
+        setVideo(data);
+        // Load locations for this channel so scenes can be tagged
+        const chanId = data.channelId ?? data.channel?.id;
+        if (chanId) {
+          fetch(`/api/locations?channelId=${chanId}`)
+            .then((r) => r.json())
+            .then((locs) => { if (Array.isArray(locs)) setChannelLocations(locs); });
+        }
+        return data;
+      }
     } finally {
       setLoading(false);
     }
@@ -249,6 +261,34 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
     } finally {
       setRerouting(false);
     }
+  }
+
+  async function setSceneLocation(sceneId: string, locationName: string) {
+    setSettingLocation(sceneId);
+    try {
+      await fetch(`/api/scenes/${sceneId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locationTag: locationName }),
+      });
+      fetchVideo();
+    } finally {
+      setSettingLocation(null);
+    }
+  }
+
+  async function setAllScenesLocation(locationName: string) {
+    const scenes = video?.script?.sceneBreakdown ?? [];
+    await Promise.all(
+      scenes.map((s) =>
+        fetch(`/api/scenes/${s.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locationTag: locationName }),
+        })
+      )
+    );
+    fetchVideo();
   }
 
   async function fetchVoiceAssets(channelId: string) {
@@ -1103,6 +1143,23 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                   ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> Routing...</>
                   : <><Shuffle className="h-3 w-3 mr-1.5" /> Auto-Route Models</>}
               </Button>
+              {/* Set all scenes to a single location */}
+              {channelLocations.length > 0 && (
+                <select
+                  className="h-8 px-2 text-xs rounded border border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 cursor-pointer"
+                  defaultValue=""
+                  onChange={(e) => { if (e.target.value) { setAllScenesLocation(e.target.value); e.target.value = ""; } }}
+                  disabled={queueRunning}
+                  title="Set this location tag on all scenes"
+                >
+                  <option value="" disabled>📍 Set all scenes location</option>
+                  {channelLocations.map((loc) => (
+                    <option key={loc.name} value={loc.name}>
+                      {loc.name}{loc.referenceImages.length > 0 ? " 🖼" : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
               {queueRunning && (
                 <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-lg">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -1221,6 +1278,39 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                           </button>
                         )}
                       </div>
+                      {/* Location tag — controls which reference image is sent to i2v */}
+                      {channelLocations.length > 0 && (
+                        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                          <span className="text-xs text-zinc-600">Location:</span>
+                          <select
+                            value={scene.locationTag ?? ""}
+                            disabled={settingLocation === scene.id}
+                            onChange={(e) => setSceneLocation(scene.id, e.target.value)}
+                            className={`text-xs px-1.5 py-0.5 rounded border bg-zinc-800/50 cursor-pointer transition-colors ${
+                              scene.locationTag
+                                ? "border-amber-700/50 text-amber-400 hover:border-amber-600"
+                                : "border-zinc-700/50 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
+                            }`}
+                          >
+                            <option value="">— No location —</option>
+                            {channelLocations.map((loc) => (
+                              <option key={loc.name} value={loc.name}>
+                                {loc.name}{loc.referenceImages.length > 0 ? " 🖼" : " (no image)"}
+                              </option>
+                            ))}
+                          </select>
+                          {scene.locationTag && channelLocations.find((l) => l.name === scene.locationTag)?.referenceImages[0] && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={channelLocations.find((l) => l.name === scene.locationTag)!.referenceImages[0]}
+                              alt={scene.locationTag}
+                              className="h-6 w-10 object-cover rounded border border-amber-700/40"
+                            />
+                          )}
+                          {settingLocation === scene.id && <Loader2 className="h-3 w-3 animate-spin text-zinc-500" />}
+                        </div>
+                      )}
+
                       <p className="text-sm text-zinc-300 mb-2">{scene.description}</p>
 
                       {/* Characters in this scene */}

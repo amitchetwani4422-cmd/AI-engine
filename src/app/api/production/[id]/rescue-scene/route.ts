@@ -6,13 +6,27 @@ import prisma from '@/lib/prisma';
 fal.config({ credentials: process.env.FAL_KEY ?? process.env.FAL_API_KEY });
 
 const FAL_MODEL_IDS: Record<string, string> = {
-  'kling-3.0': 'fal-ai/kling-video/v1.6/pro/text-to-video',
-  'veo-3.1':   'fal-ai/veo2',
+  'kling-3.0':     'fal-ai/kling-video/v1.6/pro/text-to-video',
+  'kling-3.0-i2v': 'fal-ai/kling-video/v1.6/pro/image-to-video',
+  'kling-2.1':     'fal-ai/kling-video/v2.1/standard/image-to-video',
+  'kling-2.1-t2v': 'fal-ai/kling-video/v2.1/standard/text-to-video',
+  'minimax':       'fal-ai/minimax-video-01',
+  'ltx-video-2':   'fal-ai/ltx-video',
+  'wan-2.1':       'fal-ai/wan-i2v/v2.1/1.3b',
+  'sync-lipsync':  'fal-ai/sync-lipsync',
+  'veo-3.1':       'fal-ai/veo2',
 };
 
 const COST_PER_SECOND: Record<string, number> = {
-  'kling-3.0': 0.056,
-  'veo-3.1': 0.08,
+  'kling-3.0':     0.056,
+  'kling-3.0-i2v': 0.056,
+  'kling-2.1':     0.03,
+  'kling-2.1-t2v': 0.03,
+  'minimax':       0.02,
+  'ltx-video-2':   0.004,
+  'wan-2.1':       0.003,
+  'sync-lipsync':  0.02,
+  'veo-3.1':       0.08,
 };
 
 // Rescue a stuck scene by fetching the FAL result directly using stored request_id
