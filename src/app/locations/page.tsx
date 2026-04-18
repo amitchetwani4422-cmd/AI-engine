@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MapPin, Upload, Trash2, Loader2, Image as ImageIcon, CheckCircle, RefreshCw, Lock, Plus, Save, Edit2 } from "lucide-react";
+import { MapPin, Upload, Trash2, Loader2, Image as ImageIcon, CheckCircle, RefreshCw, Lock, Plus, Save, Edit2, Sparkles } from "lucide-react";
 import { useChannel } from "@/lib/channel-context";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +73,10 @@ function LocationsContent() {
     lockedVisualDesc: "",
     kandas: "",
   });
+  const [createImageUrl, setCreateImageUrl] = useState<string | null>(null);
+  const [analyzingImage, setAnalyzingImage] = useState(false);
+  const [uploadingCreateImage, setUploadingCreateImage] = useState(false);
+  const createFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // File input refs per location
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -204,6 +208,7 @@ function LocationsContent() {
           ...createForm,
           channelId: createForm.channelId || null,
           kandas: createForm.kandas.split(",").map(s => s.trim()).filter(Boolean),
+          referenceImages: createImageUrl ? [createImageUrl] : [],
         }),
       });
       if (res.ok) {
@@ -212,6 +217,46 @@ function LocationsContent() {
         fetchLocations(channelFilter);
       }
     } finally { setCreating(false); }
+  }
+
+  async function uploadAndAnalyzeCreateImage(file: File) {
+    setUploadingCreateImage(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("folder", "ai-engine/locations");
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error ?? "Upload failed"); return; }
+      const uploadedUrl: string = data.url;
+      setCreateImageUrl(uploadedUrl);
+
+      // Auto-analyze with Claude Vision
+      setAnalyzingImage(true);
+      try {
+        const channelNiche = channels.find((c) => c.id === createForm.channelId)?.niche;
+        const aiRes = await fetch("/api/locations/describe-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl: uploadedUrl, channelNiche }),
+        });
+        const aiData = await aiRes.json();
+        if (aiRes.ok) {
+          setCreateForm(prev => ({
+            ...prev,
+            name: prev.name || (aiData.suggestedName ?? ""),
+            description: prev.description || (aiData.description ?? ""),
+            visualKeywords: prev.visualKeywords || (aiData.visualKeywords ?? ""),
+            lockedVisualDesc: aiData.lockedVisualDesc ?? prev.lockedVisualDesc,
+          }));
+        }
+      } finally {
+        setAnalyzingImage(false);
+      }
+    } finally {
+      setUploadingCreateImage(false);
+      if (createFileInputRef.current) createFileInputRef.current.value = "";
+    }
   }
 
   const activeChannelName = (id: string) => channels.find((c) => c.id === id)?.name;
@@ -447,12 +492,58 @@ function LocationsContent() {
       </div>
 
       {/* Create Location Dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+      <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) { setCreateImageUrl(null); setCreateForm({ channelId: "", name: "", nameHindi: "", description: "", visualKeywords: "", lockedVisualDesc: "", kandas: "" }); } }}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New Location</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
+
+            {/* Step 1 — Upload image (primary flow) */}
+            <input
+              ref={createFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadAndAnalyzeCreateImage(f); }}
+            />
+            <div
+              onClick={() => !uploadingCreateImage && !analyzingImage && createFileInputRef.current?.click()}
+              className={cn(
+                "relative rounded-lg border-2 border-dashed transition-colors cursor-pointer overflow-hidden",
+                createImageUrl ? "border-zinc-700" : "border-zinc-700 hover:border-blue-500/60",
+                (uploadingCreateImage || analyzingImage) && "pointer-events-none"
+              )}
+            >
+              {createImageUrl ? (
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={createImageUrl} alt="Location reference" className="w-full h-40 object-cover" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <span className="text-white text-xs font-medium">Click to replace</span>
+                  </div>
+                  {analyzingImage && (
+                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2">
+                      <Sparkles className="h-5 w-5 text-blue-400 animate-pulse" />
+                      <span className="text-xs text-blue-300">AI analyzing image…</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="h-32 flex flex-col items-center justify-center gap-2 text-zinc-500">
+                  {uploadingCreateImage ? (
+                    <><Loader2 className="h-6 w-6 animate-spin" /><span className="text-xs">Uploading…</span></>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6" />
+                      <span className="text-sm font-medium text-zinc-400">Upload location image</span>
+                      <span className="text-xs">AI will auto-generate the scene prompt from your photo</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <Label>Channel</Label>
               <Select
@@ -486,34 +577,53 @@ function LocationsContent() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Input value={createForm.description} onChange={e => setCreateForm({ ...createForm, description: e.target.value })} placeholder="Brief description" />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Scene Prompt / Locked Visual Description</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Scene Prompt</Label>
+                {createImageUrl && !analyzingImage && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setAnalyzingImage(true);
+                      try {
+                        const channelNiche = channels.find((c) => c.id === createForm.channelId)?.niche;
+                        const aiRes = await fetch("/api/locations/describe-image", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ imageUrl: createImageUrl, channelNiche }),
+                        });
+                        const aiData = await aiRes.json();
+                        if (aiRes.ok) setCreateForm(prev => ({ ...prev, lockedVisualDesc: aiData.lockedVisualDesc ?? prev.lockedVisualDesc, description: aiData.description ?? prev.description, visualKeywords: aiData.visualKeywords ?? prev.visualKeywords }));
+                      } finally { setAnalyzingImage(false); }
+                    }}
+                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                  >
+                    <Sparkles className="h-3 w-3" /> Regenerate from image
+                  </button>
+                )}
+              </div>
               <Textarea
                 value={createForm.lockedVisualDesc}
                 onChange={e => setCreateForm({ ...createForm, lockedVisualDesc: e.target.value })}
                 rows={4}
-                placeholder="Exact environment description injected into every FAL video prompt. Be detailed — lighting, surfaces, atmosphere, colors…"
+                className={analyzingImage ? "opacity-50" : ""}
+                placeholder={createImageUrl ? "AI is generating this from your image…" : "Upload an image above, or write a description manually — this is injected into every FAL video prompt for this location."}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Visual Keywords</Label>
-                <Input value={createForm.visualKeywords} onChange={e => setCreateForm({ ...createForm, visualKeywords: e.target.value })} placeholder="e.g. kitchen, warm light" />
+                <Label>Description</Label>
+                <Input value={createForm.description} onChange={e => setCreateForm({ ...createForm, description: e.target.value })} placeholder="Brief one-liner" />
               </div>
               <div className="space-y-1.5">
-                <Label>Tags (comma-separated)</Label>
-                <Input value={createForm.kandas} onChange={e => setCreateForm({ ...createForm, kandas: e.target.value })} placeholder="e.g. Series 1, Ep 3" />
+                <Label>Visual Keywords</Label>
+                <Input value={createForm.visualKeywords} onChange={e => setCreateForm({ ...createForm, visualKeywords: e.target.value })} placeholder="e.g. kitchen, warm light" />
               </div>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button type="submit" disabled={creating || !createForm.name}>
+              <Button type="submit" disabled={creating || !createForm.name || analyzingImage || uploadingCreateImage}>
                 {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Create Location
               </Button>

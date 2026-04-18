@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
           nameHindi: (body.nameHindi as string | undefined) || (body.name as string),
           description: body.description as string,
           kandas: Array.isArray(body.kandas) ? (body.kandas as string[]) : [],
-          referenceImages: [],
+          referenceImages: Array.isArray(body.referenceImages) ? (body.referenceImages as string[]) : [],
           visualKeywords: (body.visualKeywords as string | undefined) || "",
           lockedVisualDesc: (body.lockedVisualDesc as string | undefined) || null,
           isVisualLocked: !!(body.lockedVisualDesc as string | undefined),
