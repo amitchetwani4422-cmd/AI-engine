@@ -14,8 +14,13 @@ fal.config({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COST_PER_SECOND: Record<string, number> = {
-  "kling-3.0": 0.056, // Kling v1.6 Pro — ~$0.28/5s, no watermark
-  "veo-3.1":   0.08,
+  "kling-3.0":     0.056, // Kling v1.6 Pro — ~$0.28/5s
+  "kling-2.1":     0.030, // Kling v2.1 Standard i2v — ~$0.15/5s
+  "minimax":       0.020, // Minimax Video 01 — ~$0.10/5s
+  "ltx-video-2":   0.004, // LTX Video — ~$0.02/5s
+  "wan-2.1":       0.003, // Wan 2.1 — ~$0.015/5s
+  "sync-lipsync":  0.010, // Sync Labs lipsync — post-processing
+  "veo-3.1":       0.080,
 };
 
 const FAL_MODEL_IDS: Record<string, string> = {
@@ -33,7 +38,7 @@ const RETRY_DELAY_MS = 2000;
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type VideoModel = "kling-3.0" | "veo-3.1";
+export type VideoModel = "kling-3.0" | "kling-2.1" | "minimax" | "ltx-video-2" | "wan-2.1" | "sync-lipsync" | "veo-3.1";
 
 export interface VideoGenerationParams {
   model: VideoModel;

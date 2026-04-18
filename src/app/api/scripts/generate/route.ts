@@ -168,9 +168,15 @@ RESPONSE FORMAT
   ]
 }
 
-MODEL ROUTING:
-- "kling-3.0" for ALL scenes by default (action, movement, characters, establishing shots, everything)
-- "veo-3.1" ONLY for scenes requiring real lip-sync audio — maximum 1 scene per video
+MODEL ROUTING — assign modelAssigned per scene based on scene type:
+- "kling-3.0"    → Human character actions: cooking, stirring, shaping, pouring, plating, walking, any human body motion. Best for realistic human motion and skin tones.
+- "kling-2.1"    → Character cooking/action scenes where a location reference image will be available. Use when the scene involves the main host/character in a kitchen or known location. Slightly lower cost than kling-3.0.
+- "minimax"      → Dramatic, cinematic, or epic scenes: mythological story visuals, jungle/forest scenes, historical flashbacks, emotional reveals, battle or conflict scenes, sweeping establishing shots. Great for non-realistic epic visuals.
+- "ltx-video-2"  → Short food beauty B-roll: ghee pouring, dal simmering, mustard seeds crackling, steam rising, spice closeups, any texture or liquid shot under 5s. Fast and cheap — ideal for these filler shots.
+- "sync-lipsync" → Scenes where the host/character speaks DIRECTLY to camera. Maximum 1-2 per video. Will be lip-synced with voice audio in post-production.
+- "veo-3.1"      → Reserved — do NOT use unless explicitly needed for AI voiceover scenes.
+
+Routing priority: if a scene has human character motion → kling-3.0 or kling-2.1. If epic/mythological/cinematic → minimax. If food texture/B-roll only → ltx-video-2. If direct-to-camera speech → sync-lipsync.
 
 DURATION:
 - 5 seconds: most scenes (character close-ups, dialogue moments, action beats)

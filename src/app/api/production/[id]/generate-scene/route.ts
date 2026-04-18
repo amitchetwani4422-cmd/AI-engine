@@ -11,10 +11,15 @@ import type { VideoModel } from '@/lib/fal';
 fal.config({ credentials: process.env.FAL_KEY ?? process.env.FAL_API_KEY });
 
 const FAL_MODEL_IDS: Record<string, string> = {
-  'kling-3.0':   'fal-ai/kling-video/v1.6/pro/text-to-video',
-  'veo-3.1':     'fal-ai/veo2',
-  'ltx-video-2': 'fal-ai/ltx-video',
-  'wan-2.1':     'fal-ai/wan-i2v/v2.1/1.3b',
+  'kling-3.0':     'fal-ai/kling-video/v1.6/pro/text-to-video',
+  'kling-3.0-i2v': 'fal-ai/kling-video/v1.6/pro/image-to-video',
+  'kling-2.1':     'fal-ai/kling-video/v2.1/standard/image-to-video',
+  'kling-2.1-t2v': 'fal-ai/kling-video/v2.1/standard/text-to-video',
+  'minimax':       'fal-ai/minimax-video-01',
+  'ltx-video-2':   'fal-ai/ltx-video',
+  'wan-2.1':       'fal-ai/wan-i2v/v2.1/1.3b',
+  'sync-lipsync':  'fal-ai/sync-lipsync',
+  'veo-3.1':       'fal-ai/veo2',
 };
 
 // Default quality suffix — used when the channel has no videoPromptSuffix configured
@@ -153,7 +158,7 @@ export async function POST(
     if (!scene) return NextResponse.json({ error: 'Scene not found' }, { status: 404 });
 
     const model: VideoModel = forceKling ? 'kling-3.0' : ((modelOverride ?? scene.modelAssigned ?? 'ltx-video-2') as VideoModel);
-    const usesEnPrompt = model === 'ltx-video-2' || model === 'wan-2.1';
+    const usesEnPrompt = model === 'ltx-video-2' || model === 'wan-2.1' || model === 'minimax';
     const durationSeconds = scene.duration ?? 5;
 
     // Fetch character visual descriptions so they are injected into every prompt (including As-Is)
@@ -407,28 +412,69 @@ Write 4-5 vivid English sentences. Do NOT summarise or abbreviate — preserve e
     // cfg_scale 0.7 — strong prompt adherence critical for specific divine character/location visuals
     const klingCfg = 0.7;
 
-    let falModelId = FAL_MODEL_IDS[model];
-    let input: Record<string, unknown>;
-
     // Only use location reference image for i2v (gives proper scene background).
     // Character portraits are NOT used as i2v starting frames — they produce
     // near-static videos with no background. Character appearance is instead
     // injected via the text prompt (characterGuide from referencePrompt).
     const refImage = locationRefImage;
 
-    if (refImage && model === 'kling-3.0') {
-      falModelId = 'fal-ai/kling-video/v1.6/pro/image-to-video';
+    let falModelId: string;
+    let input: Record<string, unknown>;
+
+    if (model === 'kling-2.1') {
+      // Kling v2.1 Standard — always i2v; if no ref image fall back to t2v variant
+      if (refImage) {
+        falModelId = FAL_MODEL_IDS['kling-2.1'];
+        input = { prompt, image_url: refImage, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
+      } else {
+        falModelId = FAL_MODEL_IDS['kling-2.1-t2v'];
+        input = { prompt, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
+      }
+
+    } else if (model === 'minimax') {
+      // Minimax Video 01 — cinematic/story scenes
+      falModelId = FAL_MODEL_IDS['minimax'];
+      if (refImage) {
+        input = { prompt, first_frame_image: refImage, aspect_ratio: '16:9' };
+      } else {
+        input = { prompt, aspect_ratio: '16:9' };
+      }
+
+    } else if (model === 'sync-lipsync') {
+      // Sync Lipsync is post-processing — requires existing clip + audio.
+      // At generation time there's no existing clip, so generate a base kling clip
+      // instead and mark the scene so the production page shows "Apply Lipsync".
+      // The lipsync step is triggered separately after voice is generated.
+      falModelId = refImage
+        ? FAL_MODEL_IDS['kling-3.0-i2v']
+        : FAL_MODEL_IDS['kling-3.0'];
+      input = refImage
+        ? { prompt, image_url: refImage, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg }
+        : { prompt, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
+
+    } else if (refImage && model === 'kling-3.0') {
+      falModelId = FAL_MODEL_IDS['kling-3.0-i2v'];
       input = { prompt, image_url: refImage, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
+
     } else if (refImage && model === 'wan-2.1') {
+      falModelId = FAL_MODEL_IDS['wan-2.1'];
       input = { prompt, image_url: refImage, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 81, aspect_ratio: '16:9' };
+
     } else if (model === 'kling-3.0') {
+      falModelId = FAL_MODEL_IDS['kling-3.0'];
       input = { prompt, duration: klingDuration, aspect_ratio: '16:9', negative_prompt: negPrompt, cfg_scale: klingCfg };
+
     } else if (model === 'ltx-video-2') {
+      falModelId = FAL_MODEL_IDS['ltx-video-2'];
       input = { prompt, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 97, aspect_ratio: '16:9' };
+
     } else if (model === 'wan-2.1') {
+      falModelId = FAL_MODEL_IDS['wan-2.1'];
       input = { prompt, negative_prompt: negPrompt, num_frames: durationSeconds >= 8 ? 161 : 81, aspect_ratio: '16:9' };
+
     } else {
-      input = { prompt, aspect_ratio: '16:9' }; // veo
+      falModelId = FAL_MODEL_IDS['veo-3.1'] ?? 'fal-ai/veo2';
+      input = { prompt, aspect_ratio: '16:9' };
     }
 
     // Submit to FAL queue — returns immediately with a request_id.

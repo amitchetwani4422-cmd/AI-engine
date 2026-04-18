@@ -108,25 +108,34 @@ interface ProductionVideo {
 }
 
 const modelStyle: Record<string, string> = {
-  "kling-3.0":   "bg-blue-500/20 text-blue-400",
-  "veo-3.1":     "bg-purple-500/20 text-purple-400",
-  "ltx-video-2": "bg-green-500/20 text-green-400",
-  "wan-2.1":     "bg-orange-500/20 text-orange-400",
+  "kling-3.0":     "bg-blue-500/20 text-blue-400",
+  "kling-2.1":     "bg-sky-500/20 text-sky-400",
+  "minimax":       "bg-rose-500/20 text-rose-400",
+  "ltx-video-2":   "bg-green-500/20 text-green-400",
+  "wan-2.1":       "bg-orange-500/20 text-orange-400",
+  "sync-lipsync":  "bg-yellow-500/20 text-yellow-400",
+  "veo-3.1":       "bg-purple-500/20 text-purple-400",
 };
 
 const MODEL_OPTIONS = [
-  { value: "ltx-video-2", label: "LTX-Video 2", badge: "~$0.02/5s" },
-  { value: "wan-2.1",     label: "Wan 2.1",     badge: "~$0.015/5s" },
-  { value: "kling-3.0",  label: "Kling 1.6 Pro", badge: "~$0.28/5s" },
-  { value: "veo-3.1",    label: "Veo 3.1",      badge: "~$0.40/5s" },
+  { value: "ltx-video-2",  label: "LTX Video — B-roll",        badge: "~$0.02/5s" },
+  { value: "kling-2.1",    label: "Kling 2.1 — Char+Kitchen",  badge: "~$0.15/5s" },
+  { value: "kling-3.0",    label: "Kling 1.6 Pro — Char",      badge: "~$0.28/5s" },
+  { value: "minimax",      label: "Minimax — Dramatic/Epic",   badge: "~$0.10/5s" },
+  { value: "sync-lipsync", label: "Sync Lipsync — Dialogue",   badge: "~$0.10/clip" },
+  { value: "wan-2.1",      label: "Wan 2.1 — Mid shots",       badge: "~$0.015/5s" },
+  { value: "veo-3.1",      label: "Veo 3.1",                   badge: "~$0.40/5s" },
 ];
 
 // Human-readable shot type info per model (for the scene cards)
 const MODEL_META: Record<string, { shotType: string; icon: string; price: string; colorClass: string; bgClass: string }> = {
-  "ltx-video-2": { shotType: "Wide / Landscape",  icon: "🌅", price: "~$0.02", colorClass: "text-green-400",  bgClass: "bg-green-500/10 border-green-500/20" },
-  "wan-2.1":     { shotType: "Mid / Exterior",     icon: "🌲", price: "~$0.02", colorClass: "text-orange-400", bgClass: "bg-orange-500/10 border-orange-500/20" },
-  "kling-3.0":   { shotType: "Close-up / Hero",    icon: "👁",  price: "~$0.28", colorClass: "text-blue-400",   bgClass: "bg-blue-500/10 border-blue-500/20" },
-  "veo-3.1":     { shotType: "Divine / Cinematic", icon: "✨", price: "~$0.40", colorClass: "text-purple-400", bgClass: "bg-purple-500/10 border-purple-500/20" },
+  "ltx-video-2":   { shotType: "Food B-roll",        icon: "🫕", price: "~$0.02", colorClass: "text-green-400",  bgClass: "bg-green-500/10 border-green-500/20" },
+  "kling-2.1":     { shotType: "Char + Kitchen",      icon: "👩‍🍳", price: "~$0.15", colorClass: "text-sky-400",    bgClass: "bg-sky-500/10 border-sky-500/20" },
+  "kling-3.0":     { shotType: "Character / Action",  icon: "👁",  price: "~$0.28", colorClass: "text-blue-400",   bgClass: "bg-blue-500/10 border-blue-500/20" },
+  "minimax":       { shotType: "Dramatic / Epic",      icon: "🎬", price: "~$0.10", colorClass: "text-rose-400",   bgClass: "bg-rose-500/10 border-rose-500/20" },
+  "sync-lipsync":  { shotType: "Lip Sync Dialogue",    icon: "🎙", price: "~$0.10", colorClass: "text-yellow-400", bgClass: "bg-yellow-500/10 border-yellow-500/20" },
+  "wan-2.1":       { shotType: "Mid / Exterior",       icon: "🌲", price: "~$0.02", colorClass: "text-orange-400", bgClass: "bg-orange-500/10 border-orange-500/20" },
+  "veo-3.1":       { shotType: "Cinematic",            icon: "✨", price: "~$0.40", colorClass: "text-purple-400", bgClass: "bg-purple-500/10 border-purple-500/20" },
 };
 
 const sceneStatusIcon = {
@@ -645,10 +654,13 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
   const generatedScenes = scenes.filter((s) => s.generatedClips.length > 0);
   const progress = scenes.length > 0 ? (generatedScenes.length / scenes.length) * 100 : 0;
   const allScenesGenerated = scenes.length > 0 && generatedScenes.length >= scenes.length;
-  const klingScenes = scenes.filter((s) => s.modelAssigned === "kling-3.0");
-  const veoScenes = scenes.filter((s) => s.modelAssigned === "veo-3.1");
-  const ltxScenes = scenes.filter((s) => s.modelAssigned === "ltx-video-2");
-  const wanScenes = scenes.filter((s) => s.modelAssigned === "wan-2.1");
+  const klingScenes    = scenes.filter((s) => s.modelAssigned === "kling-3.0");
+  const kling21Scenes  = scenes.filter((s) => s.modelAssigned === "kling-2.1");
+  const minimaxScenes  = scenes.filter((s) => s.modelAssigned === "minimax");
+  const ltxScenes      = scenes.filter((s) => s.modelAssigned === "ltx-video-2");
+  const wanScenes      = scenes.filter((s) => s.modelAssigned === "wan-2.1");
+  const lipSyncScenes  = scenes.filter((s) => s.modelAssigned === "sync-lipsync");
+  const veoScenes      = scenes.filter((s) => s.modelAssigned === "veo-3.1");
 
   // ── Generate Preview Dialog ───────────────────────────────────────────────
   const PreviewDialog = generatePreview ? (
@@ -862,11 +874,14 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
             <CardContent className="p-3 text-center">
               <p className="text-xs text-zinc-500 mb-1">Model Split</p>
               <p className="text-xs flex flex-wrap gap-x-1.5 gap-y-0.5 justify-center">
-                {ltxScenes.length > 0 && <span className="text-green-400">{ltxScenes.length} LTX</span>}
-                {wanScenes.length > 0 && <span className="text-orange-400">{wanScenes.length} Wan</span>}
-                {klingScenes.length > 0 && <span className="text-blue-400">{klingScenes.length} Kling</span>}
-                {veoScenes.length > 0 && <span className="text-purple-400">{veoScenes.length} Veo</span>}
-                {ltxScenes.length + wanScenes.length + klingScenes.length + veoScenes.length === 0 && <span className="text-zinc-600">—</span>}
+                {ltxScenes.length > 0      && <span className="text-green-400">{ltxScenes.length} LTX</span>}
+                {kling21Scenes.length > 0  && <span className="text-sky-400">{kling21Scenes.length} Kling2.1</span>}
+                {klingScenes.length > 0    && <span className="text-blue-400">{klingScenes.length} Kling</span>}
+                {minimaxScenes.length > 0  && <span className="text-rose-400">{minimaxScenes.length} Minimax</span>}
+                {lipSyncScenes.length > 0  && <span className="text-yellow-400">{lipSyncScenes.length} Lipsync</span>}
+                {wanScenes.length > 0      && <span className="text-orange-400">{wanScenes.length} Wan</span>}
+                {veoScenes.length > 0      && <span className="text-purple-400">{veoScenes.length} Veo</span>}
+                {ltxScenes.length + kling21Scenes.length + klingScenes.length + minimaxScenes.length + lipSyncScenes.length + wanScenes.length + veoScenes.length === 0 && <span className="text-zinc-600">—</span>}
               </p>
             </CardContent>
           </Card>
