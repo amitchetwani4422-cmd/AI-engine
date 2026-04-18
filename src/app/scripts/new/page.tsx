@@ -171,6 +171,18 @@ export default function NewScriptPage() {
                   </div>
                 )}
               </div>
+
+              {/* Speaker guidance */}
+              <div className="bg-zinc-800/60 rounded-lg p-3 text-xs text-zinc-500 space-y-1.5">
+                <p className="text-zinc-400 font-medium">No character tagging needed for single-host videos</p>
+                <p>Just write your narration as one continuous voice. For multiple speakers, use a name prefix:</p>
+                <div className="font-mono text-zinc-600 bg-zinc-900/60 rounded p-2 space-y-0.5 mt-1">
+                  <p><span className="text-amber-500/80">HOST:</span> Aaj main banaungi dal baati...</p>
+                  <p><span className="text-blue-400/80">EKLAVYA:</span> Dronacharya ji, mujhe seekhna hai...</p>
+                  <p><span className="text-amber-500/80">HOST:</span> Usne jungle mein jaake seekhna shuru kiya...</p>
+                </div>
+                <p>Character names mentioned anywhere in the script are automatically matched to your Character assets for video generation.</p>
+              </div>
               <Textarea
                 required
                 value={form.fullScript}
