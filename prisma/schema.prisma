@@ -50,6 +50,23 @@ model Channel {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// LOCATION ASSET
+// ─────────────────────────────────────────────────────────────────────────────
+model LocationAsset {
+  id               String   @id @default(cuid())
+  name             String   @unique  // "Ayodhya", "Lanka", "Dandaka Forest" etc.
+  nameHindi        String            // "अयोध्या", "लंका"
+  description      String   @db.Text
+  kandas           String[]          // which kandas / arcs this location appears in
+  referenceImages  String[]          // uploaded reference image URLs
+  visualKeywords   String            // English keywords for prompts
+  lockedVisualDesc String?  @db.Text // exact text injected verbatim into every scene prompt
+  isVisualLocked   Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // IDEA
 // ─────────────────────────────────────────────────────────────────────────────
 model Idea {
