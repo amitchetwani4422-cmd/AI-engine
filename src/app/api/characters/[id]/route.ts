@@ -11,6 +11,7 @@ const UpdateCharacterSchema = z.object({
   clothingRules: z.string().optional(),
   preferredModel: z.string().optional(),
   universeId: z.string().optional(),
+  channelId: z.string().nullable().optional(),
   colorPalette: z.array(z.string()).optional(),
   visualReferences: z.array(z.string()).optional(),
   approvedImages: z.array(z.string()).optional(),

@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, Plus, Loader2, User, Mic } from "lucide-react";
+import { Users, Plus, Loader2, User, Mic, MoveRight } from "lucide-react";
 import { useChannel } from "@/lib/channel-context";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +60,7 @@ export default function CharactersPage() {
   const [creating, setCreating] = useState(false);
   const [seedingVoices, setSeedingVoices] = useState(false);
   const [seedVoiceResult, setSeedVoiceResult] = useState<string | null>(null);
+  const [movingCharId, setMovingCharId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     speciesOrType: "",
@@ -139,6 +140,20 @@ export default function CharactersPage() {
     }
   }
 
+  async function moveToChannel(charId: string, targetChannelId: string) {
+    setMovingCharId(charId);
+    try {
+      await fetch(`/api/characters/${charId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId: targetChannelId }),
+      });
+      fetchCharacters(channelFilter);
+    } finally {
+      setMovingCharId(null);
+    }
+  }
+
   const activeChannelName = (id: string) => channels.find((c) => c.id === id)?.name ?? id;
 
   return (
@@ -211,53 +226,84 @@ export default function CharactersPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {characters.map((char) => {
               const channelName = char.channelId ? activeChannelName(char.channelId) : null;
+              const isMoving = movingCharId === char.id;
               return (
-                <Link key={char.id} href={`/characters/${char.id}`}>
-                  <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer h-full">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
-                          {char.approvedImages[0] ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={char.approvedImages[0]} alt={char.name} className="w-10 h-10 rounded-full object-cover" />
-                          ) : (
-                            <User className="h-5 w-5 text-zinc-500" />
+                <div key={char.id} className="relative">
+                  <Link href={`/characters/${char.id}`}>
+                    <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-600 transition-colors cursor-pointer h-full">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                            {char.approvedImages[0] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={char.approvedImages[0]} alt={char.name} className="w-10 h-10 rounded-full object-cover" />
+                            ) : (
+                              <User className="h-5 w-5 text-zinc-500" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-zinc-100 truncate">{char.name}</p>
+                            <p className="text-xs text-zinc-500 truncate">{char.speciesOrType}</p>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-zinc-400 mb-3 line-clamp-2">{char.personality}</p>
+
+                        <div className="flex flex-wrap gap-1.5 mt-auto">
+                          <span className={`text-xs px-2 py-0.5 rounded border ${modelColors[char.preferredModel] ?? "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
+                            {char.preferredModel}
+                          </span>
+                          {channelName && channelFilter === "all" && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 truncate max-w-[120px]">
+                              {channelName}
+                            </span>
+                          )}
+                          {char.universeId && (
+                            <span className={cn("text-xs px-2 py-0.5 rounded", universeColors[char.universeId] ?? "bg-zinc-800 text-zinc-400")}>
+                              U{char.universeId}
+                            </span>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-zinc-100 truncate">{char.name}</p>
-                          <p className="text-xs text-zinc-500 truncate">{char.speciesOrType}</p>
-                        </div>
-                      </div>
 
-                      <p className="text-xs text-zinc-400 mb-3 line-clamp-2">{char.personality}</p>
-
-                      <div className="flex flex-wrap gap-1.5 mt-auto">
-                        <span className={`text-xs px-2 py-0.5 rounded border ${modelColors[char.preferredModel] ?? "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
-                          {char.preferredModel}
-                        </span>
-                        {channelName && channelFilter === "all" && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 truncate max-w-[120px]">
-                            {channelName}
-                          </span>
+                        {char.colorPalette.length > 0 && (
+                          <div className="flex gap-1 mt-3">
+                            {char.colorPalette.slice(0, 5).map((color, i) => (
+                              <div key={i} className="w-4 h-4 rounded-full border border-zinc-700" style={{ backgroundColor: color }} title={color} />
+                            ))}
+                          </div>
                         )}
-                        {char.universeId && (
-                          <span className={cn("text-xs px-2 py-0.5 rounded", universeColors[char.universeId] ?? "bg-zinc-800 text-zinc-400")}>
-                            U{char.universeId}
-                          </span>
-                        )}
-                      </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
 
-                      {char.colorPalette.length > 0 && (
-                        <div className="flex gap-1 mt-3">
-                          {char.colorPalette.slice(0, 5).map((color, i) => (
-                            <div key={i} className="w-4 h-4 rounded-full border border-zinc-700" style={{ backgroundColor: color }} title={color} />
+                  {/* Channel reassign — shown in All Channels view */}
+                  {channelFilter === "all" && channels.length > 0 && (
+                    <div className="mt-1 px-1">
+                      <Select
+                        value={char.channelId ?? ""}
+                        onValueChange={(v) => moveToChannel(char.id, v)}
+                        disabled={isMoving}
+                      >
+                        <SelectTrigger className="h-7 text-xs bg-zinc-900 border-zinc-700 text-zinc-500">
+                          {isMoving
+                            ? <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Moving...</span>
+                            : <span className="flex items-center gap-1"><MoveRight className="h-3 w-3" /> Move to channel</span>
+                          }
+                        </SelectTrigger>
+                        <SelectContent>
+                          {channels.map((ch) => (
+                            <SelectItem key={ch.id} value={ch.id}>
+                              <span className="flex items-center gap-2">
+                                <span className={cn("text-[10px] px-1 rounded", universeColors[ch.universe] ?? "bg-zinc-700 text-zinc-400")}>U{ch.universe}</span>
+                                {ch.name}
+                              </span>
+                            </SelectItem>
                           ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
