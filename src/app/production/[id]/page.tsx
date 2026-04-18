@@ -1187,7 +1187,17 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                         <span className="text-xs text-zinc-600">Override:</span>
                         <select
                           value={sceneModels[scene.id] ?? scene.modelAssigned}
-                          onChange={(e) => setSceneModels((prev) => ({ ...prev, [scene.id]: e.target.value }))}
+                          onChange={async (e) => {
+                            const newModel = e.target.value;
+                            setSceneModels((prev) => ({ ...prev, [scene.id]: newModel }));
+                            // Persist to DB so the badge + auto-route reflect the change
+                            await fetch(`/api/scenes/${scene.id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ modelAssigned: newModel }),
+                            });
+                            fetchVideo();
+                          }}
                           className="text-xs px-1.5 py-0.5 rounded border border-zinc-700/50 bg-zinc-800/50 text-zinc-500 cursor-pointer hover:border-zinc-600 hover:text-zinc-300 transition-colors"
                         >
                           {MODEL_OPTIONS.map((m) => (
@@ -1197,8 +1207,15 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
                         {(sceneModels[scene.id] ?? scene.modelAssigned) !== "kling-3.0" && (
                           <button
                             className="text-xs text-blue-400 hover:text-blue-200 underline"
-                            onClick={() => setSceneModels((prev) => ({ ...prev, [scene.id]: "kling-3.0" }))}
-                            title="Kling produces the best quality for complex Ramayana divine scenes"
+                            onClick={async () => {
+                              setSceneModels((prev) => ({ ...prev, [scene.id]: "kling-3.0" }));
+                              await fetch(`/api/scenes/${scene.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ modelAssigned: "kling-3.0" }),
+                              });
+                              fetchVideo();
+                            }}
                           >
                             → Use Kling for best quality
                           </button>
