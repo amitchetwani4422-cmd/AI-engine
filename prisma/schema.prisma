@@ -368,7 +368,7 @@ model VoiceAsset {
   id              String   @id @default(cuid())
   name            String
   provider        String   @default("elevenlabs")
-  externalVoiceId String
+  externalVoiceId String?
   channelId       String?
   characterId     String?
   description     String?

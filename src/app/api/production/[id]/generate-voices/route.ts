@@ -107,7 +107,7 @@ export async function POST(
     if (!apiKey) return NextResponse.json({ error: "ELEVENLABS_API_KEY not configured" }, { status: 500 });
 
     // Resolve voice asset
-    let voiceAsset: { id: string; name: string; externalVoiceId: string } | null = null;
+    let voiceAsset: { id: string; name: string; externalVoiceId: string | null } | null = null;
     if (body.voiceAssetId) {
       voiceAsset = await prisma.voiceAsset.findUnique({
         where: { id: body.voiceAssetId },
@@ -121,9 +121,9 @@ export async function POST(
         orderBy: { createdAt: "asc" },
       });
     }
-    if (!voiceAsset) {
+    if (!voiceAsset || !voiceAsset.externalVoiceId) {
       return NextResponse.json({
-        error: "No voice asset found. Create one in Voice & Audio settings first.",
+        error: "No voice asset found (or voice ID missing). Create one in Voice & Audio settings first.",
       }, { status: 400 });
     }
 
@@ -154,7 +154,7 @@ export async function POST(
       try {
         const result = await generateAndUploadAudio(
           scene.narrationText!,
-          voiceAsset.externalVoiceId,
+          voiceAsset.externalVoiceId!,
           apiKey,
           `scene-${scene.id}-audio`
         );
