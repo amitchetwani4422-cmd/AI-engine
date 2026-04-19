@@ -2,9 +2,15 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/production/[id]/backfill-characters
  *
- * Re-scans each scene's text (prompt + narration + description) and links the
- * correct characters from this video's channel into scene.characterIds.
- * Uses word-boundary matching to avoid substring false-positives (e.g. "rama" in "Ramayana").
+ * Links channel characters to scenes via characterIds.
+ *
+ * Strategy (in priority order):
+ *  1. Name match — character name / aliases appear verbatim in scene text
+ *  2. Single-host fallback — if the channel has exactly ONE character and
+ *     zero scenes matched by name (host is referenced as "she"/"he"/"host"),
+ *     assign that character to every scene that looks like it involves a person
+ *     (kling-3.0 / kling-2.1 model assigned, or keywords like "woman/man/host/chef/she/he")
+ *  3. Zero-match, multi-char — leave empty (user must manually assign)
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
@@ -36,6 +42,19 @@ const RAMAYANA_NAME_ALIASES: Record<string, string[]> = {
   vali:        ["वाली", "bali"],
 };
 
+// Keywords that indicate a human appears on screen (used for single-host fallback)
+const HUMAN_PRESENCE_KEYWORDS = [
+  "she ", "he ", "her ", "his ", "woman", "man", "girl", "boy",
+  "host", "chef", "cook", "narrator", "person", "character",
+  "walks", "stands", "sits", "looks", "smiles", "speaks", "holds",
+  "gesture", "farewell", "address", "introduction", "close-up of",
+  // Hindi pronouns / common terms
+  "वह ", "वो ", "main ", "mein ",
+];
+
+// Models that render human characters (not pure b-roll)
+const CHARACTER_MODELS = new Set(["kling-3.0", "kling-2.1", "sync-lipsync"]);
+
 function buildTokens(name: string): string[] {
   const canonical = name.toLowerCase();
   const tokens = new Set<string>([canonical]);
@@ -52,6 +71,11 @@ function matchesWholeWord(text: string, token: string): boolean {
   } catch {
     return text.includes(token);
   }
+}
+
+function sceneHasHuman(sceneText: string, modelAssigned: string): boolean {
+  if (CHARACTER_MODELS.has(modelAssigned)) return true;
+  return HUMAN_PRESENCE_KEYWORDS.some((kw) => sceneText.includes(kw));
 }
 
 export async function POST(
@@ -76,6 +100,7 @@ export async function POST(
                 narrationText: true,
                 visualGuidance: true,
                 cameraDirection: true,
+                modelAssigned: true,
               },
             },
           },
@@ -91,40 +116,64 @@ export async function POST(
     });
 
     const scenes = video.script?.sceneBreakdown ?? [];
-    let updatedCount = 0;
     const characterNames = channelChars.map((c) => c.name);
 
+    // ── Pass 1: name/alias matching ─────────────────────────────────────────
+    const sceneResults: { id: string; matchedIds: string[]; sceneText: string; modelAssigned: string }[] = scenes.map((scene) => {
+      const sceneText = [
+        scene.prompt,
+        scene.promptEn,
+        scene.narrationText,
+        scene.visualGuidance,
+        scene.description,
+        scene.cameraDirection,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const matchedIds = channelChars
+        .filter((char) => buildTokens(char.name).some((t) => matchesWholeWord(sceneText, t)))
+        .map((c) => c.id);
+
+      return { id: scene.id, matchedIds, sceneText, modelAssigned: scene.modelAssigned };
+    });
+
+    const totalNameMatched = sceneResults.filter((s) => s.matchedIds.length > 0).length;
+
+    // ── Pass 2: single-host fallback ────────────────────────────────────────
+    // If exactly 1 channel character and ZERO scenes matched by name,
+    // assign that character to every scene that has human presence.
+    let usedFallback = false;
+    if (channelChars.length === 1 && totalNameMatched === 0) {
+      usedFallback = true;
+      const soloCharId = channelChars[0].id;
+      for (const sr of sceneResults) {
+        if (sceneHasHuman(sr.sceneText, sr.modelAssigned)) {
+          sr.matchedIds = [soloCharId];
+        }
+      }
+    }
+
+    // ── Write to DB ─────────────────────────────────────────────────────────
+    let updatedCount = 0;
     await Promise.all(
-      scenes.map(async (scene) => {
-        const sceneText = [
-          scene.prompt,
-          scene.promptEn,
-          scene.narrationText,
-          scene.visualGuidance,
-          scene.description,
-          scene.cameraDirection,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-
-        const matchedIds = channelChars
-          .filter((char) =>
-            buildTokens(char.name).some((t) => matchesWholeWord(sceneText, t))
-          )
-          .map((c) => c.id);
-
+      sceneResults.map(async (sr) => {
         await prisma.scene.update({
-          where: { id: scene.id },
-          data: { characterIds: matchedIds },
+          where: { id: sr.id },
+          data: { characterIds: sr.matchedIds },
         });
-        if (matchedIds.length > 0) updatedCount++;
+        if (sr.matchedIds.length > 0) updatedCount++;
       })
     );
 
+    const method = usedFallback
+      ? `single-host fallback (no name match found for "${channelChars[0].name}" — assigned to all human-presence scenes)`
+      : "name matching";
+
     return NextResponse.json({
       ok: true,
-      message: `Linked characters in ${updatedCount}/${scenes.length} scenes`,
+      message: `Linked characters in ${updatedCount}/${scenes.length} scenes via ${method}`,
       debug: {
         charactersFoundInChannel: channelChars.length,
         characterNames,
