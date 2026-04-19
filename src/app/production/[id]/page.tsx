@@ -487,6 +487,8 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           } catch {
             setRescueMsg((p) => ({ ...p, [sceneId]: "Network error checking FAL — use Recover Clip button." }));
           }
+          // Stop the queue so remaining scenes aren't silently queued while this one is unresolved
+          queueCancelledRef.current = true;
           setQueue([]);
           setQueueRunning(false);
         }
@@ -499,11 +501,13 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
             ? "FAL.AI not configured. Add FAL_KEY to Vercel environment variables."
             : msg
         );
+        queueCancelledRef.current = true;
         setQueue([]);
         setQueueRunning(false);
       }
     } catch {
       setSceneError("Network error — please try again.");
+      queueCancelledRef.current = true;
       setQueue([]);
       setQueueRunning(false);
     } finally {

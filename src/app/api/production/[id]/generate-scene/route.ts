@@ -106,6 +106,17 @@ function buildCharacterTokens(dbName: string): string[] {
   return [...tokens];
 }
 
+// Word-boundary safe match — prevents "ram" matching inside "ramayana" or "ashram"
+function matchesWholeWord(text: string, token: string): boolean {
+  if (token.includes(' ')) return text.includes(token); // multi-word: spaces act as boundaries
+  if (/[\u0900-\u097F]/.test(token)) return text.includes(token); // Devanagari — substring rare
+  try {
+    return new RegExp(`(?<![a-z])${token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])`, 'i').test(text);
+  } catch {
+    return text.includes(token);
+  }
+}
+
 const GenerateSceneSchema = z.object({
   sceneId: z.string().min(1),
   stylePrefix: z.string().optional(),
@@ -173,31 +184,21 @@ export async function POST(
         select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true, approvedImages: true },
       });
     } else {
-      // Fallback for scenes with empty characterIds: text-scan with alias matching.
-      // Handles spelling variants (Vashishtha/Vasishtha) and Hindi names (वशिष्ठ/Vasishtha).
-      // If the video's channel has no characters, search all channels — handles the common
-      // case where Ramayana characters are seeded to one channel but videos are produced
-      // under a different channel.
-      let allChannelChars = await prisma.character.findMany({
+      // Fallback for scenes with empty characterIds: text-scan with alias + word-boundary matching.
+      // Scoped to this video's channel — prevents characters from other channels bleeding in.
+      const allChannelChars = await prisma.character.findMany({
         where: { channelId: video.channelId },
         select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true, approvedImages: true },
       });
-      if (allChannelChars.length === 0) {
-        allChannelChars = await prisma.character.findMany({
-          select: { id: true, name: true, referencePrompt: true, personality: true, colorPalette: true, clothingRules: true, approvedImages: true },
-        });
-      }
 
       const sceneText = [
         scene.prompt, scene.promptEn, scene.visualGuidance,
         scene.description, (scene as Record<string, unknown>).narrationText as string | undefined,
       ].filter(Boolean).join(' ').toLowerCase();
 
-      // Build expanded match tokens for each character:
-      // the canonical DB name + all known aliases (Hindi names, spelling variants)
       const matched = allChannelChars.filter((c) => {
         const tokens = buildCharacterTokens(c.name);
-        return tokens.some((t) => sceneText.includes(t));
+        return tokens.some((t) => matchesWholeWord(sceneText, t));
       });
 
       if (matched.length > 0) {
