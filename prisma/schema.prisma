@@ -41,12 +41,13 @@ model Channel {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  ideas      Idea[]
-  scripts    Script[]
-  series     Series[]
-  styleBible StyleBible?
-  videos     Video[]
-  analytics  ChannelAnalytics[]
+  ideas       Idea[]
+  scripts     Script[]
+  series      Series[]
+  styleBible  StyleBible?
+  videos      Video[]
+  analytics   ChannelAnalytics[]
+  voiceAssets VoiceAsset[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,18 +366,24 @@ model RamayanaStoryBeat {
 // VOICE ASSET
 // ─────────────────────────────────────────────────────────────────────────────
 model VoiceAsset {
-  id                 String   @id @default(cuid())
-  name               String
-  channelId          String
-  characterId        String?
-  elevenlabsVoiceId  String
-  referenceAudios    String[]
-  tonePresets        String[]
-  language           String   @default("English")
-  isMultilingual     Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  provider        String   @default("elevenlabs")
+  externalVoiceId String
+  channelId       String?
+  characterId     String?
+  description     String?
+  gender          String?
+  language        String   @default("English")
+  accent          String?
+  sampleUrl       String?
+  tags            String[]
+  isMultilingual  Boolean  @default(false)
+  referenceAudios String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
+  channel    Channel?   @relation(fields: [channelId], references: [id])
   characters Character[]
 }
 

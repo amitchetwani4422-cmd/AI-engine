@@ -14,32 +14,56 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mic, Plus, Loader2, Play, Music, AlertCircle } from "lucide-react";
 
 interface VoiceAsset {
-  id: string; name: string; elevenlabsVoiceId?: string; channelId?: string;
-  referenceAudios: string[]; tonePresets: string[]; language: string;
-  isMultilingual: boolean;
+  id: string; name: string; externalVoiceId?: string; channelId?: string;
+  tags: string[]; language: string; isMultilingual: boolean;
+  channel?: { id: string; name: string } | null;
 }
+
+interface Channel { id: string; name: string; }
 
 export default function VoicePage() {
   const [voices, setVoices] = useState<VoiceAsset[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [form, setForm] = useState({ name: "", elevenlabsVoiceId: "", language: "Hindi", tonePresets: "calm,dramatic", isMultilingual: false });
+  const [form, setForm] = useState({ name: "", externalVoiceId: "", channelId: "", language: "Hindi", tags: "calm,dramatic" });
   const [genForm, setGenForm] = useState({ text: "", voiceAssetId: "", emotion: "neutral" });
   const [genResult, setGenResult] = useState<{ audioUrl?: string; error?: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/voice").then((r) => r.json()).then((d) => setVoices(Array.isArray(d) ? d : [])).finally(() => setLoading(false));
+    Promise.all([
+      fetch("/api/voice").then((r) => r.json()),
+      fetch("/api/channels").then((r) => r.json()),
+    ]).then(([v, c]) => {
+      setVoices(Array.isArray(v) ? v : []);
+      setChannels(Array.isArray(c) ? c : []);
+    }).finally(() => setLoading(false));
   }, []);
 
   async function createVoice(e: React.FormEvent) {
     e.preventDefault();
-    await fetch("/api/voice", {
+    setSaveError(null);
+    const res = await fetch("/api/voice", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, tonePresets: form.tonePresets.split(",").map((t) => t.trim()), referenceAudios: [] }),
+      body: JSON.stringify({
+        name: form.name,
+        provider: "elevenlabs",
+        externalVoiceId: form.externalVoiceId,
+        channelId: form.channelId || undefined,
+        language: form.language,
+        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      }),
     });
+    const data = await res.json();
+    if (!res.ok) {
+      setSaveError(data.error ?? "Save failed");
+      return;
+    }
     setShowCreate(false);
+    setForm({ name: "", externalVoiceId: "", channelId: "", language: "Hindi", tags: "calm,dramatic" });
     fetch("/api/voice").then((r) => r.json()).then((d) => setVoices(Array.isArray(d) ? d : []));
   }
 
@@ -96,17 +120,17 @@ export default function VoicePage() {
                           <p className="text-xs text-zinc-500">{voice.language} {voice.isMultilingual && "· Multilingual"}</p>
                         </div>
                       </div>
-                      {voice.elevenlabsVoiceId && (
-                        <p className="text-xs text-zinc-600 font-mono mb-2">{voice.elevenlabsVoiceId}</p>
+                      {voice.externalVoiceId && (
+                        <p className="text-xs text-zinc-600 font-mono mb-2">{voice.externalVoiceId}</p>
+                      )}
+                      {voice.channel && (
+                        <p className="text-xs text-zinc-500 mb-2">Channel: {voice.channel.name}</p>
                       )}
                       <div className="flex flex-wrap gap-1">
-                        {voice.tonePresets.map((tone) => (
+                        {(voice.tags ?? []).map((tone) => (
                           <Badge key={tone} className="bg-zinc-800 text-zinc-400 text-xs">{tone}</Badge>
                         ))}
                       </div>
-                      {voice.referenceAudios.length > 0 && (
-                        <p className="text-xs text-zinc-600 mt-2">{voice.referenceAudios.length} reference audio(s)</p>
-                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -193,17 +217,28 @@ export default function VoicePage() {
         </Tabs>
       </div>
 
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+      <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) setSaveError(null); }}>
         <DialogContent className="bg-zinc-900 border-zinc-800">
           <DialogHeader><DialogTitle>Add Voice Asset</DialogTitle></DialogHeader>
           <form onSubmit={createVoice} className="space-y-3">
             <div className="space-y-1.5">
               <Label>Name *</Label>
-              <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Ram Narrator Voice" />
+              <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Priya Narrator Voice" />
             </div>
             <div className="space-y-1.5">
-              <Label>ElevenLabs Voice ID</Label>
-              <Input value={form.elevenlabsVoiceId} onChange={(e) => setForm({ ...form, elevenlabsVoiceId: e.target.value })} placeholder="From ElevenLabs dashboard" />
+              <Label>ElevenLabs Voice ID *</Label>
+              <Input required value={form.externalVoiceId} onChange={(e) => setForm({ ...form, externalVoiceId: e.target.value })} placeholder="From ElevenLabs dashboard (e.g. 21m00Tcm4TlvDq8ikWAM)" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Channel</Label>
+              <select
+                value={form.channelId}
+                onChange={(e) => setForm({ ...form, channelId: e.target.value })}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-purple-500"
+              >
+                <option value="">— no channel (global) —</option>
+                {channels.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -216,10 +251,15 @@ export default function VoicePage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Tone Presets (comma-sep)</Label>
-                <Input value={form.tonePresets} onChange={(e) => setForm({ ...form, tonePresets: e.target.value })} placeholder="calm, dramatic, devotional" />
+                <Label>Tags (comma-sep)</Label>
+                <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="calm, dramatic, devotional" />
               </div>
             </div>
+            {saveError && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                <p className="text-xs text-red-400">{saveError}</p>
+              </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
               <Button type="submit">Save Voice</Button>
