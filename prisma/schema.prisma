@@ -142,6 +142,8 @@ model Scene {
   locationTag      String?
   narrationText    String?  @db.Text
   characterIds     String[]
+  sceneAudio       String?  // Cloudinary URL of generated narration audio
+  sceneAudioPublicId String? // Cloudinary public_id for management
   status           String   @default("Pending")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
