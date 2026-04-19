@@ -10,7 +10,7 @@ const FAL_MODEL_IDS: Record<string, string> = {
   'kling-3.0-i2v': 'fal-ai/kling-video/v1.6/pro/image-to-video',
   'kling-2.1':     'fal-ai/kling-video/v2.1/standard/image-to-video',
   'kling-2.1-t2v': 'fal-ai/kling-video/v2.1/standard/text-to-video',
-  'minimax':       'fal-ai/minimax-video-01',
+  'minimax':       'fal-ai/minimax/video-01-live',
   'ltx-video-2':   'fal-ai/ltx-video',
   'wan-2.1':       'fal-ai/wan-i2v/v2.1/1.3b',
   'sync-lipsync':  'fal-ai/sync-lipsync',

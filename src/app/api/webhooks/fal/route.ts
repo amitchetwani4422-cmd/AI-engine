@@ -10,8 +10,15 @@ cloudinary.config({
 });
 
 const COST_PER_SECOND: Record<string, number> = {
-  'kling-3.0': 0.056,
-  'veo-3.1': 0.08,
+  'kling-3.0':     0.056,
+  'kling-3.0-i2v': 0.056,
+  'kling-2.1':     0.03,
+  'kling-2.1-t2v': 0.03,
+  'minimax':       0.02,
+  'ltx-video-2':   0.004,
+  'wan-2.1':       0.003,
+  'sync-lipsync':  0.02,
+  'veo-3.1':       0.08,
 };
 
 export async function POST(request: NextRequest) {
