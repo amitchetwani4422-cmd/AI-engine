@@ -57,7 +57,10 @@ export async function POST(
       return NextResponse.json({ error: 'No FAL request ID stored — job was submitted before webhook support was added. Please regenerate.' }, { status: 400 });
     }
 
-    const modelId = FAL_MODEL_IDS[job.model ?? 'kling-3.0'];
+    // Use the exact FAL model ID that was used at submission time (stored in inputData).
+    // Falling back to FAL_MODEL_IDS[job.model] is wrong for variants like kling-2.1-t2v
+    // where job.model='kling-2.1' but the actual submission used the t2v endpoint.
+    const modelId = (inputData?.falModelId as string | undefined) ?? FAL_MODEL_IDS[job.model ?? 'kling-3.0'];
 
     // Check FAL queue status — correct API: fal.queue.status(modelId, { requestId })
     let falStatus: string;

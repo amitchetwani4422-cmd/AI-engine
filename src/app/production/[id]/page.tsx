@@ -471,26 +471,28 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
             });
             const rdata = await rres.json();
             if (rdata.status === "rescued") {
-              // Clip recovered silently — no user action needed, queue continues
+              // Clip recovered — refresh video state and continue queue normally
               const latest = await fetch(`/api/production/${id}`);
               const ldata = await latest.json();
               if (ldata && !ldata.error) setVideo(ldata);
-              return; // don't clear queue — let it continue
+              return; // continue queue
             } else if (rdata.status === "still_processing") {
+              // FAL still working — skip this scene in the queue, auto-rescue will recover it
               setRescueMsg((p) => ({ ...p, [sceneId]: "⏳ FAL still generating — auto-checking in 2 min..." }));
               scheduleAutoRescue(sceneId);
+              // fall through — queue continues with next scene
             } else if (rdata.status === "failed") {
-              setRescueMsg((p) => ({ ...p, [sceneId]: "❌ FAL job failed — safe to regenerate (no double charge)." }));
+              setRescueMsg((p) => ({ ...p, [sceneId]: "❌ FAL job failed — safe to regenerate." }));
+              // fall through — queue continues with next scene
             } else {
-              setRescueMsg((p) => ({ ...p, [sceneId]: "Could not check status — use Recover Clip button." }));
+              setRescueMsg((p) => ({ ...p, [sceneId]: rdata.error ?? "Could not check status — use Recover Clip." }));
+              // fall through — queue continues with next scene
             }
           } catch {
-            setRescueMsg((p) => ({ ...p, [sceneId]: "Network error checking FAL — use Recover Clip button." }));
+            setRescueMsg((p) => ({ ...p, [sceneId]: "Network error checking FAL — will retry automatically." }));
+            // fall through — queue continues with next scene
           }
-          // Stop the queue so remaining scenes aren't silently queued while this one is unresolved
-          queueCancelledRef.current = true;
-          setQueue([]);
-          setQueueRunning(false);
+          // Do NOT stop the queue here — skip failed/stuck scene and proceed to the next
         }
       } else {
         const msg = data?.details ?? data?.error ?? `Error ${res.status}`;
