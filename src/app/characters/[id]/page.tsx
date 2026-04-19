@@ -89,7 +89,7 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   const [faceOnly, setFaceOnly] = useState(false);
   const [guidanceScale, setGuidanceScale] = useState(6);
   const [textModel, setTextModel] = useState<"flux" | "recraft">("flux");
-  const [allVoices, setAllVoices] = useState<Array<{ id: string; name: string; elevenlabsVoiceId: string }>>([]);
+  const [allVoices, setAllVoices] = useState<Array<{ id: string; name: string; externalVoiceId: string | null }>>([]);
   const [assigningVoice, setAssigningVoice] = useState(false);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>("");
   const [uploadingImage, setUploadingImage] = useState(false);
