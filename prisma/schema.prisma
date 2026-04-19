@@ -41,13 +41,12 @@ model Channel {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  ideas       Idea[]
-  scripts     Script[]
-  series      Series[]
-  styleBible  StyleBible?
-  videos      Video[]
-  analytics   ChannelAnalytics[]
-  voiceAssets VoiceAsset[]
+  ideas      Idea[]
+  scripts    Script[]
+  series     Series[]
+  styleBible StyleBible?
+  videos     Video[]
+  analytics  ChannelAnalytics[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -383,7 +382,6 @@ model VoiceAsset {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  channel    Channel?   @relation(fields: [channelId], references: [id])
   characters Character[]
 }
 

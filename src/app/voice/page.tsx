@@ -16,7 +16,6 @@ import { Mic, Plus, Loader2, Play, Music, AlertCircle } from "lucide-react";
 interface VoiceAsset {
   id: string; name: string; externalVoiceId?: string; channelId?: string;
   tags: string[]; language: string; isMultilingual: boolean;
-  channel?: { id: string; name: string } | null;
 }
 
 interface Channel { id: string; name: string; }
@@ -122,9 +121,6 @@ export default function VoicePage() {
                       </div>
                       {voice.externalVoiceId && (
                         <p className="text-xs text-zinc-600 font-mono mb-2">{voice.externalVoiceId}</p>
-                      )}
-                      {voice.channel && (
-                        <p className="text-xs text-zinc-500 mb-2">Channel: {voice.channel.name}</p>
                       )}
                       <div className="flex flex-wrap gap-1">
                         {(voice.tags ?? []).map((tone) => (

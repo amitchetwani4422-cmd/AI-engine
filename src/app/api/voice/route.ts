@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       include: {
         character: { select: { id: true, name: true } },
-        channel: { select: { id: true, name: true } },
       },
     });
 
@@ -76,7 +75,6 @@ export async function POST(request: NextRequest) {
       },
       include: {
         character: { select: { id: true, name: true } },
-        channel: { select: { id: true, name: true } },
       },
     });
 
