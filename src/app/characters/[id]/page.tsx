@@ -66,7 +66,7 @@ interface Character {
   restrictedChanges: string[];
   samplePoses: string[];
   approvedPrompts: CharacterPrompt[];
-  voice?: { id: string; name: string; elevenlabsVoiceId: string } | null;
+  voice?: { id: string; name: string; externalVoiceId: string } | null;
   voiceId?: string | null;
 }
 
@@ -587,7 +587,7 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                   <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
                     <p className="text-xs text-purple-400 font-medium mb-1">Current Voice</p>
                     <p className="text-sm text-zinc-100 font-medium">{character.voice.name}</p>
-                    <p className="text-xs text-zinc-500 font-mono mt-0.5">{character.voice.elevenlabsVoiceId}</p>
+                    <p className="text-xs text-zinc-500 font-mono mt-0.5">{character.voice.externalVoiceId}</p>
                   </div>
                 ) : (
                   <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
@@ -598,38 +598,45 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                 {/* Change voice */}
                 <div className="space-y-2">
                   <p className="text-xs text-zinc-400 font-medium">Assign / Change Voice</p>
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedVoiceId}
-                      onChange={(e) => setSelectedVoiceId(e.target.value)}
-                      className="flex-1 bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-purple-500"
-                    >
-                      <option value="">— select a voice —</option>
-                      {allVoices.map((v) => (
-                        <option key={v.id} value={v.id}>{v.name}</option>
-                      ))}
-                    </select>
-                    <Button
-                      size="sm"
-                      disabled={!selectedVoiceId || assigningVoice}
-                      onClick={async () => {
-                        setAssigningVoice(true);
-                        try {
-                          await fetch(`/api/characters/${id}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ voiceId: selectedVoiceId }),
-                          });
-                          const updated = await fetch(`/api/characters/${id}`).then((r) => r.json());
-                          setCharacter(updated);
-                        } finally {
-                          setAssigningVoice(false);
-                        }
-                      }}
-                    >
-                      {assigningVoice ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
-                    </Button>
-                  </div>
+                  {allVoices.length === 0 ? (
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <p className="text-xs text-amber-400 mb-1">No voice assets found for this channel.</p>
+                      <a href="/voice" className="text-xs text-blue-400 underline hover:text-blue-300">Create one in Voice &amp; Audio →</a>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedVoiceId}
+                        onChange={(e) => setSelectedVoiceId(e.target.value)}
+                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-md px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="">— select a voice —</option>
+                        {allVoices.map((v) => (
+                          <option key={v.id} value={v.id}>{v.name}</option>
+                        ))}
+                      </select>
+                      <Button
+                        size="sm"
+                        disabled={!selectedVoiceId || assigningVoice}
+                        onClick={async () => {
+                          setAssigningVoice(true);
+                          try {
+                            await fetch(`/api/characters/${id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ voiceId: selectedVoiceId }),
+                            });
+                            const updated = await fetch(`/api/characters/${id}`).then((r) => r.json());
+                            setCharacter(updated);
+                          } finally {
+                            setAssigningVoice(false);
+                          }
+                        }}
+                      >
+                        {assigningVoice ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

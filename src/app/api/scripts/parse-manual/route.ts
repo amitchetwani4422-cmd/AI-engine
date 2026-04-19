@@ -26,10 +26,13 @@ export async function POST(request: NextRequest) {
     const { title, channelId, fullScript, hook, formatVariant, musicMood, aiModel } = parsed.data;
     const model = (aiModel ?? DEFAULT_SCRIPT_MODEL) as AIModel;
 
-    const channel = await prisma.channel.findUnique({
-      where: { id: channelId },
-      include: { styleBible: true },
-    });
+    const [channel, channelChars] = await Promise.all([
+      prisma.channel.findUnique({ where: { id: channelId }, include: { styleBible: true } }),
+      prisma.character.findMany({
+        where: { channelId },
+        select: { name: true, speciesOrType: true, referencePrompt: true, clothingRules: true },
+      }),
+    ]);
     if (!channel) return NextResponse.json({ error: "Channel not found" }, { status: 404 });
 
     const styleGuide = channel.styleBible
@@ -50,7 +53,11 @@ FORMAT: ${formatVariant ?? "Standard"}
 
 STYLE GUIDE:
 ${styleGuide}
-
+${channelChars.length > 0 ? `
+CHARACTERS IN THIS CHANNEL:
+${channelChars.map((c) => `- ${c.name}: ${(c.referencePrompt ?? c.speciesOrType ?? "").slice(0, 150)}${c.clothingRules ? ` | Clothing: ${c.clothingRules.slice(0, 80)}` : ""}`).join("\n")}
+Always use the correct gender and exact appearance described above when writing scene prompts for these characters. Never write "boy" for a female character or vice versa.
+` : ""}
 SCRIPT TITLE: ${title}
 ${hook ? `HOOK: ${hook}` : ""}
 
