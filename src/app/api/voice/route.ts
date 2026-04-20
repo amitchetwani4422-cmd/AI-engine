@@ -63,15 +63,17 @@ export async function POST(request: NextRequest) {
       data: {
         name: parsed.data.name,
         provider: parsed.data.provider,
-        externalVoiceId: parsed.data.externalVoiceId,
+        elevenlabsVoiceId: parsed.data.externalVoiceId,  // form sends externalVoiceId, DB stores as elevenlabsVoiceId
         description: parsed.data.description ?? null,
         gender: parsed.data.gender ?? null,
-        language: parsed.data.language ?? null,
+        language: parsed.data.language ?? "English",
         accent: parsed.data.accent ?? null,
         characterId: parsed.data.characterId ?? null,
         channelId: parsed.data.channelId ?? null,
         sampleUrl: parsed.data.sampleUrl ?? null,
         tags: parsed.data.tags ?? [],
+        tonePresets: parsed.data.tags ?? [],
+        referenceAudios: [],
       },
       include: {
         character: { select: { id: true, name: true } },

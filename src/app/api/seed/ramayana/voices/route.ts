@@ -210,13 +210,14 @@ export async function POST(_req: NextRequest) {
       const voice = await prisma.voiceAsset.create({
         data: {
           name: `${entry.name} — ${entry.voiceName}`,
-          externalVoiceId: entry.externalVoiceId,
+          elevenlabsVoiceId: entry.externalVoiceId,
           provider: "elevenlabs",
           channelId: channel.id,
           characterId: character.id,
           language: "Hindi",
           isMultilingual: true,
-          tags: entry.tonePresets,
+          tags: entry.tags,
+          tonePresets: entry.tags,
           referenceAudios: [],
         },
       });

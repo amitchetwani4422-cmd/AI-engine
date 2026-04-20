@@ -66,7 +66,7 @@ interface Character {
   restrictedChanges: string[];
   samplePoses: string[];
   approvedPrompts: CharacterPrompt[];
-  voice?: { id: string; name: string; externalVoiceId: string } | null;
+  voice?: { id: string; name: string; elevenlabsVoiceId: string } | null;
   voiceId?: string | null;
 }
 
@@ -89,7 +89,7 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
   const [faceOnly, setFaceOnly] = useState(false);
   const [guidanceScale, setGuidanceScale] = useState(6);
   const [textModel, setTextModel] = useState<"flux" | "recraft">("flux");
-  const [allVoices, setAllVoices] = useState<Array<{ id: string; name: string; externalVoiceId: string | null }>>([]);
+  const [allVoices, setAllVoices] = useState<Array<{ id: string; name: string; elevenlabsVoiceId: string | null }>>([]);
   const [assigningVoice, setAssigningVoice] = useState(false);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>("");
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -587,7 +587,7 @@ export default function CharacterDetailPage({ params }: { params: Promise<{ id: 
                   <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
                     <p className="text-xs text-purple-400 font-medium mb-1">Current Voice</p>
                     <p className="text-sm text-zinc-100 font-medium">{character.voice.name}</p>
-                    <p className="text-xs text-zinc-500 font-mono mt-0.5">{character.voice.externalVoiceId}</p>
+                    <p className="text-xs text-zinc-500 font-mono mt-0.5">{character.voice.elevenlabsVoiceId}</p>
                   </div>
                 ) : (
                   <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">

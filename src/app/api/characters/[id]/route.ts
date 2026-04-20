@@ -33,7 +33,7 @@ export async function GET(
     const character = await prisma.character.findUnique({
       where: { id },
       include: {
-        voice: { select: { id: true, name: true, externalVoiceId: true } },
+        voice: { select: { id: true, name: true, elevenlabsVoiceId: true } },
         approvedPrompts: { orderBy: { createdAt: 'desc' } },
       },
     });
@@ -78,7 +78,7 @@ export async function PATCH(
       where: { id },
       data: updateData,
       include: {
-        voice: { select: { id: true, name: true, externalVoiceId: true } },
+        voice: { select: { id: true, name: true, elevenlabsVoiceId: true } },
         approvedPrompts: { orderBy: { createdAt: 'desc' } },
       },
     });

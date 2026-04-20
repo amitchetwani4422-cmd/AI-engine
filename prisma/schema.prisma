@@ -365,22 +365,23 @@ model RamayanaStoryBeat {
 // VOICE ASSET
 // ─────────────────────────────────────────────────────────────────────────────
 model VoiceAsset {
-  id              String   @id @default(cuid())
-  name            String
-  provider        String   @default("elevenlabs")
-  externalVoiceId String?
-  channelId       String?
-  characterId     String?
-  description     String?
-  gender          String?
-  language        String   @default("English")
-  accent          String?
-  sampleUrl       String?
-  tags            String[]
-  isMultilingual  Boolean  @default(false)
-  referenceAudios String[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String
+  provider           String   @default("elevenlabs")
+  elevenlabsVoiceId  String?
+  channelId          String?
+  characterId        String?
+  description        String?
+  gender             String?
+  language           String   @default("English")
+  accent             String?
+  sampleUrl          String?
+  tags               String[]
+  tonePresets        String[]
+  isMultilingual     Boolean  @default(false)
+  referenceAudios    String[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   characters Character[]
 }

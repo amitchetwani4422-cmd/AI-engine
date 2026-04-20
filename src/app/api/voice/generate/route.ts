@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         : text;
 
     const elevenLabsResponse = await fetch(
-      `${ELEVENLABS_API_URL}/text-to-speech/${voiceAsset.externalVoiceId}`,
+      `${ELEVENLABS_API_URL}/text-to-speech/${voiceAsset.elevenlabsVoiceId}`,
       {
         method: 'POST',
         headers: {
