@@ -383,7 +383,8 @@ model VoiceAsset {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  characters Character[]
+  characters         Character[]
+  voiceGenerations   VoiceGeneration[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -504,6 +505,23 @@ model GenerationJob {
   sceneId     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VOICE GENERATION LOG
+// ─────────────────────────────────────────────────────────────────────────────
+model VoiceGeneration {
+  id              String   @id @default(cuid())
+  voiceAssetId    String
+  text            String   @db.Text
+  emotion         String   @default("neutral")
+  audioUrl        String   @db.Text
+  durationSeconds Float?
+  cost            Float?
+  status          String   @default("Generated")
+  createdAt       DateTime @default(now())
+
+  voiceAsset VoiceAsset @relation(fields: [voiceAssetId], references: [id], onDelete: Cascade)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
