@@ -85,6 +85,7 @@ export async function POST(
       select: {
         id: true,
         channelId: true,
+        scriptId: true,
         script: {
           select: {
             sceneBreakdown: {
@@ -128,9 +129,8 @@ export async function POST(
     }
 
     // Filter scenes: only those with narrationText, optionally limited to sceneIds
-    let scenes = (video.script?.sceneBreakdown ?? []).filter(
-      (s) => s.narrationText?.trim()
-    );
+    const allScenes = video.script?.sceneBreakdown ?? [];
+    let scenes = allScenes.filter((s) => s.narrationText?.trim());
     if (body.sceneIds?.length) {
       const ids = new Set(body.sceneIds);
       scenes = scenes.filter((s) => ids.has(s.id));
@@ -143,6 +143,13 @@ export async function POST(
         totalDialogues: 0,
         narratorName: voiceAsset.name,
         message: "No scenes with narration text found.",
+        debug: {
+          totalScenes: allScenes.length,
+          scenesWithNarration: scenes.length,
+          hasScript: !!video.script,
+          scriptId: video.scriptId,
+          sampleNarration: allScenes[0]?.narrationText ?? null,
+        },
       });
     }
 
