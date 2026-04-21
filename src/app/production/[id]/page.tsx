@@ -314,6 +314,7 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         body: JSON.stringify({ voiceAssetId: selectedVoiceId || undefined }),
       });
       const data = await res.json();
+      console.log("[generate-voices]", JSON.stringify(data, null, 2));
       if (!res.ok) { setVoiceError(data.error ?? "Voice generation failed"); return; }
       setVoiceResult({ generated: data.generated, totalDialogues: data.totalDialogues, narratorName: data.narratorName });
       await fetchVideo();
