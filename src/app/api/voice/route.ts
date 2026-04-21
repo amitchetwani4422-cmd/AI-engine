@@ -32,9 +32,6 @@ export async function GET(request: NextRequest) {
     const voices = await prisma.voiceAsset.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: {
-        character: { select: { id: true, name: true } },
-      },
     });
 
     return NextResponse.json(voices);
@@ -63,7 +60,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: parsed.data.name,
         provider: parsed.data.provider,
-        elevenlabsVoiceId: parsed.data.externalVoiceId,  // form sends externalVoiceId, DB stores as elevenlabsVoiceId
+        elevenlabsVoiceId: parsed.data.externalVoiceId,
         description: parsed.data.description ?? null,
         gender: parsed.data.gender ?? null,
         language: parsed.data.language ?? "English",
@@ -74,9 +71,6 @@ export async function POST(request: NextRequest) {
         tags: parsed.data.tags ?? [],
         tonePresets: parsed.data.tags ?? [],
         referenceAudios: [],
-      },
-      include: {
-        character: { select: { id: true, name: true } },
       },
     });
 
