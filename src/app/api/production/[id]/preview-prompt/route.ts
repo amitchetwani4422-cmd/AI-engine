@@ -301,7 +301,9 @@ export async function GET(
       locationRefImage = locAsset?.referenceImages?.[0] ?? null;
     }
 
-    const readyToGenerate = mentionedPreviews.length === 0 || mentionedPreviews.some((c) => c.hasImage);
+    // Always allow generation — text mode works without character images.
+    // Missing images are shown as a warning only, not a blocker.
+    const readyToGenerate = true;
     const missingImages = mentionedPreviews.filter((c) => !c.hasImage);
 
     return NextResponse.json({

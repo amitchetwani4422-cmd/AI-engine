@@ -48,12 +48,13 @@ const HUMAN_PRESENCE_KEYWORDS = [
   "host", "chef", "cook", "narrator", "person", "character",
   "walks", "stands", "sits", "looks", "smiles", "speaks", "holds",
   "gesture", "farewell", "address", "introduction", "close-up of",
+  "stirs", "chops", "adds", "pours", "demonstrates", "shows",
   // Hindi pronouns / common terms
   "वह ", "वो ", "main ", "mein ",
 ];
 
 // Models that render human characters (not pure b-roll)
-const CHARACTER_MODELS = new Set(["kling-3.0", "kling-2.1", "sync-lipsync"]);
+const CHARACTER_MODELS = new Set(["kling-3.0", "kling-2.1", "sync-lipsync", "kling-3.0-i2v", "kling-2.1-t2v"]);
 
 function buildTokens(name: string): string[] {
   const canonical = name.toLowerCase();
@@ -142,15 +143,16 @@ export async function POST(
     const totalNameMatched = sceneResults.filter((s) => s.matchedIds.length > 0).length;
 
     // ── Pass 2: single-host fallback ────────────────────────────────────────
-    // If exactly 1 channel character and ZERO scenes matched by name,
-    // assign that character to every scene that has human presence.
+    // If exactly 1 channel character, assign that character to any scene with
+    // human presence that didn't already match by name. This covers scenes
+    // that reference the host as "she", "the host", "the chef", etc.
     let usedFallback = false;
-    if (channelChars.length === 1 && totalNameMatched === 0) {
-      usedFallback = true;
+    if (channelChars.length === 1) {
       const soloCharId = channelChars[0].id;
       for (const sr of sceneResults) {
-        if (sceneHasHuman(sr.sceneText, sr.modelAssigned)) {
+        if (sr.matchedIds.length === 0 && sceneHasHuman(sr.sceneText, sr.modelAssigned)) {
           sr.matchedIds = [soloCharId];
+          usedFallback = true;
         }
       }
     }
@@ -167,9 +169,11 @@ export async function POST(
       })
     );
 
-    const method = usedFallback
-      ? `single-host fallback (no name match found for "${channelChars[0].name}" — assigned to all human-presence scenes)`
-      : "name matching";
+    const method = usedFallback && totalNameMatched === 0
+      ? `single-host fallback (no name match — assigned "${channelChars[0].name}" to all human-presence scenes)`
+      : usedFallback
+      ? `name matching (${totalNameMatched} scenes) + single-host fallback for remaining human scenes`
+      : `name matching`;
 
     return NextResponse.json({
       ok: true,

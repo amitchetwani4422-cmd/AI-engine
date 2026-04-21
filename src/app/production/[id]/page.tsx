@@ -314,7 +314,6 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
         body: JSON.stringify({ voiceAssetId: selectedVoiceId || undefined }),
       });
       const data = await res.json();
-      console.log("[generate-voices]", JSON.stringify(data, null, 2));
       if (!res.ok) { setVoiceError(data.error ?? "Voice generation failed"); return; }
       setVoiceResult({ generated: data.generated, totalDialogues: data.totalDialogues, narratorName: data.narratorName });
       await fetchVideo();
@@ -832,12 +831,11 @@ export default function ProductionDetailPage({ params }: { params: Promise<{ id:
           </Button>
           <Button
             size="sm"
-            className={`flex-1 ${generatePreview.readyToGenerate ? 'bg-blue-600 hover:bg-blue-700' : 'bg-zinc-700 text-zinc-400 cursor-not-allowed'}`}
-            disabled={!generatePreview.readyToGenerate}
+            className="flex-1 bg-blue-600 hover:bg-blue-700"
             onClick={confirmGenerate}
           >
             <Zap className="h-3.5 w-3.5 mr-1.5" />
-            {generatePreview.readyToGenerate ? 'Confirm & Generate' : 'Add images first'}
+            Confirm &amp; Generate
           </Button>
         </div>
       </div>

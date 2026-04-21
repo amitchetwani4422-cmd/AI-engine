@@ -38,11 +38,37 @@ export async function GET(
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
+    // Resolve characterIds (String[]) → character name objects so the UI can render chips
+    const allCharacterIds = [
+      ...new Set(
+        (video.script?.sceneBreakdown ?? []).flatMap(
+          (s) => (s as unknown as { characterIds?: string[] }).characterIds ?? []
+        )
+      ),
+    ];
+    const characterMap = new Map<string, { id: string; name: string }>();
+    if (allCharacterIds.length > 0) {
+      const chars = await prisma.character.findMany({
+        where: { id: { in: allCharacterIds } },
+        select: { id: true, name: true },
+      });
+      chars.forEach((c) => characterMap.set(c.id, c));
+    }
+
+    const scenesWithChars = (video.script?.sceneBreakdown ?? []).map((scene) => {
+      const charIds = (scene as unknown as { characterIds?: string[] }).characterIds ?? [];
+      return {
+        ...scene,
+        characters: charIds.map((cid) => characterMap.get(cid)).filter(Boolean),
+      };
+    });
+
     const totalScenes = video.script?.sceneBreakdown.length ?? 0;
     const generatedScenes = new Set(video.generatedClips.map((c) => c.sceneId)).size;
 
     return NextResponse.json({
       ...video,
+      script: video.script ? { ...video.script, sceneBreakdown: scenesWithChars } : null,
       productionProgress: {
         totalScenes,
         generatedScenes,
