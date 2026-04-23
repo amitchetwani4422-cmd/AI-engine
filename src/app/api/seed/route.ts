@@ -90,23 +90,11 @@ const CHANNELS = [
   },
 ];
 
-// POST /api/seed — idempotent: deduplicates first, then creates missing channels
+// POST /api/seed — idempotent: only creates missing channels, never deletes anything.
+// Deleting channels cascades to Videos/Scripts/Scenes — so dedup must NEVER happen here.
 export async function POST() {
   const results: string[] = [];
 
-  // Step 1: remove duplicates — keep the oldest record per name, delete the rest
-  const allChannels = await prisma.channel.findMany({ orderBy: { createdAt: "asc" } });
-  const seen = new Set<string>();
-  for (const ch of allChannels) {
-    if (seen.has(ch.name)) {
-      await prisma.channel.delete({ where: { id: ch.id } });
-      results.push(`deduped: removed extra ${ch.name}`);
-    } else {
-      seen.add(ch.name);
-    }
-  }
-
-  // Step 2: create any missing channels
   for (const channel of CHANNELS) {
     const existing = await prisma.channel.findFirst({ where: { name: channel.name } });
     if (existing) {

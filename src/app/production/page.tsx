@@ -51,6 +51,7 @@ const statusColors: Record<string, string> = {
 export default function ProductionPage() {
   const [videos, setVideos] = useState<ProductionVideo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeStatus, setActiveStatus] = useState("all");
 
   useEffect(() => {
@@ -59,11 +60,18 @@ export default function ProductionPage() {
 
   async function fetchVideos() {
     setLoading(true);
+    setFetchError(null);
     try {
       const res = await fetch("/api/production");
       const data = await res.json();
-      setVideos(Array.isArray(data) ? data : data.videos ?? []);
-    } catch {
+      if (!res.ok) {
+        setFetchError(data.error ?? `API error ${res.status}`);
+        setVideos([]);
+      } else {
+        setVideos(Array.isArray(data) ? data : data.videos ?? []);
+      }
+    } catch (err) {
+      setFetchError(String(err));
       setVideos([]);
     } finally {
       setLoading(false);
@@ -112,6 +120,12 @@ export default function ProductionPage() {
             )
           ))}
         </div>
+
+        {fetchError && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            Failed to load videos: {fetchError}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center h-40">

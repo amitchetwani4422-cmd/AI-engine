@@ -48,8 +48,7 @@ export function ChannelProvider({ children }: { children: React.ReactNode }) {
       const data = await fetchChannels();
 
       if (data.length > 0) {
-        // Deduplicate by name — prevents same-name channels created via race condition
-        // from showing twice in the UI (seed cleans DB, this guards the render layer)
+        // Deduplicate by name in the render layer only — never delete from DB here
         const seenNames = new Set<string>();
         const unique = data.filter((c) => {
           const key = c.name.toLowerCase().trim();
@@ -64,20 +63,8 @@ export function ChannelProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // DB is empty and no seed in flight — seed once
-      if (!seeding.current) {
-        seeding.current = true;
-        try {
-          await fetch("/api/seed", { method: "POST" });
-          const seeded = await fetchChannels();
-          if (seeded.length > 0) {
-            setChannels(seeded);
-            setActiveChannelIdState(seeded[0].id);
-          }
-        } finally {
-          seeding.current = false;
-        }
-      }
+      // No channels found — show empty state, do NOT auto-seed
+      // (auto-seed was deleting channels via cascade, wiping all videos/scripts)
     } catch {
       // DB unavailable — show empty state
     } finally {
