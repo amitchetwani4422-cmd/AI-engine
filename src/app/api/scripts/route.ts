@@ -74,17 +74,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
     }
 
+    const derivedTitle = idea?.title ?? 'Untitled Script';
     const script = await prisma.script.create({
       data: {
         ideaId,
         channelId,
-        formatVariant: parsed.data.formatVariant ?? null,
-        hook: parsed.data.hook ?? null,
-        fullScript: parsed.data.fullScript ?? null,
+        title: derivedTitle,
+        formatVariant: parsed.data.formatVariant ?? 'Standard',
+        hook: parsed.data.hook ?? derivedTitle,
+        fullScript: parsed.data.fullScript ?? '',
         narrationDraft: parsed.data.narrationDraft ?? null,
         titleOptions: parsed.data.titleOptions ?? [],
         thumbnailConcepts: parsed.data.thumbnailConcepts ?? [],
-        musicMood: parsed.data.musicMood ?? null,
+        musicMood: parsed.data.musicMood ?? 'To be determined',
         status: parsed.data.status,
       },
       include: {

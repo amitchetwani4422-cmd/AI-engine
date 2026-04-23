@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const cost = parseFloat((COST_PER_SECOND[model] ?? 0.056) * durationSeconds + '');
+    const cost = parseFloat(((COST_PER_SECOND[model] ?? 0.056) * durationSeconds).toFixed(4));
 
     // Save clip
     const clip = await prisma.generatedClip.create({

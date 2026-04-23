@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mic, Plus, Loader2, Play, Music, AlertCircle } from "lucide-react";
 
 interface VoiceAsset {
-  id: string; name: string; externalVoiceId?: string; channelId?: string;
+  id: string; name: string; elevenlabsVoiceId?: string | null; channelId?: string;
   tags: string[]; language: string; isMultilingual: boolean;
 }
 
@@ -119,8 +119,8 @@ export default function VoicePage() {
                           <p className="text-xs text-zinc-500">{voice.language} {voice.isMultilingual && "· Multilingual"}</p>
                         </div>
                       </div>
-                      {voice.externalVoiceId && (
-                        <p className="text-xs text-zinc-600 font-mono mb-2">{voice.externalVoiceId}</p>
+                      {voice.elevenlabsVoiceId && (
+                        <p className="text-xs text-zinc-600 font-mono mb-2">{voice.elevenlabsVoiceId}</p>
                       )}
                       <div className="flex flex-wrap gap-1">
                         {(voice.tags ?? []).map((tone) => (

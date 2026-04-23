@@ -87,8 +87,13 @@ interface Script {
 }
 
 const modelStyle: Record<string, string> = {
-  "kling-3.0": "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  "veo-3.1": "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  "kling-3.0":     "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  "kling-2.1":     "bg-sky-500/20 text-sky-400 border-sky-500/30",
+  "ltx-video-2":   "bg-green-500/20 text-green-400 border-green-500/30",
+  "wan-2.1":       "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  "minimax":       "bg-rose-500/20 text-rose-400 border-rose-500/30",
+  "sync-lipsync":  "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  "veo-3.1":       "bg-purple-500/20 text-purple-400 border-purple-500/30",
 };
 
 export default function ScriptDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -98,6 +103,7 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [startingProd, setStartingProd] = useState(false);
+  const [prodError, setProdError] = useState<string | null>(null);
   const [voiceScript, setVoiceScript] = useState<VoiceScript | null>(null);
   const [generatingVS, setGeneratingVS] = useState(false);
   const [vsCopied, setVsCopied] = useState(false);
@@ -113,10 +119,8 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
     setApproving(true);
     try {
       const res = await fetch(`/api/scripts/${id}/approve`, { method: "POST" });
-      if (res.ok) {
-        const updated = await fetch(`/api/scripts/${id}`).then((r) => r.json());
-        if (updated && !updated.error) setScript(updated);
-      }
+      const updated = await res.json();
+      if (res.ok && !updated.error) setScript(updated);
     } finally {
       setApproving(false);
     }
@@ -166,16 +170,21 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
 
   async function startProduction() {
     setStartingProd(true);
+    setProdError(null);
     try {
       const res = await fetch("/api/production", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scriptId: id, channelId: script?.channelId }),
       });
+      const data = await res.json();
       if (res.ok) {
-        const video = await res.json();
-        router.push(`/production/${video.id}`);
+        router.push(`/production/${data.id}`);
+      } else {
+        setProdError(data.error ?? "Failed to start production");
       }
+    } catch {
+      setProdError("Network error — please try again");
     } finally {
       setStartingProd(false);
     }
@@ -232,6 +241,11 @@ export default function ScriptDetailPage({ params }: { params: Promise<{ id: str
         }
       />
       <div className="flex-1 overflow-auto p-6">
+        {prodError && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            {prodError}
+          </div>
+        )}
         {/* Status + Cost Summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <Card className="bg-zinc-900 border-zinc-800">
