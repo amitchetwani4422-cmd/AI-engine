@@ -25,6 +25,7 @@ interface ProductionVideo {
 }
 
 const statusOrder = [
+  "InProduction",
   "Pending",
   "Generating",
   "Assembly",
@@ -36,6 +37,7 @@ const statusOrder = [
 ];
 
 const statusColors: Record<string, string> = {
+  InProduction: "bg-blue-500/20 text-blue-400",
   Pending: "bg-zinc-700 text-zinc-300",
   Generating: "bg-yellow-500/20 text-yellow-400",
   Assembly: "bg-blue-500/20 text-blue-400",
